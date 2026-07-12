@@ -30,7 +30,12 @@ describe('mode prorata', () => {
 describe('mode moitie', () => {
   it('partage en deux', () => {
     expect(
-      calculerParts({ montant: 215274, mode: 'moitie', payePar: 'thomas', ratioThomas: RATIO_THOMAS }),
+      calculerParts({
+        montant: 215274,
+        mode: 'moitie',
+        payePar: 'thomas',
+        ratioThomas: RATIO_THOMAS,
+      }),
     ).toEqual({ thomas: 107637, liz: 107637 })
   })
 
@@ -53,7 +58,12 @@ describe('mode transfert', () => {
   // la part du payeur vaut 0, celle de l'autre vaut le montant.
   it('quand Liz verse 400 EUR, la part de Liz vaut 0', () => {
     expect(
-      calculerParts({ montant: 40000, mode: 'transfert', payePar: 'liz', ratioThomas: RATIO_THOMAS }),
+      calculerParts({
+        montant: 40000,
+        mode: 'transfert',
+        payePar: 'liz',
+        ratioThomas: RATIO_THOMAS,
+      }),
     ).toEqual({ thomas: 40000, liz: 0 })
   })
 

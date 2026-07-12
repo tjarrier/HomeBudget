@@ -1,4 +1,4 @@
-import { assertEntier, type Cents, repartirAuRatio } from './money.js'
+import { type Cents, assertEntier, repartirAuRatio } from './money.js'
 import type { ModeRepartition, Parts, Personne, TypeDepense } from './types.js'
 
 export interface EntreeRepartition {

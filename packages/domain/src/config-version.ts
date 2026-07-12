@@ -56,7 +56,9 @@ export function loyerParPersonne(v: VersionConfig): Parts {
  */
 export function versionEnVigueurLe(versions: VersionConfig[], date: string): VersionConfig {
   assertDateIsoValide(date)
-  const trouvee = versions.find((v) => date >= v.dateDebut && (v.dateFin === null || date <= v.dateFin))
+  const trouvee = versions.find(
+    (v) => date >= v.dateDebut && (v.dateFin === null || date <= v.dateFin),
+  )
   if (!trouvee) {
     throw new Error(
       `Aucune version de config ne couvre le ${date}. Une depense sans regle applicable ne peut pas etre figee.`,
@@ -78,7 +80,9 @@ export function verifierContinuite(versions: VersionConfig[]): void {
 
   for (const v of triees) {
     if (v.dateFin !== null && v.dateFin < v.dateDebut) {
-      throw new Error(`Version ${v.id} : dateFin (${v.dateFin}) precede dateDebut (${v.dateDebut}).`)
+      throw new Error(
+        `Version ${v.id} : dateFin (${v.dateFin}) precede dateDebut (${v.dateDebut}).`,
+      )
     }
   }
 
