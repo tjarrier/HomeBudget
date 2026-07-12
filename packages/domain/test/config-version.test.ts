@@ -5,6 +5,7 @@ import {
   loyerParPersonne,
   ratioThomas,
   totalChargesCommunes,
+  veilleDe,
   verifierContinuite,
   versionEnVigueurLe,
 } from '../src/config-version.js'
@@ -69,6 +70,11 @@ describe('champs derives', () => {
     const zero = { ...V1, salaireNetThomas: 0, salaireNetLiz: 0 }
     expect(() => ratioThomas(zero)).toThrow(/salaires/i)
   })
+
+  it('refuse un salaire individuel negatif meme si le total est positif', () => {
+    const negatif = { ...V1, salaireNetThomas: -50000, salaireNetLiz: 400000 }
+    expect(() => ratioThomas(negatif)).toThrow(/negatif/i)
+  })
 })
 
 describe('versionEnVigueurLe', () => {
@@ -104,6 +110,14 @@ describe('versionEnVigueurLe', () => {
   it('refuse une liste vide', () => {
     expect(() => versionEnVigueurLe([], '2025-07-01')).toThrow(/aucune version/i)
   })
+
+  it('refuse une date mal formee (non zero-paddee) plutot que de comparer silencieusement', () => {
+    const bornees = [
+      { ...V1, dateDebut: '2027-01-01', dateFin: '2027-06-30' },
+      { ...V2, dateDebut: '2027-07-01', dateFin: '2027-12-31' },
+    ]
+    expect(() => versionEnVigueurLe(bornees, '2027-1-1')).toThrow(/invalide/i)
+  })
 })
 
 describe('verifierContinuite', () => {
@@ -128,6 +142,20 @@ describe('verifierContinuite', () => {
   it('refuse deux versions ouvertes', () => {
     const ouverte = { ...V1, dateFin: null }
     expect(() => verifierContinuite([ouverte, V2])).toThrow()
+  })
+})
+
+describe('veilleDe - validation de date', () => {
+  it('rejette un mois et un jour hors bornes calendaires', () => {
+    expect(() => veilleDe('2027-13-45')).toThrow(/invalide/i)
+  })
+
+  it('rejette le 30 fevrier, qui n existe pas', () => {
+    expect(() => veilleDe('2027-02-30')).toThrow(/invalide/i)
+  })
+
+  it('rejette le mois 00', () => {
+    expect(() => veilleDe('2027-00-01')).toThrow(/invalide/i)
   })
 })
 
@@ -175,5 +203,29 @@ describe('cloturerEtAjouter (append-only)', () => {
   it('produit une suite continue', () => {
     const resultat = cloturerEtAjouter([V1, V2], nouvelle)
     expect(() => verifierContinuite(resultat)).not.toThrow()
+  })
+
+  it('refuse d agir sur une liste deja incoherente plutot que de re-cloturer la mauvaise version', () => {
+    // A est censee etre ouverte mais ne l'est pas vraiment : B, plus recente, est deja close.
+    // Sans garde, cloturerEtAjouter prend "la derniere par dateDebut" (B) et ecrase sa dateFin.
+    const versionA: VersionConfig = {
+      ...V1,
+      id: 'A',
+      dateDebut: '2025-01-01',
+      dateFin: null,
+    }
+    const versionB: VersionConfig = {
+      ...V2,
+      id: 'B',
+      dateDebut: '2026-01-01',
+      dateFin: '2026-06-30',
+    }
+    const suivante: VersionConfig = {
+      ...V2,
+      id: 'C',
+      dateDebut: '2027-01-01',
+      dateFin: null,
+    }
+    expect(() => cloturerEtAjouter([versionA, versionB], suivante)).toThrow()
   })
 })
