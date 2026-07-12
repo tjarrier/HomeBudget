@@ -112,7 +112,9 @@ Les soldes (`solde_thomas`, `solde_liz`) sont **dérivés**, jamais stockés : i
 - `prorata` (défaut pour charge fixe) — parts au ratio des salaires de la version en vigueur à la date de la dépense.
 - `moitie` (défaut pour courante) — `part_thomas = round(montant/2)`, `part_liz = montant - part_thomas`.
 - `personnalise` — saisie directe, validation bloquante `part_thomas + part_liz == montant`.
-- `payeur` (défaut pour transfert) — la totalité au payeur, l'autre part à 0.
+- `transfert` (défaut pour type transfert) — **la part du payeur vaut 0, celle de l'autre vaut le montant total.**
+
+> **Piège de vocabulaire, à ne jamais inverser.** Le PRD nomme ce dernier mode « 100 % payeur », ce qui suggère l'inverse de ce qu'il fait. Quand Liz verse 400 € à Thomas : `part_liz = 0`, `part_thomas = 400`. Le solde de Liz devient `400 - 0 = +400`, donc sa dette *baisse* de 400 € — ce qui est bien le but d'un remboursement. Le mode s'appelle `transfert` dans le code, jamais `payeur`. Un test vérifie explicitement le signe.
 
 **Solde d'une dépense** (§5.2) — « ce que j'ai payé moins ce que j'aurais dû payer » :
 ```
@@ -141,11 +143,40 @@ Phrase de synthèse : si `solde_thomas > 0` → « Liz doit X € à Thomas », 
 
 ## 9. Reprise des données
 
-Deux versions de config : v1 « depuis le 01/07/2025 » (loyer 785 €, total 1 110,58 €) et v2 « à partir du 01/07/2026 » (loyer 791 €, total 1 073,59 €). Salaires : Thomas 3 300 €, Liz 1 800 € (inchangés entre les deux versions).
+Source : le Sheet réel, lu le 2026-07-12. **33 lignes** de dépenses (le PRD en annonçait ~34).
 
-Les ~34 lignes de dépenses sont importées depuis le Sheet **avec leurs parts figées telles quelles** — elles sont déjà calculées — et rattachées à la version correspondant à leur date.
+Deux versions de config : v1 « depuis le 01/07/2025 » (loyer 785 €, total 1 110,58 €) et v2 « à partir du 01/07/2026 » (loyer 791 €, total 1 073,59 €). Salaires : Thomas 3 300 €, Liz 1 800 €, inchangés entre les deux versions (ratio Thomas = 3300/5100 = 64,7058…%).
 
-**Contrôle de non-régression, bloquant :** après import du seed, le solde doit valoir exactement **« Liz doit 1 145,79 € à Thomas »**. Ce test est le canari du projet : si un agent réintroduit un recalcul rétroactif ou casse l'arrondi, il tombe.
+Les dépenses sont importées **avec leurs parts figées**, arrondies au centime, et rattachées à la version correspondant à leur date.
+
+### Trois écarts entre le Sheet et le PRD, tranchés
+
+**Le solde de référence est 1 145,80 €, pas 1 145,79 €.**
+Le Sheet stocke des flottants pleins : la part de Thomas sur un loyer vaut `718,6105882 €`. Le solde y vaut `1 145,788425 €`, dont « 1 145,79 » n'est que l'affichage. En figeant au centime, douze lignes de loyer perdent chacune ~6 millièmes de centime, et le solde exact devient **1 145,80 €** (114 580 centimes). Ce n'est pas une régression : c'est la suppression d'une dérive de sous-centimes que personne ne pouvait payer.
+
+**La ligne du 05/07/2026 est importée telle quelle, à 1 110,58 €.**
+Le PRD (§9) la donnait à 1 073,59 € avec la config v2. Le Sheet réel la porte encore à 1 110,58 € : la révision de loyer n'y a jamais été répercutée. On importe la réalité (c'est ce qui a été payé), pas l'intention. Si le montant est faux, il se corrige dans l'app — c'est précisément son rôle.
+
+**La ligne datée 2029-09-29 est corrigée en 2025-09-29.**
+Coquille signalée par le PRD (§7). Le Tricount remboursé date du 27/09/2025. Sans impact sur le solde, mais indispensable à la chronologie.
+
+### Reclassement des types
+
+Le Sheet ne connaît que « Charge fixe » et « Courante » ; le type « Transfert » du PRD n'y existe pas. Au seed :
+
+| Lignes | Type | Mode |
+|---|---|---|
+| 12 loyers à 1 110,58 € (08/2025 → 07/2026) | charge fixe | `prorata` |
+| Loyer de juillet 2025 (762,61 €, prorata jours) | charge fixe | `personnalise` + commentaire |
+| Virements de Liz, remboursements de loyer, remboursements Tricount (13 lignes) | transfert | `transfert` |
+| Tricount (492,14 € et 83,95 €), Noël (500 €), Coiffeur (30 €) | courante | `personnalise` |
+| Billets Colombie (2 152,74 €) | courante | `moitie` |
+
+Le reclassement ne modifie aucun solde ; il rend seulement la sémantique conforme au PRD.
+
+### Contrôle de non-régression, bloquant
+
+Après import du seed, le solde doit valoir **exactement 114 580 centimes — « Liz doit 1 145,80 € à Thomas »**. Ce test est le canari du projet : si un agent réintroduit un recalcul rétroactif, inverse le signe d'un transfert ou casse la règle d'arrondi, il tombe.
 
 ## 10. Tests
 
