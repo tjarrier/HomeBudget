@@ -8,5 +8,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
   }
 }
