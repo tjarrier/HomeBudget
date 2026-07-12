@@ -29,6 +29,11 @@ export function totalChargesCommunes(v: VersionConfig): Cents {
 }
 
 export function ratioThomas(v: VersionConfig): number {
+  if (v.salaireNetThomas < 0 || v.salaireNetLiz < 0) {
+    throw new Error(
+      `Salaire negatif : salaireNetThomas=${v.salaireNetThomas}, salaireNetLiz=${v.salaireNetLiz}. Un salaire individuel ne peut pas etre negatif.`,
+    )
+  }
   const total = v.salaireNetThomas + v.salaireNetLiz
   if (total <= 0) {
     throw new Error('Salaires cumules nuls : la repartition au prorata est indefinie.')
@@ -50,6 +55,7 @@ export function loyerParPersonne(v: VersionConfig): Parts {
  * d'une depense — et jamais la version « courante ».
  */
 export function versionEnVigueurLe(versions: VersionConfig[], date: string): VersionConfig {
+  assertDateIsoValide(date)
   const trouvee = versions.find((v) => date >= v.dateDebut && (v.dateFin === null || date <= v.dateFin))
   if (!trouvee) {
     throw new Error(
@@ -109,6 +115,11 @@ export function cloturerEtAjouter(
     return [{ ...nouvelle, dateFin: null }]
   }
 
+  // On ne cloture jamais une liste deja incoherente : sans cette garde, on
+  // suppose a tort que "la derniere par dateDebut" est la version ouverte,
+  // et on ecraserait silencieusement la dateFin d'une version deja close.
+  verifierContinuite(versions)
+
   const triees = [...versions].sort((a, b) => a.dateDebut.localeCompare(b.dateDebut))
   const derniere = triees[triees.length - 1]
   if (!derniere) throw new Error('Liste de versions incoherente.')
@@ -129,11 +140,26 @@ export function cloturerEtAjouter(
  * fuseau, et un decalage d'un jour ici corromprait toutes les bornes de version.
  */
 export function veilleDe(date: string): string {
-  const [a, m, j] = date.split('-').map(Number)
-  if (a === undefined || m === undefined || j === undefined) {
-    throw new Error(`Date ISO invalide : ${date}`)
-  }
+  assertDateIsoValide(date)
+  const [a, m, j] = date.split('-').map(Number) as [number, number, number]
   const d = new Date(Date.UTC(a, m - 1, j))
   d.setUTCDate(d.getUTCDate() - 1)
   return d.toISOString().slice(0, 10)
+}
+
+/**
+ * Valide la forme (`YYYY-MM-DD`, zero-paddee) ET la validite calendaire reelle.
+ * `Date.UTC` deborde silencieusement (mois 13, 30 fevrier...) au lieu de
+ * rejeter : on reconstruit la date puis on relit ses composants pour
+ * detecter le debordement.
+ */
+function assertDateIsoValide(date: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error(`Date ISO invalide : ${date}`)
+  }
+  const [a, m, j] = date.split('-').map(Number) as [number, number, number]
+  const d = new Date(Date.UTC(a, m - 1, j))
+  if (d.getUTCFullYear() !== a || d.getUTCMonth() !== m - 1 || d.getUTCDate() !== j) {
+    throw new Error(`Date ISO invalide : ${date}`)
+  }
 }
