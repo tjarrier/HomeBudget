@@ -27,14 +27,27 @@ Tout le reste du design découle de ces deux points. Une modification qui les af
 | Monorepo | pnpm workspaces | Trois paquets, pas de build système lourd nécessaire |
 | Application | Next.js (App Router) + TypeScript strict | Full-stack en un déploiement, Server Actions pour les écritures |
 | Cœur métier | `packages/domain`, TypeScript pur | Zéro dépendance framework, testable sans mock |
-| Base de données | Supabase (Postgres hébergé) | Les invariants deviennent des contraintes SQL, pas des `if` |
-| Authentification | SSO Google via Supabase Auth, allowlist de deux e-mails | Un tap sur mobile, aucun mot de passe |
+| Base de données | Supabase, **utilisé uniquement comme Postgres hébergé** | Les invariants deviennent des contraintes SQL, pas des `if` |
+| Accès aux données | `pg` (SQL paramétré) depuis les Server Actions | Le navigateur ne parle jamais à la base. Pas de PostgREST, pas de RLS à maintenir |
+| Authentification | **Better Auth**, SSO Google, allowlist de deux e-mails | Auth TypeScript qui vit dans notre code et notre base, pas dans un service tiers |
 | UI | Tailwind CSS v4 + shadcn/ui | Mobile-first, composants accessibles |
 | Lint / format | Biome | Une dépendance, assez rapide pour tourner à chaque écriture de fichier |
 | Tests | Vitest (domaine, TDD strict) + Playwright (E2E) | Le domaine est le seul endroit où un bug coûte de l'argent |
 | CI / déploiement | GitHub Actions + Vercel | Preview par PR, checks bloquants sur `main` |
 
 **Écarté :** NestJS. Le bénéfice recherché (règles métier isolées de React, testables) est atteint par `packages/domain` sans le coût d'un second processus, d'un contrat HTTP et du boilerplate DTO/modules. Reconsidérer si un client natif ou des jobs serveur apparaissent.
+
+**Écarté :** Supabase Auth. Better Auth le remplace. Conséquence en cascade — et c'est une simplification, pas un compromis : sans session Supabase, il n'y a plus de JWT à présenter à PostgREST, donc plus de PostgREST du tout. Les Server Actions parlent à Postgres en SQL paramétré. Le navigateur n'a jamais d'accès direct à la base, ce qui rend le Row Level Security inutile : la frontière de sécurité est le serveur, pas une politique SQL. Une couche de moins à écrire, à tester et à se tromper.
+
+Supabase reste, mais dans un rôle réduit : Postgres managé, avec un CLI qui donne la même base en local via Docker. Aucun de ses SDK n'est utilisé.
+
+### Authentification
+
+Better Auth, provider Google, tables dans notre propre base (`user`, `session`, `account`, `verification`), générées par son CLI et commitées comme n'importe quelle migration.
+
+**Allowlist stricte de deux adresses.** Un hook `before` sur la création d'utilisateur rejette toute adresse hors liste. C'est un budget de couple : il n'y a pas d'inscription, seulement deux personnes autorisées. Un test vérifie qu'une troisième adresse est refusée.
+
+L'identité Google est rattachée à une `personne` (`thomas` ou `liz`) par un champ sur l'utilisateur. C'est ce qui pré-remplit « payé par » à la saisie.
 
 ## 3. Architecture
 
@@ -51,12 +64,12 @@ homebudget/
 │  ├─ repartition.ts      les 4 modes de répartition
 │  ├─ solde.ts            soldes par dépense + agrégats du résumé
 │  └─ *.test.ts           Vitest
-└─ packages/db/           schéma, migrations SQL, seed, types générés
+└─ packages/db/           schéma, migrations SQL, requêtes, seed
 ```
 
-**Sens des dépendances :** `apps/web` → `packages/domain`. Jamais l'inverse. `packages/domain` n'importe ni React, ni Next, ni Supabase, ni aucune librairie de dates lourde.
+**Sens des dépendances :** `apps/web` → `packages/db` → `packages/domain`. Jamais l'inverse. `packages/domain` n'importe ni React, ni Next, ni `pg`, ni aucune librairie de dates lourde.
 
-**Flux d'écriture d'une dépense :** le formulaire (client) → Server Action → charge la version de config en vigueur à la date saisie → `domain.calculerParts()` → écrit la dépense avec `part_thomas`, `part_liz`, `version_config_id` figés → revalide le cache.
+**Flux d'écriture d'une dépense :** le formulaire (client) → Server Action → vérifie la session Better Auth → charge la version de config en vigueur à la date saisie → `domain.calculerParts()` → écrit la dépense avec `part_thomas`, `part_liz`, `version_config_id` figés → revalide le cache.
 
 **Flux de lecture :** Server Component → lit les dépenses telles quelles → `domain.agreger()` pour le résumé. Aucun recalcul de part.
 

@@ -6,7 +6,9 @@
 
 **Architecture:** Monorepo pnpm à trois paquets. `packages/domain` contient toute la logique métier en TypeScript pur, sans aucune dépendance de framework, développé en TDD. `packages/db` porte le schéma Postgres — où les invariants du PRD deviennent des contraintes SQL — et l'import du Sheet, séparé en une fonction pure (testable partout) et une écriture en base (I/O). `apps/web` est créé au plan 2.
 
-**Tech Stack:** pnpm workspaces, TypeScript strict (ESM), Vitest, Biome, Supabase (Postgres), Node 22+.
+**Tech Stack:** pnpm workspaces, TypeScript strict (ESM), Vitest, Biome, Postgres via Supabase, `pg` en SQL paramétré, Node 22+. L'authentification (Better Auth, SSO Google) arrive au plan 2, avec l'application.
+
+**Sur Supabase :** il sert uniquement de Postgres — managé en production, dockerisé en local via son CLI. Aucun de ses SDK n'est utilisé : ni `supabase-js`, ni PostgREST, ni Supabase Auth. On parle à la base en SQL, avec `pg`. Une seule variable d'environnement suffit : `DATABASE_URL`.
 
 ## Global Constraints
 
@@ -49,8 +51,9 @@ homebudget/
 │  └─ test/*.test.ts
 ├─ packages/db/
 │  ├─ supabase/migrations/*.sql       schéma et contraintes
+│  ├─ src/pool.ts                     le pool `pg`, une seule fois
 │  ├─ src/import-sheet.ts             CSV → { versions, depenses }  (pur, zéro I/O)
-│  ├─ src/seed.ts                     écrit le résultat de l'import dans Supabase
+│  ├─ src/seed.ts                     écrit le résultat de l'import en base
 │  └─ test/import-sheet.test.ts       LE CANARI : 114 580 centimes
 └─ docs/data/sheet-export-2026-07-12/ source de vérité (déjà commité)
 ```
@@ -337,7 +340,25 @@ le signe : ne le « corrige » pas.
 - `apps/web` — Next.js. UI seulement. Appelle le domaine, jamais l'inverse.
 
 Les dates sont des chaînes ISO `YYYY-MM-DD`, jamais des objets `Date` (ils portent
-un fuseau, ce qui décale les bornes de version d'un jour).
+un fuseau, ce qui décale les bornes de version d'un jour). `pg` rend des `Date`
+pour les colonnes `date` : convertis-les en chaîne dès la sortie de la requête.
+
+## Base de données et authentification
+
+**Supabase n'est qu'un Postgres.** Managé en production, dockerisé en local via son
+CLI. On n'utilise **aucun** de ses SDK : ni `supabase-js`, ni PostgREST, ni Supabase
+Auth. Si tu vois passer `createClient` de `@supabase/supabase-js`, c'est une erreur.
+
+On parle à la base en **SQL paramétré** via `pg`, depuis les Server Actions
+uniquement. Le navigateur n'a jamais d'accès direct à la base — c'est pourquoi il
+n'y a pas de Row Level Security à maintenir : la frontière de sécurité est le
+serveur.
+
+**L'authentification est Better Auth**, provider Google, avec ses tables dans notre
+propre base. Deux adresses sont autorisées, point. Il n'y a pas d'inscription : un
+hook rejette toute adresse hors allowlist, et un test le vérifie.
+
+Une seule variable d'environnement pour la base : `DATABASE_URL`.
 
 ## Commandes
 
@@ -1443,7 +1464,7 @@ La tâche qui prouve que tout ce qui précède est juste.
 
 - [ ] **Step 1 : Créer le paquet `db`**
 
-`packages/db/package.json` :
+`packages/db/package.json` (les dépendances Postgres arrivent à la Task 7, quand la base existe) :
 ```json
 {
   "name": "@homebudget/db",
@@ -2004,125 +2025,155 @@ $$;
 
 Ce test exige une Supabase locale (Docker). Il est séparé de la suite unitaire.
 
+D'abord le pool, partagé par le seed et les tests.
+
+`packages/db/src/pool.ts` :
+```ts
+import { Pool } from 'pg'
+
+/**
+ * Postgres local de Supabase : port 54322 (le 54321 est l'API REST, qu'on
+ * n'utilise pas). En production, DATABASE_URL pointe sur Supabase hebergé.
+ */
+const DEFAUT_LOCAL = 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL ?? DEFAUT_LOCAL,
+})
+```
+
 `packages/db/test/invariants.integration.test.ts` :
 ```ts
-import { createClient } from '@supabase/supabase-js'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { pool } from '../src/pool.js'
 
-// Ces valeurs sont celles de `supabase start` en local.
-const URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+afterAll(async () => {
+  await pool.end()
+})
 
-const db = createClient(URL, KEY)
+beforeEach(async () => {
+  await pool.query('truncate depense, version_config cascade')
+})
 
-async function reset() {
-  await db.from('depense').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-  await db.from('version_config').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-}
-
-async function creerVersion(libelle: string, dateDebut: string) {
-  const { data, error } = await db.rpc('creer_version_config', {
-    p_libelle: libelle,
-    p_date_debut: dateDebut,
-    p_salaire_net_thomas_cents: 330000,
-    p_salaire_net_liz_cents: 180000,
-    p_charges_communes: [{ libelle: 'Loyer', montant: 78500 }],
-    p_charges_perso_thomas: [],
-    p_charges_perso_liz: [],
-  })
-  if (error) throw new Error(error.message)
-  return data
+async function creerVersion(libelle: string, dateDebut: string): Promise<{ id: string }> {
+  const { rows } = await pool.query<{ id: string }>(
+    'select * from creer_version_config($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)',
+    [
+      libelle,
+      dateDebut,
+      330000,
+      180000,
+      JSON.stringify([{ libelle: 'Loyer', montant: 78500 }]),
+      '[]',
+      '[]',
+    ],
+  )
+  const version = rows[0]
+  if (!version) throw new Error('creer_version_config n a rien renvoye')
+  return version
 }
 
 describe('invariants portes par la base', () => {
-  beforeEach(reset)
-
   it('creer une version cloture la precedente la VEILLE', async () => {
     await creerVersion('v1', '2025-07-01')
     await creerVersion('v2', '2026-07-01')
 
-    const { data } = await db.from('version_config').select('*').order('date_debut')
-    expect(data?.[0]?.date_fin).toBe('2026-06-30')
-    expect(data?.[1]?.date_fin).toBeNull()
+    const { rows } = await pool.query<{ libelle: string; date_fin: Date | null }>(
+      'select libelle, date_fin from version_config order by date_debut',
+    )
+    expect(rows[0]?.date_fin?.toISOString().slice(0, 10)).toBe('2026-06-30')
+    expect(rows[1]?.date_fin).toBeNull()
   })
 
   it('refuse de modifier une version close (append-only)', async () => {
     await creerVersion('v1', '2025-07-01')
     await creerVersion('v2', '2026-07-01')
 
-    const { data } = await db.from('version_config').select('id').eq('libelle', 'v1').single()
-    const { error } = await db
-      .from('version_config')
-      .update({ salaire_net_thomas_cents: 999999 })
-      .eq('id', data?.id)
+    await expect(
+      pool.query(
+        "update version_config set salaire_net_thomas_cents = 999999 where libelle = 'v1'",
+      ),
+    ).rejects.toThrow(/append-only/i)
+  })
 
-    expect(error).not.toBeNull()
-    expect(error?.message).toMatch(/append-only/i)
+  it('autorise la cloture d une version ouverte', async () => {
+    // Le trigger ne doit pas bloquer le mecanisme normal : poser une date_fin
+    // sur une version encore ouverte est exactement ce que fait une revision.
+    await creerVersion('v1', '2025-07-01')
+    await expect(creerVersion('v2', '2026-07-01')).resolves.toBeDefined()
   })
 
   it('refuse deux versions qui se chevauchent', async () => {
     await creerVersion('v1', '2025-07-01')
-    const { error } = await db.from('version_config').insert({
-      libelle: 'chevauchante',
-      date_debut: '2025-08-01',
-      date_fin: null,
-      salaire_net_thomas_cents: 330000,
-      salaire_net_liz_cents: 180000,
-    })
-    expect(error?.message).toMatch(/chevauchement|exclusion/i)
+
+    await expect(
+      pool.query(
+        `insert into version_config
+           (libelle, date_debut, date_fin, salaire_net_thomas_cents, salaire_net_liz_cents)
+         values ('chevauchante', '2025-08-01', null, 330000, 180000)`,
+      ),
+    ).rejects.toThrow(/versions_sans_chevauchement|exclusion/i)
   })
 
   it('refuse une depense dont les parts ne somment pas au montant', async () => {
     const version = await creerVersion('v1', '2025-07-01')
-    const { error } = await db.from('depense').insert({
-      date: '2025-08-05',
-      description: 'incoherente',
-      montant_cents: 10000,
-      paye_par: 'thomas',
-      type: 'courante',
-      mode_repartition: 'personnalise',
-      part_thomas_cents: 4000,
-      part_liz_cents: 5000, // 9000 != 10000
-      version_config_id: version.id,
-    })
-    expect(error?.message).toMatch(/parts_somment_au_montant/i)
+
+    await expect(
+      pool.query(
+        `insert into depense
+           (date, description, montant_cents, paye_par, type, mode_repartition,
+            part_thomas_cents, part_liz_cents, version_config_id)
+         values ('2025-08-05', 'incoherente', 10000, 'thomas', 'courante', 'personnalise',
+                 4000, 5000, $1)`, // 4000 + 5000 = 9000, pas 10000
+        [version.id],
+      ),
+    ).rejects.toThrow(/parts_somment_au_montant/i)
   })
 
   it('refuse une depense sans version de config', async () => {
-    const { error } = await db.from('depense').insert({
-      date: '2025-08-05',
-      description: 'orpheline',
-      montant_cents: 10000,
-      paye_par: 'thomas',
-      type: 'courante',
-      mode_repartition: 'moitie',
-      part_thomas_cents: 5000,
-      part_liz_cents: 5000,
-      version_config_id: '00000000-0000-0000-0000-000000000000',
-    })
-    expect(error).not.toBeNull()
+    await expect(
+      pool.query(
+        `insert into depense
+           (date, description, montant_cents, paye_par, type, mode_repartition,
+            part_thomas_cents, part_liz_cents, version_config_id)
+         values ('2025-08-05', 'orpheline', 10000, 'thomas', 'courante', 'moitie',
+                 5000, 5000, '00000000-0000-0000-0000-000000000000')`,
+      ),
+    ).rejects.toThrow(/foreign key|violates/i)
   })
 })
 ```
 
-`packages/db/package.json` — ajouter :
+Chaque test prouve que la base **refuse**. C'est la différence entre une règle écrite dans une doc et une règle qui tient.
+
+`packages/db/package.json` — remplacer par :
 ```json
 {
+  "name": "@homebudget/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
   "scripts": {
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "db:start": "supabase start",
-    "db:reset": "supabase db reset"
-  },
-  "devDependencies": {
-    "supabase": "^2.0.0"
+    "db:reset": "supabase db reset",
+    "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@homebudget/domain": "workspace:*",
-    "@supabase/supabase-js": "^2.47.0"
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0",
+    "supabase": "^2.0.0",
+    "tsx": "^4.19.0"
   }
 }
 ```
+
+Aucun SDK Supabase. On parle à Postgres en SQL paramétré — la seule dépendance est `pg`.
 
 `packages/db/vitest.integration.config.ts` :
 ```ts
@@ -2135,21 +2186,20 @@ export default defineConfig({
 
 Deux configurations, une seule raison : `pnpm test` (donc la CI) ne doit jamais dépendre de Docker. La suite unitaire tourne partout en une seconde ; l'intégration s'invoque explicitement.
 
-- [ ] **Step 4 : Lancer Supabase et vérifier**
+- [ ] **Step 4 : Lancer Postgres et vérifier**
 
 ```bash
+pnpm install
 cd packages/db
 pnpm supabase init      # si supabase/config.toml n'existe pas encore
-pnpm supabase start     # demarre Postgres dans Docker, imprime les cles
+pnpm supabase start     # demarre Postgres dans Docker
 pnpm supabase db reset  # applique les migrations
+pnpm test:integration
 ```
 
-Récupérer `service_role key` dans la sortie de `supabase start`, puis :
+Aucune variable d'environnement à passer : `pool.ts` retombe sur le Postgres local par défaut.
 
-```bash
-SUPABASE_SERVICE_ROLE_KEY=<la_cle> pnpm test:integration
-```
-Attendu : PASS, 5 tests. Le test « refuse de modifier une version close » est le plus important : il prouve que l'append-only n'est pas une politesse mais une loi.
+Attendu : PASS, 6 tests. Le test « refuse de modifier une version close » est le plus important : il prouve que l'append-only n'est pas une politesse mais une loi.
 
 - [ ] **Step 5 : Commit**
 
@@ -2181,17 +2231,9 @@ La base refuse physiquement d'ecrire une donnee qui viole le PRD."
 ```ts
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
-import { createClient } from '@supabase/supabase-js'
+import { type Depense, formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
 import { VERSIONS_INITIALES, importerDepenses } from './import-sheet.js'
-
-const URL = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-if (!KEY) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY manquante.')
-}
-
-const db = createClient(URL, KEY)
+import { pool } from './pool.js'
 
 const CSV = readFileSync(
   fileURLToPath(new URL('../../../docs/data/sheet-export-2026-07-12/depenses.csv', import.meta.url)),
@@ -2200,101 +2242,133 @@ const CSV = readFileSync(
 
 const SOLDE_ATTENDU = 114580
 
-async function main() {
-  console.log('Purge...')
-  await db.from('depense').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-  await db.from('version_config').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-
-  // Les versions passent par la fonction SQL : elle cloture la precedente la
-  // veille, en transaction. On ne contourne pas le mecanisme append-only.
-  console.log('Versions de config...')
-  const idsParCle = new Map<string, string>()
-  for (const v of VERSIONS_INITIALES) {
-    const { data, error } = await db.rpc('creer_version_config', {
-      p_libelle: v.libelle,
-      p_date_debut: v.dateDebut,
-      p_salaire_net_thomas_cents: v.salaireNetThomas,
-      p_salaire_net_liz_cents: v.salaireNetLiz,
-      p_charges_communes: v.chargesCommunes,
-      p_charges_perso_thomas: v.chargesPersoThomas,
-      p_charges_perso_liz: v.chargesPersoLiz,
-    })
-    if (error) throw new Error(`Version ${v.libelle} : ${error.message}`)
-    idsParCle.set(v.id, data.id)
-    console.log(`  ${v.libelle} — a partir du ${v.dateDebut}`)
-  }
-
-  const depenses = importerDepenses(CSV, VERSIONS_INITIALES)
-  console.log(`Depenses (${depenses.length})...`)
-
-  const { error } = await db.from('depense').insert(
-    depenses.map((d) => ({
-      date: d.date,
-      description: d.description,
-      montant_cents: d.montant,
-      paye_par: d.payePar,
-      type: d.type,
-      mode_repartition: d.mode,
-      part_thomas_cents: d.parts.thomas,
-      part_liz_cents: d.parts.liz,
-      version_config_id: idsParCle.get(d.versionConfigId),
-      genere_auto: d.genereAuto,
-      commentaire: d.commentaire,
-    })),
-  )
-  if (error) throw new Error(`Insertion des depenses : ${error.message}`)
-
-  // Le seed se verifie lui-meme : on relit la base, on recalcule, on compare.
-  const { data: relues } = await db.from('depense').select('*')
-  const resume = resumer(
-    (relues ?? []).map((r) => ({
-      id: r.id,
-      date: r.date,
-      description: r.description,
-      montant: r.montant_cents,
-      payePar: r.paye_par,
-      type: r.type,
-      mode: r.mode_repartition,
-      parts: { thomas: r.part_thomas_cents, liz: r.part_liz_cents },
-      versionConfigId: r.version_config_id,
-      genereAuto: r.genere_auto,
-      commentaire: r.commentaire,
-    })),
-  )
-
-  console.log(`\n${phraseSynthese(resume)}`)
-
-  if (resume.soldeThomas !== SOLDE_ATTENDU) {
-    throw new Error(
-      `Solde incorrect apres seed : ${formaterEuros(resume.soldeThomas)} au lieu de ${formaterEuros(SOLDE_ATTENDU)}.`,
-    )
-  }
-  console.log('Solde conforme a la reprise du Sheet.')
+interface LigneDepense {
+  id: string
+  date: Date
+  description: string
+  montant_cents: number
+  paye_par: 'thomas' | 'liz'
+  type: Depense['type']
+  mode_repartition: Depense['mode']
+  part_thomas_cents: number
+  part_liz_cents: number
+  version_config_id: string
+  genere_auto: boolean
+  commentaire: string | null
 }
 
-main().catch((e) => {
+async function main() {
+  const client = await pool.connect()
+  try {
+    // Tout ou rien : un seed a moitie applique serait pire qu'aucun seed.
+    await client.query('begin')
+
+    console.log('Purge...')
+    await client.query('truncate depense, version_config cascade')
+
+    // Les versions passent par la fonction SQL : elle cloture la precedente la
+    // veille, en transaction. On ne contourne pas le mecanisme append-only.
+    console.log('Versions de config...')
+    const idsParCle = new Map<string, string>()
+    for (const v of VERSIONS_INITIALES) {
+      const { rows } = await client.query<{ id: string }>(
+        'select * from creer_version_config($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)',
+        [
+          v.libelle,
+          v.dateDebut,
+          v.salaireNetThomas,
+          v.salaireNetLiz,
+          JSON.stringify(v.chargesCommunes),
+          JSON.stringify(v.chargesPersoThomas),
+          JSON.stringify(v.chargesPersoLiz),
+        ],
+      )
+      const creee = rows[0]
+      if (!creee) throw new Error(`Version ${v.libelle} : creation sans retour.`)
+      idsParCle.set(v.id, creee.id)
+      console.log(`  ${v.libelle} — a partir du ${v.dateDebut}`)
+    }
+
+    const depenses = importerDepenses(CSV, VERSIONS_INITIALES)
+    console.log(`Depenses (${depenses.length})...`)
+
+    for (const d of depenses) {
+      const versionId = idsParCle.get(d.versionConfigId)
+      if (!versionId) throw new Error(`Version inconnue : ${d.versionConfigId}`)
+
+      await client.query(
+        `insert into depense
+           (date, description, montant_cents, paye_par, type, mode_repartition,
+            part_thomas_cents, part_liz_cents, version_config_id, genere_auto, commentaire)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          d.date,
+          d.description,
+          d.montant,
+          d.payePar,
+          d.type,
+          d.mode,
+          d.parts.thomas,
+          d.parts.liz,
+          versionId,
+          d.genereAuto,
+          d.commentaire,
+        ],
+      )
+    }
+
+    // Le seed se verifie lui-meme : on RELIT la base et on recalcule. Verifier
+    // l'objet qu'on vient de construire en memoire ne prouverait rien.
+    const { rows } = await client.query<LigneDepense>('select * from depense')
+    const resume = resumer(
+      rows.map((r) => ({
+        id: r.id,
+        date: r.date.toISOString().slice(0, 10),
+        description: r.description,
+        montant: r.montant_cents,
+        payePar: r.paye_par,
+        type: r.type,
+        mode: r.mode_repartition,
+        parts: { thomas: r.part_thomas_cents, liz: r.part_liz_cents },
+        versionConfigId: r.version_config_id,
+        genereAuto: r.genere_auto,
+        commentaire: r.commentaire,
+      })),
+    )
+
+    console.log(`\n${phraseSynthese(resume)}`)
+
+    if (resume.soldeThomas !== SOLDE_ATTENDU) {
+      throw new Error(
+        `Solde incorrect apres seed : ${formaterEuros(resume.soldeThomas)} au lieu de ${formaterEuros(SOLDE_ATTENDU)}.`,
+      )
+    }
+
+    await client.query('commit')
+    console.log('Solde conforme a la reprise du Sheet.')
+  } catch (e) {
+    await client.query('rollback')
+    throw e
+  } finally {
+    client.release()
+    await pool.end()
+  }
+}
+
+main().catch((e: Error) => {
   console.error(e.message)
   process.exit(1)
 })
 ```
 
-`packages/db/package.json` — ajouter au bloc `scripts` :
-```json
-"db:seed": "tsx src/seed.ts"
-```
-
-et au bloc `devDependencies` :
-```json
-"tsx": "^4.19.0"
-```
+Le seed est transactionnel et se contrôle lui-même : si le solde relu depuis la base n'est pas 114 580 centimes, il annule tout et sort en erreur. Une base à moitié seedée serait pire qu'une base vide.
 
 - [ ] **Step 2 : Lancer le seed**
 
 ```bash
-pnpm install
 cd packages/db
 pnpm supabase db reset
-SUPABASE_SERVICE_ROLE_KEY=<la_cle> pnpm db:seed
+pnpm db:seed
 ```
 
 Attendu, en dernière ligne :
@@ -2302,8 +2376,6 @@ Attendu, en dernière ligne :
 Liz doit 1 145,80 € à Thomas
 Solde conforme a la reprise du Sheet.
 ```
-
-Le seed se vérifie lui-même : il relit ce qu'il vient d'écrire et recalcule. S'il sort autre chose, il échoue avec le code 1.
 
 - [ ] **Step 3 : Commit**
 
@@ -2373,12 +2445,12 @@ Remet la base locale dans l'état de la reprise du Sheet, puis se vérifie.
 
 ## Marche à suivre
 
-1. Vérifier que Supabase local tourne :
+1. Vérifier que Postgres tourne en local :
 
        cd packages/db && pnpm supabase status
 
-   S'il ne tourne pas : `pnpm supabase start`. Récupérer la `service_role key`
-   dans la sortie.
+   S'il ne tourne pas : `pnpm supabase start`. (Supabase n'est ici qu'un Postgres
+   dockerisé — on n'utilise aucun de ses SDK.)
 
 2. Réappliquer les migrations à blanc :
 
@@ -2386,7 +2458,10 @@ Remet la base locale dans l'état de la reprise du Sheet, puis se vérifie.
 
 3. Lancer le seed :
 
-       SUPABASE_SERVICE_ROLE_KEY=<cle> pnpm db:seed
+       pnpm db:seed
+
+   Aucune variable d'environnement n'est requise en local : `src/pool.ts` retombe
+   sur le Postgres local par défaut. En production, `DATABASE_URL` la remplace.
 
 ## Ce qu'il faut voir
 
@@ -2433,7 +2508,7 @@ Les invariants sont dans la base, pas dans le code. Il faut les exercer :
 
     cd packages/db
     pnpm supabase db reset
-    SUPABASE_SERVICE_ROLE_KEY=<cle> pnpm test:integration
+    pnpm test:integration
 
 Ces tests prouvent que la base **refuse** d'écrire une donnée qui viole le PRD :
 versions qui se chevauchent, version close modifiée, parts qui ne somment pas
