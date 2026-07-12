@@ -6,9 +6,11 @@
 
 **Architecture:** Monorepo pnpm à trois paquets. `packages/domain` contient toute la logique métier en TypeScript pur, sans aucune dépendance de framework, développé en TDD. `packages/db` porte le schéma Postgres — où les invariants du PRD deviennent des contraintes SQL — et l'import du Sheet, séparé en une fonction pure (testable partout) et une écriture en base (I/O). `apps/web` est créé au plan 2.
 
-**Tech Stack:** pnpm workspaces, TypeScript strict (ESM), Vitest, Biome, Postgres via Supabase, `pg` en SQL paramétré, Node 22+. L'authentification (Better Auth, SSO Google) arrive au plan 2, avec l'application.
+**Tech Stack:** pnpm workspaces, TypeScript strict (ESM), Vitest, Biome, Postgres (Docker en local, Supabase en production), Drizzle ORM, Node 22+. L'authentification (Better Auth, SSO Google) arrive au plan 2, avec l'application.
 
-**Sur Supabase :** il sert uniquement de Postgres — managé en production, dockerisé en local via son CLI. Aucun de ses SDK n'est utilisé : ni `supabase-js`, ni PostgREST, ni Supabase Auth. On parle à la base en SQL, avec `pg`. Une seule variable d'environnement suffit : `DATABASE_URL`.
+**Sur Postgres :** Supabase n'est que l'hébergeur de production. Aucun de ses SDK n'est utilisé, et son CLI non plus : en local, un conteneur `postgres` suffit. Une seule variable d'environnement : `DATABASE_URL`.
+
+**Sur Drizzle :** il donne le typage et les requêtes, mais **il ne possède pas le schéma**. Les trois invariants (`EXCLUDE`, trigger append-only, fonction transactionnelle) vivent dans une migration SQL écrite à la main. `drizzle-kit push` est **interdit** : il proposerait de supprimer ce qu'il ne reconnaît pas, c'est-à-dire exactement nos garde-fous. Le seul chemin est `generate` puis `migrate`.
 
 ## Global Constraints
 
@@ -36,6 +38,7 @@ homebudget/
 │  ├─ hooks/verifier-fichier.sh       format + lint + typecheck à chaque écriture
 │  └─ skills/{seed,verify}/SKILL.md   (/run arrive au plan 2, avec l'app)
 ├─ .github/workflows/ci.yml
+├─ docker-compose.yml                 Postgres local, un seul conteneur
 ├─ package.json                       racine, scripts du monorepo
 ├─ pnpm-workspace.yaml
 ├─ tsconfig.base.json
@@ -50,8 +53,11 @@ homebudget/
 │  │  └─ index.ts                     surface publique
 │  └─ test/*.test.ts
 ├─ packages/db/
-│  ├─ supabase/migrations/*.sql       schéma et contraintes
-│  ├─ src/pool.ts                     le pool `pg`, une seule fois
+│  ├─ drizzle.config.ts
+│  ├─ drizzle/0000_*.sql              tables — généré depuis schema.ts
+│  ├─ drizzle/0001_invariants.sql     EXCLUDE, trigger, fonction — écrit à la main
+│  ├─ src/schema.ts                   tables Drizzle (source du SQL et des types)
+│  ├─ src/client.ts                   le pool et le client Drizzle, une seule fois
 │  ├─ src/import-sheet.ts             CSV → { versions, depenses }  (pur, zéro I/O)
 │  ├─ src/seed.ts                     écrit le résultat de l'import en base
 │  └─ test/import-sheet.test.ts       LE CANARI : 114 580 centimes
@@ -340,33 +346,46 @@ le signe : ne le « corrige » pas.
 - `apps/web` — Next.js. UI seulement. Appelle le domaine, jamais l'inverse.
 
 Les dates sont des chaînes ISO `YYYY-MM-DD`, jamais des objets `Date` (ils portent
-un fuseau, ce qui décale les bornes de version d'un jour). `pg` rend des `Date`
-pour les colonnes `date` : convertis-les en chaîne dès la sortie de la requête.
+un fuseau, ce qui décale les bornes de version d'un jour). Drizzle rend les colonnes
+`date` en chaînes : ne les convertis pas en `Date`.
 
-## Base de données et authentification
+## Base de données
 
-**Supabase n'est qu'un Postgres.** Managé en production, dockerisé en local via son
-CLI. On n'utilise **aucun** de ses SDK : ni `supabase-js`, ni PostgREST, ni Supabase
-Auth. Si tu vois passer `createClient` de `@supabase/supabase-js`, c'est une erreur.
+**Postgres, et rien d'autre.** Un conteneur Docker en local (`pnpm db:up`), Supabase
+en production. On n'utilise **aucun** SDK Supabase : ni `supabase-js`, ni PostgREST,
+ni Supabase Auth. Si tu vois passer `createClient` de `@supabase/supabase-js`, c'est
+une erreur. Une seule variable d'environnement : `DATABASE_URL`.
 
-On parle à la base en **SQL paramétré** via `pg`, depuis les Server Actions
-uniquement. Le navigateur n'a jamais d'accès direct à la base — c'est pourquoi il
-n'y a pas de Row Level Security à maintenir : la frontière de sécurité est le
-serveur.
+**Drizzle ne possède pas le schéma.** Il donne le typage et les requêtes. Mais les
+invariants — `EXCLUDE USING gist`, le trigger append-only, la fonction
+`creer_version_config()` — vivent dans `drizzle/0001_invariants.sql`, écrit à la main.
 
-**L'authentification est Better Auth**, provider Google, avec ses tables dans notre
-propre base. Deux adresses sont autorisées, point. Il n'y a pas d'inscription : un
-hook rejette toute adresse hors allowlist, et un test le vérifie.
+> **`drizzle-kit push` est interdit.** Il compare le schéma TS à la base et propose
+> de supprimer ce qu'il ne reconnaît pas : c'est-à-dire exactement nos garde-fous.
+> Le seul chemin autorisé est `db:generate` puis `db:migrate`. Si tu modifies le
+> schéma, génère une migration ; ne pousse jamais.
 
-Une seule variable d'environnement pour la base : `DATABASE_URL`.
+L'accès à la base se fait depuis les Server Actions uniquement. Le navigateur n'a
+jamais d'accès direct — c'est pourquoi il n'y a pas de Row Level Security à
+maintenir : la frontière de sécurité est le serveur.
+
+## Authentification
+
+**Better Auth**, provider Google, avec ses tables dans notre propre base. Deux
+adresses sont autorisées, point. Il n'y a pas d'inscription : un hook rejette toute
+adresse hors allowlist, et un test le vérifie.
 
 ## Commandes
 
-    pnpm test            tous les tests
+    pnpm test            tous les tests (aucune dépendance à Docker)
     pnpm test:domain     le cœur métier seul (rapide)
     pnpm typecheck       vérification des types du monorepo
     pnpm lint            Biome
     pnpm format          Biome, en écriture
+
+    pnpm db:up           Postgres local (un conteneur)
+    pnpm db:reset        détruit, remonte, migre et seede la base
+    pnpm db:down         arrête Postgres
 
 ## Le canari
 
@@ -1865,76 +1884,201 @@ Ce test est le canari du projet : s'il tombe, un invariant a ete viole."
 Ce que le domaine garantit par convention, la base le garantit par contrainte.
 
 **Files:**
-- Create: `packages/db/supabase/migrations/0001_schema.sql`
-- Create: `packages/db/supabase/migrations/0002_invariants.sql`
-- Create: `packages/db/supabase/config.toml`
+- Create: `docker-compose.yml`
+- Create: `packages/db/drizzle.config.ts`, `packages/db/src/schema.ts`, `packages/db/src/client.ts`
+- Create: `packages/db/drizzle/0001_invariants.sql` (écrit à la main)
+- Create: `packages/db/vitest.integration.config.ts`
 - Test: `packages/db/test/invariants.integration.test.ts`
-- Modify: `packages/db/package.json` (script `test:integration`)
+- Modify: `packages/db/package.json`, `package.json` (racine)
 
 **Interfaces:**
-- Consumes: rien du code TS ; c'est du SQL.
-- Produces: les tables `version_config` et `depense`, la fonction `creer_version_config()`.
+- Consumes: rien du domaine.
+- Produces:
+  - `packages/db/src/schema.ts` : `versionConfig`, `depense`, et les enums `personne`, `typeDepense`, `modeRepartition`
+  - `packages/db/src/client.ts` : `db` (client Drizzle) et `pool`
+  - la fonction SQL `creer_version_config()`
 
-- [ ] **Step 1 : Écrire le schéma**
+- [ ] **Step 1 : Postgres en local**
 
-`packages/db/supabase/migrations/0001_schema.sql` :
-```sql
--- HomeBudget : schema initial.
--- Tous les montants sont des ENTIERS DE CENTIMES. Jamais de numeric, jamais de float.
+`docker-compose.yml` (racine) :
+```yaml
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: homebudget-db
+    environment:
+      POSTGRES_USER: homebudget
+      POSTGRES_PASSWORD: homebudget
+      POSTGRES_DB: homebudget
+    ports:
+      # 5433 pour ne pas entrer en conflit avec un Postgres deja installe.
+      - '5433:5432'
+    volumes:
+      - homebudget-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U homebudget']
+      interval: 2s
+      timeout: 3s
+      retries: 15
 
-create type personne as enum ('thomas', 'liz');
-create type type_depense as enum ('charge_fixe', 'courante', 'transfert');
-create type mode_repartition as enum ('prorata', 'moitie', 'personnalise', 'transfert');
-
--- Configuration versionnee : effective-dated, append-only (invariant I1).
-create table version_config (
-  id                       uuid primary key default gen_random_uuid(),
-  libelle                  text not null check (length(trim(libelle)) > 0),
-  date_debut               date not null,
-  date_fin                 date,                       -- null = version en cours
-  salaire_net_thomas_cents integer not null check (salaire_net_thomas_cents >= 0),
-  salaire_net_liz_cents    integer not null check (salaire_net_liz_cents >= 0),
-  charges_communes         jsonb not null default '[]'::jsonb,
-  charges_perso_thomas     jsonb not null default '[]'::jsonb,
-  charges_perso_liz        jsonb not null default '[]'::jsonb,
-  created_at               timestamptz not null default now(),
-
-  -- Le prorata est indefini si personne ne gagne rien.
-  constraint salaires_cumules_non_nuls
-    check (salaire_net_thomas_cents + salaire_net_liz_cents > 0),
-
-  constraint periode_coherente
-    check (date_fin is null or date_fin >= date_debut)
-);
-
--- Depenses : les parts sont FIGEES a l'ecriture (invariant I2).
-create table depense (
-  id                uuid primary key default gen_random_uuid(),
-  date              date not null,
-  description       text not null check (length(trim(description)) > 0),
-  montant_cents     integer not null check (montant_cents > 0),
-  paye_par          personne not null,
-  type              type_depense not null,
-  mode_repartition  mode_repartition not null,
-  part_thomas_cents integer not null,
-  part_liz_cents    integer not null,
-  version_config_id uuid not null references version_config (id) on delete restrict,
-  genere_auto       boolean not null default false,
-  commentaire       text,
-  created_at        timestamptz not null default now(),
-
-  -- L'invariant qui rend le solde exact. La base refuse physiquement de l'ecrire faux.
-  constraint parts_somment_au_montant
-    check (part_thomas_cents + part_liz_cents = montant_cents)
-);
-
-create index depense_date_idx on depense (date desc);
-create index depense_version_idx on depense (version_config_id);
+volumes:
+  homebudget-pgdata:
 ```
 
-- [ ] **Step 2 : Écrire les invariants**
+Un seul conteneur. Pas de PostgREST, pas de Studio, pas de Kong : on n'en utilise aucun.
 
-`packages/db/supabase/migrations/0002_invariants.sql` :
+`package.json` (racine) — ajouter au bloc `scripts` :
+```json
+"db:up": "docker compose up -d --wait",
+"db:down": "docker compose down",
+"db:reset": "docker compose down -v && docker compose up -d --wait && pnpm --filter @homebudget/db db:migrate && pnpm --filter @homebudget/db db:seed"
+```
+
+- [ ] **Step 2 : Déclarer le schéma en Drizzle**
+
+`packages/db/src/schema.ts` :
+```ts
+import { sql } from 'drizzle-orm'
+import {
+  boolean,
+  check,
+  date,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core'
+
+export const personneEnum = pgEnum('personne', ['thomas', 'liz'])
+export const typeDepenseEnum = pgEnum('type_depense', ['charge_fixe', 'courante', 'transfert'])
+export const modeRepartitionEnum = pgEnum('mode_repartition', [
+  'prorata',
+  'moitie',
+  'personnalise',
+  'transfert',
+])
+
+interface ChargeJson {
+  libelle: string
+  montant: number
+}
+
+/**
+ * Configuration versionnee : effective-dated, append-only (invariant I1).
+ *
+ * `date_debut` et `date_fin` sont rendus en CHAINES ISO par Drizzle, pas en objets
+ * `Date` : c'est ce qu'attend le domaine, et ca elimine tout bug de fuseau horaire.
+ */
+export const versionConfig = pgTable(
+  'version_config',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    libelle: text('libelle').notNull(),
+    dateDebut: date('date_debut').notNull(),
+    dateFin: date('date_fin'), // null = version en cours
+    salaireNetThomasCents: integer('salaire_net_thomas_cents').notNull(),
+    salaireNetLizCents: integer('salaire_net_liz_cents').notNull(),
+    chargesCommunes: jsonb('charges_communes').$type<ChargeJson[]>().notNull().default([]),
+    chargesPersoThomas: jsonb('charges_perso_thomas').$type<ChargeJson[]>().notNull().default([]),
+    chargesPersoLiz: jsonb('charges_perso_liz').$type<ChargeJson[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('libelle_non_vide', sql`length(trim(${t.libelle})) > 0`),
+    // Le prorata est indefini si personne ne gagne rien.
+    check(
+      'salaires_cumules_non_nuls',
+      sql`${t.salaireNetThomasCents} + ${t.salaireNetLizCents} > 0`,
+    ),
+    check('periode_coherente', sql`${t.dateFin} is null or ${t.dateFin} >= ${t.dateDebut}`),
+  ],
+)
+
+/** Depenses : les parts sont FIGEES a l'ecriture (invariant I2). */
+export const depense = pgTable(
+  'depense',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    date: date('date').notNull(),
+    description: text('description').notNull(),
+    montantCents: integer('montant_cents').notNull(),
+    payePar: personneEnum('paye_par').notNull(),
+    type: typeDepenseEnum('type').notNull(),
+    modeRepartition: modeRepartitionEnum('mode_repartition').notNull(),
+    partThomasCents: integer('part_thomas_cents').notNull(),
+    partLizCents: integer('part_liz_cents').notNull(),
+    versionConfigId: uuid('version_config_id')
+      .notNull()
+      .references(() => versionConfig.id, { onDelete: 'restrict' }),
+    genereAuto: boolean('genere_auto').notNull().default(false),
+    commentaire: text('commentaire'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('description_non_vide', sql`length(trim(${t.description})) > 0`),
+    check('montant_positif', sql`${t.montantCents} > 0`),
+    // L'invariant qui rend le solde exact. La base refuse physiquement de l'ecrire faux.
+    check(
+      'parts_somment_au_montant',
+      sql`${t.partThomasCents} + ${t.partLizCents} = ${t.montantCents}`,
+    ),
+    index('depense_date_idx').on(t.date.desc()),
+    index('depense_version_idx').on(t.versionConfigId),
+  ],
+)
+```
+
+`packages/db/src/client.ts` :
+```ts
+import { drizzle } from 'drizzle-orm/node-postgres'
+import { Pool } from 'pg'
+import * as schema from './schema.js'
+
+const DEFAUT_LOCAL = 'postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget'
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL ?? DEFAUT_LOCAL,
+})
+
+export const db = drizzle(pool, { schema })
+export { schema }
+```
+
+`packages/db/drizzle.config.ts` :
+```ts
+import { defineConfig } from 'drizzle-kit'
+
+export default defineConfig({
+  schema: './src/schema.ts',
+  out: './drizzle',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL ?? 'postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget',
+  },
+})
+```
+
+- [ ] **Step 3 : Générer la migration des tables**
+
+```bash
+pnpm --filter @homebudget/db db:generate
+```
+
+Produit `packages/db/drizzle/0000_<nom>.sql` : les enums, les deux tables, les CHECK, les index. **Lis-le** avant de continuer — c'est du SQL qui part en production.
+
+- [ ] **Step 4 : Écrire les invariants à la main**
+
+Drizzle ne sait exprimer ni `EXCLUDE USING gist`, ni un trigger, ni une fonction plpgsql. On crée donc une migration vide et on la remplit :
+
+```bash
+pnpm --filter @homebudget/db exec drizzle-kit generate --custom --name invariants
+```
+
+Puis remplir le fichier créé, `packages/db/drizzle/0001_invariants.sql` :
 ```sql
 -- Les regles du PRD, portees par la base plutot que par le code applicatif.
 
@@ -2021,53 +2165,35 @@ end;
 $$;
 ```
 
-- [ ] **Step 3 : Écrire le test d'intégration**
+- [ ] **Step 5 : Écrire le test d'intégration**
 
-Ce test exige une Supabase locale (Docker). Il est séparé de la suite unitaire.
-
-D'abord le pool, partagé par le seed et les tests.
-
-`packages/db/src/pool.ts` :
-```ts
-import { Pool } from 'pg'
-
-/**
- * Postgres local de Supabase : port 54322 (le 54321 est l'API REST, qu'on
- * n'utilise pas). En production, DATABASE_URL pointe sur Supabase hebergé.
- */
-const DEFAUT_LOCAL = 'postgresql://postgres:postgres@127.0.0.1:54322/postgres'
-
-export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL ?? DEFAUT_LOCAL,
-})
-```
+Ce test exige Docker. Il est séparé de la suite unitaire, qui doit rester exécutable partout.
 
 `packages/db/test/invariants.integration.test.ts` :
 ```ts
+import { sql } from 'drizzle-orm'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
-import { pool } from '../src/pool.js'
+import { db, pool } from '../src/client.js'
+import { depense, versionConfig } from '../src/schema.js'
 
 afterAll(async () => {
   await pool.end()
 })
 
 beforeEach(async () => {
-  await pool.query('truncate depense, version_config cascade')
+  await db.execute(sql`truncate depense, version_config cascade`)
 })
 
 async function creerVersion(libelle: string, dateDebut: string): Promise<{ id: string }> {
-  const { rows } = await pool.query<{ id: string }>(
-    'select * from creer_version_config($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)',
-    [
-      libelle,
-      dateDebut,
-      330000,
-      180000,
-      JSON.stringify([{ libelle: 'Loyer', montant: 78500 }]),
-      '[]',
-      '[]',
-    ],
-  )
+  // Passage par la fonction SQL : c'est elle qui cloture la precedente, en
+  // transaction. On ne contourne pas le mecanisme append-only, meme en test.
+  const { rows } = await db.execute<{ id: string }>(sql`
+    select * from creer_version_config(
+      ${libelle}, ${dateDebut}::date, 330000, 180000,
+      ${JSON.stringify([{ libelle: 'Loyer', montant: 78500 }])}::jsonb,
+      '[]'::jsonb, '[]'::jsonb
+    )
+  `)
   const version = rows[0]
   if (!version) throw new Error('creer_version_config n a rien renvoye')
   return version
@@ -2078,11 +2204,11 @@ describe('invariants portes par la base', () => {
     await creerVersion('v1', '2025-07-01')
     await creerVersion('v2', '2026-07-01')
 
-    const { rows } = await pool.query<{ libelle: string; date_fin: Date | null }>(
-      'select libelle, date_fin from version_config order by date_debut',
-    )
-    expect(rows[0]?.date_fin?.toISOString().slice(0, 10)).toBe('2026-06-30')
-    expect(rows[1]?.date_fin).toBeNull()
+    const versions = await db.select().from(versionConfig).orderBy(versionConfig.dateDebut)
+
+    // Drizzle rend les dates en chaines ISO : aucune conversion, aucun fuseau.
+    expect(versions[0]?.dateFin).toBe('2026-06-30')
+    expect(versions[1]?.dateFin).toBeNull()
   })
 
   it('refuse de modifier une version close (append-only)', async () => {
@@ -2090,15 +2216,15 @@ describe('invariants portes par la base', () => {
     await creerVersion('v2', '2026-07-01')
 
     await expect(
-      pool.query(
-        "update version_config set salaire_net_thomas_cents = 999999 where libelle = 'v1'",
+      db.execute(
+        sql`update version_config set salaire_net_thomas_cents = 999999 where libelle = 'v1'`,
       ),
     ).rejects.toThrow(/append-only/i)
   })
 
   it('autorise la cloture d une version ouverte', async () => {
-    // Le trigger ne doit pas bloquer le mecanisme normal : poser une date_fin
-    // sur une version encore ouverte est exactement ce que fait une revision.
+    // Le trigger ne doit pas bloquer le mecanisme normal : poser une date_fin sur
+    // une version encore ouverte est exactement ce que fait une revision de loyer.
     await creerVersion('v1', '2025-07-01')
     await expect(creerVersion('v2', '2026-07-01')).resolves.toBeDefined()
   })
@@ -2107,11 +2233,13 @@ describe('invariants portes par la base', () => {
     await creerVersion('v1', '2025-07-01')
 
     await expect(
-      pool.query(
-        `insert into version_config
-           (libelle, date_debut, date_fin, salaire_net_thomas_cents, salaire_net_liz_cents)
-         values ('chevauchante', '2025-08-01', null, 330000, 180000)`,
-      ),
+      db.insert(versionConfig).values({
+        libelle: 'chevauchante',
+        dateDebut: '2025-08-01',
+        dateFin: null,
+        salaireNetThomasCents: 330000,
+        salaireNetLizCents: 180000,
+      }),
     ).rejects.toThrow(/versions_sans_chevauchement|exclusion/i)
   })
 
@@ -2119,32 +2247,39 @@ describe('invariants portes par la base', () => {
     const version = await creerVersion('v1', '2025-07-01')
 
     await expect(
-      pool.query(
-        `insert into depense
-           (date, description, montant_cents, paye_par, type, mode_repartition,
-            part_thomas_cents, part_liz_cents, version_config_id)
-         values ('2025-08-05', 'incoherente', 10000, 'thomas', 'courante', 'personnalise',
-                 4000, 5000, $1)`, // 4000 + 5000 = 9000, pas 10000
-        [version.id],
-      ),
+      db.insert(depense).values({
+        date: '2025-08-05',
+        description: 'incoherente',
+        montantCents: 10000,
+        payePar: 'thomas',
+        type: 'courante',
+        modeRepartition: 'personnalise',
+        partThomasCents: 4000,
+        partLizCents: 5000, // 4000 + 5000 = 9000, pas 10000
+        versionConfigId: version.id,
+      }),
     ).rejects.toThrow(/parts_somment_au_montant/i)
   })
 
   it('refuse une depense sans version de config', async () => {
     await expect(
-      pool.query(
-        `insert into depense
-           (date, description, montant_cents, paye_par, type, mode_repartition,
-            part_thomas_cents, part_liz_cents, version_config_id)
-         values ('2025-08-05', 'orpheline', 10000, 'thomas', 'courante', 'moitie',
-                 5000, 5000, '00000000-0000-0000-0000-000000000000')`,
-      ),
+      db.insert(depense).values({
+        date: '2025-08-05',
+        description: 'orpheline',
+        montantCents: 10000,
+        payePar: 'thomas',
+        type: 'courante',
+        modeRepartition: 'moitie',
+        partThomasCents: 5000,
+        partLizCents: 5000,
+        versionConfigId: '00000000-0000-0000-0000-000000000000',
+      }),
     ).rejects.toThrow(/foreign key|violates/i)
   })
 })
 ```
 
-Chaque test prouve que la base **refuse**. C'est la différence entre une règle écrite dans une doc et une règle qui tient.
+Chaque test prouve que la base **refuse**. C'est la différence entre une règle écrite dans une doc et une règle qui tient. Noter que les trois derniers passent par Drizzle, pas par du SQL brut : les contraintes s'appliquent quel que soit le chemin d'écriture, et c'est bien le sujet.
 
 `packages/db/package.json` — remplacer par :
 ```json
@@ -2157,23 +2292,24 @@ Chaque test prouve que la base **refuse**. C'est la différence entre une règle
   "scripts": {
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "db:start": "supabase start",
-    "db:reset": "supabase db reset",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@homebudget/domain": "workspace:*",
+    "drizzle-orm": "^0.38.0",
     "pg": "^8.13.0"
   },
   "devDependencies": {
     "@types/pg": "^8.11.0",
-    "supabase": "^2.0.0",
+    "drizzle-kit": "^0.30.0",
     "tsx": "^4.19.0"
   }
 }
 ```
 
-Aucun SDK Supabase. On parle à Postgres en SQL paramétré — la seule dépendance est `pg`.
+Aucun SDK Supabase, et **aucun script `db:push`** : il n'existe pas, délibérément. `push` proposerait de supprimer l'`EXCLUDE`, le trigger et la fonction, qu'il ne trouve pas dans `schema.ts`. Le seul chemin est `generate` puis `migrate`.
 
 `packages/db/vitest.integration.config.ts` :
 ```ts
@@ -2186,31 +2322,32 @@ export default defineConfig({
 
 Deux configurations, une seule raison : `pnpm test` (donc la CI) ne doit jamais dépendre de Docker. La suite unitaire tourne partout en une seconde ; l'intégration s'invoque explicitement.
 
-- [ ] **Step 4 : Lancer Postgres et vérifier**
+- [ ] **Step 6 : Lancer Postgres et vérifier**
 
 ```bash
 pnpm install
-cd packages/db
-pnpm supabase init      # si supabase/config.toml n'existe pas encore
-pnpm supabase start     # demarre Postgres dans Docker
-pnpm supabase db reset  # applique les migrations
-pnpm test:integration
+pnpm db:up                                    # un conteneur, ~2 secondes
+pnpm --filter @homebudget/db db:migrate       # applique 0000 puis 0001
+pnpm --filter @homebudget/db test:integration
 ```
 
-Aucune variable d'environnement à passer : `pool.ts` retombe sur le Postgres local par défaut.
+Aucune variable d'environnement à passer : `client.ts` retombe sur le Postgres local par défaut.
 
-Attendu : PASS, 6 tests. Le test « refuse de modifier une version close » est le plus important : il prouve que l'append-only n'est pas une politesse mais une loi.
+Attendu : PASS, 6 tests. Le test « refuse de modifier une version close » est le plus important — il prouve que l'append-only n'est pas une politesse mais une loi.
 
-- [ ] **Step 5 : Commit**
+- [ ] **Step 7 : Commit**
 
 ```bash
-git add packages/db
-git commit -m "feat(db): schema Postgres, invariants I1 et I2 portes par des contraintes
+git add packages/db docker-compose.yml package.json
+git commit -m "feat(db): schema Drizzle, invariants I1 et I2 portes par des contraintes
 
 - EXCLUDE gist : deux versions ne peuvent pas se chevaucher
 - trigger : une version close est immuable (append-only)
 - CHECK : part_thomas + part_liz = montant, toujours
-La base refuse physiquement d'ecrire une donnee qui viole le PRD."
+
+Drizzle donne le typage et les requetes, mais ne possede pas le schema :
+les invariants vivent dans une migration SQL ecrite a la main. drizzle-kit
+push est interdit, il les supprimerait."
 ```
 
 ---
@@ -2231,9 +2368,11 @@ La base refuse physiquement d'ecrire une donnee qui viole le PRD."
 ```ts
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { type Depense, formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
+import { formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
+import { sql } from 'drizzle-orm'
 import { VERSIONS_INITIALES, importerDepenses } from './import-sheet.js'
-import { pool } from './pool.js'
+import { db, pool } from './client.js'
+import { depense } from './schema.js'
 
 const CSV = readFileSync(
   fileURLToPath(new URL('../../../docs/data/sheet-export-2026-07-12/depenses.csv', import.meta.url)),
@@ -2242,47 +2381,26 @@ const CSV = readFileSync(
 
 const SOLDE_ATTENDU = 114580
 
-interface LigneDepense {
-  id: string
-  date: Date
-  description: string
-  montant_cents: number
-  paye_par: 'thomas' | 'liz'
-  type: Depense['type']
-  mode_repartition: Depense['mode']
-  part_thomas_cents: number
-  part_liz_cents: number
-  version_config_id: string
-  genere_auto: boolean
-  commentaire: string | null
-}
-
 async function main() {
-  const client = await pool.connect()
-  try {
-    // Tout ou rien : un seed a moitie applique serait pire qu'aucun seed.
-    await client.query('begin')
-
+  // Tout ou rien : une base a moitie seedee serait pire qu'une base vide.
+  await db.transaction(async (tx) => {
     console.log('Purge...')
-    await client.query('truncate depense, version_config cascade')
+    await tx.execute(sql`truncate depense, version_config cascade`)
 
     // Les versions passent par la fonction SQL : elle cloture la precedente la
-    // veille, en transaction. On ne contourne pas le mecanisme append-only.
+    // veille. On ne contourne pas le mecanisme append-only, meme pour un seed.
     console.log('Versions de config...')
     const idsParCle = new Map<string, string>()
     for (const v of VERSIONS_INITIALES) {
-      const { rows } = await client.query<{ id: string }>(
-        'select * from creer_version_config($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb)',
-        [
-          v.libelle,
-          v.dateDebut,
-          v.salaireNetThomas,
-          v.salaireNetLiz,
-          JSON.stringify(v.chargesCommunes),
-          JSON.stringify(v.chargesPersoThomas),
-          JSON.stringify(v.chargesPersoLiz),
-        ],
-      )
+      const { rows } = await tx.execute<{ id: string }>(sql`
+        select * from creer_version_config(
+          ${v.libelle}, ${v.dateDebut}::date,
+          ${v.salaireNetThomas}, ${v.salaireNetLiz},
+          ${JSON.stringify(v.chargesCommunes)}::jsonb,
+          ${JSON.stringify(v.chargesPersoThomas)}::jsonb,
+          ${JSON.stringify(v.chargesPersoLiz)}::jsonb
+        )
+      `)
       const creee = rows[0]
       if (!creee) throw new Error(`Version ${v.libelle} : creation sans retour.`)
       idsParCle.set(v.id, creee.id)
@@ -2292,46 +2410,41 @@ async function main() {
     const depenses = importerDepenses(CSV, VERSIONS_INITIALES)
     console.log(`Depenses (${depenses.length})...`)
 
-    for (const d of depenses) {
-      const versionId = idsParCle.get(d.versionConfigId)
-      if (!versionId) throw new Error(`Version inconnue : ${d.versionConfigId}`)
-
-      await client.query(
-        `insert into depense
-           (date, description, montant_cents, paye_par, type, mode_repartition,
-            part_thomas_cents, part_liz_cents, version_config_id, genere_auto, commentaire)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [
-          d.date,
-          d.description,
-          d.montant,
-          d.payePar,
-          d.type,
-          d.mode,
-          d.parts.thomas,
-          d.parts.liz,
-          versionId,
-          d.genereAuto,
-          d.commentaire,
-        ],
-      )
-    }
+    await tx.insert(depense).values(
+      depenses.map((d) => {
+        const versionId = idsParCle.get(d.versionConfigId)
+        if (!versionId) throw new Error(`Version inconnue : ${d.versionConfigId}`)
+        return {
+          date: d.date,
+          description: d.description,
+          montantCents: d.montant,
+          payePar: d.payePar,
+          type: d.type,
+          modeRepartition: d.mode,
+          partThomasCents: d.parts.thomas,
+          partLizCents: d.parts.liz,
+          versionConfigId: versionId,
+          genereAuto: d.genereAuto,
+          commentaire: d.commentaire,
+        }
+      }),
+    )
 
     // Le seed se verifie lui-meme : on RELIT la base et on recalcule. Verifier
     // l'objet qu'on vient de construire en memoire ne prouverait rien.
-    const { rows } = await client.query<LigneDepense>('select * from depense')
+    const relues = await tx.select().from(depense)
     const resume = resumer(
-      rows.map((r) => ({
+      relues.map((r) => ({
         id: r.id,
-        date: r.date.toISOString().slice(0, 10),
+        date: r.date, // Drizzle rend une chaine ISO : rien a convertir.
         description: r.description,
-        montant: r.montant_cents,
-        payePar: r.paye_par,
+        montant: r.montantCents,
+        payePar: r.payePar,
         type: r.type,
-        mode: r.mode_repartition,
-        parts: { thomas: r.part_thomas_cents, liz: r.part_liz_cents },
-        versionConfigId: r.version_config_id,
-        genereAuto: r.genere_auto,
+        mode: r.modeRepartition,
+        parts: { thomas: r.partThomasCents, liz: r.partLizCents },
+        versionConfigId: r.versionConfigId,
+        genereAuto: r.genereAuto,
         commentaire: r.commentaire,
       })),
     )
@@ -2339,36 +2452,31 @@ async function main() {
     console.log(`\n${phraseSynthese(resume)}`)
 
     if (resume.soldeThomas !== SOLDE_ATTENDU) {
+      // Le throw annule la transaction : la base reste vide plutot que fausse.
       throw new Error(
         `Solde incorrect apres seed : ${formaterEuros(resume.soldeThomas)} au lieu de ${formaterEuros(SOLDE_ATTENDU)}.`,
       )
     }
 
-    await client.query('commit')
     console.log('Solde conforme a la reprise du Sheet.')
-  } catch (e) {
-    await client.query('rollback')
-    throw e
-  } finally {
-    client.release()
-    await pool.end()
-  }
+  })
+
+  await pool.end()
 }
 
-main().catch((e: Error) => {
+main().catch(async (e: Error) => {
   console.error(e.message)
+  await pool.end()
   process.exit(1)
 })
 ```
 
-Le seed est transactionnel et se contrôle lui-même : si le solde relu depuis la base n'est pas 114 580 centimes, il annule tout et sort en erreur. Une base à moitié seedée serait pire qu'une base vide.
+Le seed est transactionnel et se contrôle lui-même : si le solde relu depuis la base n'est pas 114 580 centimes, le `throw` annule tout. La base reste vide plutôt que fausse.
 
 - [ ] **Step 2 : Lancer le seed**
 
 ```bash
-cd packages/db
-pnpm supabase db reset
-pnpm db:seed
+pnpm db:reset   # detruit le volume, remonte Postgres, migre, seede
 ```
 
 Attendu, en dernière ligne :
@@ -2428,7 +2536,7 @@ jobs:
       - run: pnpm test
 ```
 
-Les tests d'intégration Supabase (Docker) ne tournent pas en CI au plan 1 : ils exigent un service Postgres et ralentissent la boucle. Le canari, lui, est pur et tourne en moins d'une seconde — c'est lui qui protège le solde. Les invariants SQL sont vérifiés localement via `pnpm --filter @homebudget/db test:integration`. On les branchera en CI au plan 2, quand un service Postgres sera de toute façon nécessaire pour les tests E2E.
+Les tests d'intégration ne tournent pas en CI au plan 1 : ils exigent un service Postgres et ralentissent la boucle. Le canari, lui, est du calcul pur — il tourne en moins d'une seconde, et c'est lui qui protège le solde. Les invariants SQL se vérifient localement via `pnpm --filter @homebudget/db test:integration`. On les branchera en CI au plan 2, quand un service Postgres sera de toute façon nécessaire pour les tests E2E.
 
 - [ ] **Step 2 : Écrire le skill `/seed`**
 
@@ -2445,23 +2553,18 @@ Remet la base locale dans l'état de la reprise du Sheet, puis se vérifie.
 
 ## Marche à suivre
 
-1. Vérifier que Postgres tourne en local :
+Une seule commande, à la racine :
 
-       cd packages/db && pnpm supabase status
+    pnpm db:reset
 
-   S'il ne tourne pas : `pnpm supabase start`. (Supabase n'est ici qu'un Postgres
-   dockerisé — on n'utilise aucun de ses SDK.)
+Elle détruit le volume Postgres, remonte le conteneur, applique les migrations,
+puis lance le seed. Aucune variable d'environnement n'est requise en local :
+`src/client.ts` retombe sur le Postgres local par défaut. En production,
+`DATABASE_URL` la remplace.
 
-2. Réappliquer les migrations à blanc :
+Si tu veux seulement rejouer le seed sur une base déjà migrée :
 
-       pnpm supabase db reset
-
-3. Lancer le seed :
-
-       pnpm db:seed
-
-   Aucune variable d'environnement n'est requise en local : `src/pool.ts` retombe
-   sur le Postgres local par défaut. En production, `DATABASE_URL` la remplace.
+    pnpm --filter @homebudget/db db:seed
 
 ## Ce qu'il faut voir
 
@@ -2502,17 +2605,27 @@ Les tests verts ne suffisent pas : il faut que les invariants tiennent.
 Le canari (`LE CANARI — non-regression du solde`) doit passer. Il rejoue les 33
 lignes réelles du Sheet et exige exactement 114 580 centimes.
 
-## Si la modification touche `packages/db/supabase/`
+## Si la modification touche `packages/db/`
 
 Les invariants sont dans la base, pas dans le code. Il faut les exercer :
 
-    cd packages/db
-    pnpm supabase db reset
-    pnpm test:integration
+    pnpm db:up
+    pnpm --filter @homebudget/db db:migrate
+    pnpm --filter @homebudget/db test:integration
 
 Ces tests prouvent que la base **refuse** d'écrire une donnée qui viole le PRD :
 versions qui se chevauchent, version close modifiée, parts qui ne somment pas
 au montant.
+
+Si tu as touché à `src/schema.ts`, il faut une migration :
+
+    pnpm --filter @homebudget/db db:generate
+
+**N'utilise jamais `drizzle-kit push`.** Il compare le schéma TS à la base et
+propose de supprimer ce qu'il ne reconnaît pas — c'est-à-dire l'`EXCLUDE`, le
+trigger append-only et la fonction `creer_version_config()`, qui vivent dans
+`drizzle/0001_invariants.sql` et n'apparaissent nulle part dans `schema.ts`.
+Le seul chemin est `db:generate` puis `db:migrate`.
 
 ## Si la modification touche `packages/domain`
 

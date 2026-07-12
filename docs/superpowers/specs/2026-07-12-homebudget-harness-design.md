@@ -27,8 +27,9 @@ Tout le reste du design découle de ces deux points. Une modification qui les af
 | Monorepo | pnpm workspaces | Trois paquets, pas de build système lourd nécessaire |
 | Application | Next.js (App Router) + TypeScript strict | Full-stack en un déploiement, Server Actions pour les écritures |
 | Cœur métier | `packages/domain`, TypeScript pur | Zéro dépendance framework, testable sans mock |
-| Base de données | Supabase, **utilisé uniquement comme Postgres hébergé** | Les invariants deviennent des contraintes SQL, pas des `if` |
-| Accès aux données | `pg` (SQL paramétré) depuis les Server Actions | Le navigateur ne parle jamais à la base. Pas de PostgREST, pas de RLS à maintenir |
+| Base de données | Postgres — Supabase en production, Docker en local | Les invariants deviennent des contraintes SQL, pas des `if` |
+| ORM | **Drizzle** (schéma TS, migrations SQL) | Typage complet, runtime quasi nul. Surtout : il accepte de ne pas posséder le schéma |
+| Accès aux données | Drizzle depuis les Server Actions | Le navigateur ne parle jamais à la base. Pas de PostgREST, pas de RLS à maintenir |
 | Authentification | **Better Auth**, SSO Google, allowlist de deux e-mails | Auth TypeScript qui vit dans notre code et notre base, pas dans un service tiers |
 | UI | Tailwind CSS v4 + shadcn/ui | Mobile-first, composants accessibles |
 | Lint / format | Biome | Une dépendance, assez rapide pour tourner à chaque écriture de fichier |
@@ -39,7 +40,17 @@ Tout le reste du design découle de ces deux points. Une modification qui les af
 
 **Écarté :** Supabase Auth. Better Auth le remplace. Conséquence en cascade — et c'est une simplification, pas un compromis : sans session Supabase, il n'y a plus de JWT à présenter à PostgREST, donc plus de PostgREST du tout. Les Server Actions parlent à Postgres en SQL paramétré. Le navigateur n'a jamais d'accès direct à la base, ce qui rend le Row Level Security inutile : la frontière de sécurité est le serveur, pas une politique SQL. Une couche de moins à écrire, à tester et à se tromper.
 
-Supabase reste, mais dans un rôle réduit : Postgres managé, avec un CLI qui donne la même base en local via Docker. Aucun de ses SDK n'est utilisé.
+Supabase reste, mais dans un rôle réduit : un Postgres managé en production, et rien d'autre. Aucun de ses SDK n'est utilisé, et son CLI non plus — il démarrerait tout un stack (PostgREST, Kong, Studio, Realtime) dont plus une ligne ne sert. En local, un simple conteneur `postgres` suffit.
+
+### L'ORM ne possède pas le schéma
+
+**Écarté :** Prisma. Il veut être la source de vérité du schéma, or nos trois invariants ne s'y expriment pas — ni la contrainte `EXCLUDE USING gist`, ni le trigger append-only, ni la fonction transactionnelle. Ils deviendraient des citoyens de seconde zone, dans des migrations que Prisma ne comprend pas et menace d'écraser. Ajoute un client généré lourd et des cold starts sur Vercel.
+
+**Retenu :** Drizzle. Le schéma se déclare en TypeScript, `drizzle-kit` en génère le SQL, et les invariants que Drizzle ne sait pas exprimer vivent dans une **migration SQL écrite à la main**, qu'il applique sans chercher à la « corriger ». On garde le typage de bout en bout et la base garde ses lois.
+
+Corollaire opérationnel : **`drizzle-kit push` est interdit.** Il compare le schéma TS à la base et propose de supprimer ce qu'il ne reconnaît pas — c'est-à-dire précisément nos invariants. Le seul chemin autorisé est `generate` puis `migrate`.
+
+Bénéfice inattendu : Drizzle rend les colonnes `date` en **chaînes ISO**, pas en objets `Date`. L'invariant « pas de `Date` dans le domaine » est donc respecté à la frontière de la base, sans conversion manuelle et sans bug de fuseau.
 
 ### Authentification
 
