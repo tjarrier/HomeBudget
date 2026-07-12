@@ -25,12 +25,12 @@ describe('eurosVersCents', () => {
 describe('formaterEuros', () => {
   it('formate a la francaise', () => {
     // Espace insecable etroit (U+202F) comme separateur de milliers, virgule decimale.
-    expect(formaterEuros(111058).replace(/[   ]/g, ' ')).toBe('1 110,58 €')
-    expect(formaterEuros(0).replace(/[   ]/g, ' ')).toBe('0,00 €')
+    expect(formaterEuros(111058).replace(/[\xa0\u202F]/g, ' ')).toBe('1 110,58 €')
+    expect(formaterEuros(0).replace(/[\xa0\u202F]/g, ' ')).toBe('0,00 €')
   })
 
   it('formate les montants negatifs', () => {
-    expect(formaterEuros(-39197).replace(/[   ]/g, ' ')).toBe('-391,97 €')
+    expect(formaterEuros(-39197).replace(/[\xa0\u202F]/g, ' ')).toBe('-391,97 €')
   })
 })
 
