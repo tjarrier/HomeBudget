@@ -21,6 +21,16 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.20.1)
 
+  packages/db:
+    dependencies:
+      '@homebudget/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+
   packages/domain:
     devDependencies:
       '@types/node':
