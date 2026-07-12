@@ -91,7 +91,13 @@ describe('phraseSynthese', () => {
 
   it('dit qui doit quoi quand Liz est crediteure', () => {
     const r = resumer([
-      depense({ montant: 40000, payePar: 'liz', mode: 'transfert', type: 'transfert', parts: { thomas: 40000, liz: 0 } }),
+      depense({
+        montant: 40000,
+        payePar: 'liz',
+        mode: 'transfert',
+        type: 'transfert',
+        parts: { thomas: 40000, liz: 0 },
+      }),
     ])
     expect(phraseSynthese(r).replace(/\xa0/g, ' ')).toBe('Thomas doit 400,00 € à Liz')
   })
