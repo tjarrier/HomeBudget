@@ -44,7 +44,7 @@ export function repartirAuRatio(montant: Cents, ratioPremier: number): [Cents, C
   return [premier, montant - premier]
 }
 
-function assertEntier(c: Cents): void {
+export function assertEntier(c: Cents): void {
   if (!Number.isInteger(c)) {
     throw new Error(`Montant en centimes attendu (entier), recu : ${c}`)
   }

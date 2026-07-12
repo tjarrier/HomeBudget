@@ -1,4 +1,4 @@
-import { type Cents, repartirAuRatio } from './money.js'
+import { assertEntier, type Cents, repartirAuRatio } from './money.js'
 import type { ModeRepartition, Parts, Personne, TypeDepense } from './types.js'
 
 export interface EntreeRepartition {
@@ -37,6 +37,7 @@ export function calculerParts(entree: EntreeRepartition): Parts {
     }
 
     case 'transfert': {
+      assertEntier(montant)
       // La part du payeur vaut 0 : il ne se doit rien a lui-meme.
       // Sa creance sur l'autre est le montant entier. Ne pas inverser.
       return payePar === 'liz' ? { thomas: montant, liz: 0 } : { thomas: 0, liz: montant }
@@ -47,6 +48,11 @@ export function calculerParts(entree: EntreeRepartition): Parts {
         throw new Error('Mode personnalise : parts personnalisees requises.')
       }
       const { thomas, liz } = partsPersonnalisees
+      assertEntier(thomas)
+      assertEntier(liz)
+      if (thomas < 0 || liz < 0) {
+        throw new Error(`Une part ne peut pas etre negative (thomas: ${thomas}, liz: ${liz}).`)
+      }
       if (thomas + liz !== montant) {
         throw new Error(
           `La somme des parts (${thomas} + ${liz} = ${thomas + liz}) doit egaler le montant (${montant}).`,

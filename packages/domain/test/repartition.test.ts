@@ -67,6 +67,17 @@ describe('mode transfert', () => {
       }),
     ).toEqual({ thomas: 0, liz: 40000 })
   })
+
+  it('refuse un montant non entier', () => {
+    expect(() =>
+      calculerParts({
+        montant: 100.5,
+        mode: 'transfert',
+        payePar: 'liz',
+        ratioThomas: RATIO_THOMAS,
+      }),
+    ).toThrow(/entier/i)
+  })
 })
 
 describe('mode personnalise', () => {
@@ -103,6 +114,30 @@ describe('mode personnalise', () => {
         ratioThomas: RATIO_THOMAS,
       }),
     ).toThrow(/parts personnalisees/i)
+  })
+
+  it('refuse des parts non entieres', () => {
+    expect(() =>
+      calculerParts({
+        montant: 10000,
+        mode: 'personnalise',
+        payePar: 'thomas',
+        ratioThomas: RATIO_THOMAS,
+        partsPersonnalisees: { thomas: 4000.7, liz: 5999.3 },
+      }),
+    ).toThrow(/entier/i)
+  })
+
+  it('refuse une part negative', () => {
+    expect(() =>
+      calculerParts({
+        montant: 10000,
+        mode: 'personnalise',
+        payePar: 'thomas',
+        ratioThomas: RATIO_THOMAS,
+        partsPersonnalisees: { thomas: -5000, liz: 15000 },
+      }),
+    ).toThrow(/negativ/i)
   })
 })
 
