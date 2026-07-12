@@ -56,6 +56,28 @@ describe('invariants portes par la base', () => {
     await expect(creerVersion('v2', '2026-07-01')).resolves.toBeDefined()
   })
 
+  it('refuse de supprimer une version close (append-only)', async () => {
+    await creerVersion('v1', '2025-07-01')
+    await creerVersion('v2', '2026-07-01')
+
+    await expect(db.execute(sql`delete from version_config where libelle = 'v1'`)).rejects.toThrow(
+      /append-only/i,
+    )
+  })
+
+  it('autorise la suppression d une version ouverte', async () => {
+    // Le trigger ne doit pas bloquer la suppression d une version qui n a
+    // jamais ete cloturee : pas de sur-correction.
+    await creerVersion('v1', '2025-07-01')
+
+    await expect(
+      db.execute(sql`delete from version_config where libelle = 'v1'`),
+    ).resolves.toBeDefined()
+
+    const versions = await db.select().from(versionConfig)
+    expect(versions).toHaveLength(0)
+  })
+
   it('refuse deux versions qui se chevauchent', async () => {
     await creerVersion('v1', '2025-07-01')
 
