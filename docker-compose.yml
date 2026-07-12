@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: homebudget-db
+    environment:
+      POSTGRES_USER: homebudget
+      POSTGRES_PASSWORD: homebudget
+      POSTGRES_DB: homebudget
+    ports:
+      # 5433 pour ne pas entrer en conflit avec un Postgres deja installe.
+      - '5433:5432'
+    volumes:
+      - homebudget-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U homebudget']
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  homebudget-pgdata:
