@@ -61,23 +61,40 @@ ni Supabase Auth. Si tu vois passer `createClient` de `@supabase/supabase-js`, c
 une erreur. Une seule variable d'environnement : `DATABASE_URL`.
 
 **Drizzle ne possède pas le schéma.** Il donne le typage et les requêtes. Mais les
-invariants — `EXCLUDE USING gist`, le trigger append-only, la fonction
-`creer_version_config()` — vivent dans `drizzle/0001_invariants.sql`, écrit à la main.
+invariants vivent dans des migrations **écrites à la main** :
+
+- `0001_invariants.sql` — `EXCLUDE USING gist` (pas deux versions qui se chevauchent),
+  le trigger append-only, la fonction `creer_version_config()`.
+- `0002_append_only_delete.sql` — l'append-only étendu à `DELETE`.
+- `0004_depense_dans_sa_version.sql` — **le point de passage obligé de la règle 4** :
+  une dépense ne peut référencer qu'une version qui *couvre sa date*. Et une version
+  qui porte déjà des dépenses n'accepte plus que sa clôture.
+
+C'est là que se joue le projet. Une dépense rattachée à la config *courante* au lieu de
+celle *à sa date* produit des parts qui somment juste au mauvais ratio : le bug du Sheet,
+que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
 
 > **`drizzle-kit push` est interdit.** Il compare le schéma TS à la base et propose
 > de supprimer ce qu'il ne reconnaît pas : c'est-à-dire exactement nos garde-fous.
 > Le seul chemin autorisé est `db:generate` puis `db:migrate`. Si tu modifies le
 > schéma, génère une migration ; ne pousse jamais.
 
-L'accès à la base se fait depuis les Server Actions uniquement. Le navigateur n'a
-jamais d'accès direct — c'est pourquoi il n'y a pas de Row Level Security à
-maintenir : la frontière de sécurité est le serveur.
+## À construire au plan 2 — rien de tout ceci n'existe encore
 
-## Authentification
+> ⚠️ Les deux sections qui suivent décrivent la **cible**, pas le dépôt. `apps/web`
+> n'existe pas, il n'y a ni Server Action, ni authentification, ni allowlist. Ne les
+> lis pas comme un acquis : ce sont des garde-fous **à écrire**, et personne ne les
+> écrira si tu les crois déjà là.
 
-**Better Auth**, provider Google, avec ses tables dans notre propre base. Deux
-adresses sont autorisées, point. Il n'y a pas d'inscription : un hook rejette toute
-adresse hors allowlist, et un test le vérifie.
+**Accès à la base.** L'accès se fera depuis les Server Actions uniquement. Le navigateur
+n'aura jamais d'accès direct — c'est ce qui permettra de se passer de Row Level Security :
+la frontière de sécurité sera le serveur. Tant qu'aucune frontière n'est écrite, il n'y en
+a pas.
+
+**Authentification.** **Better Auth** est prévu, provider Google, avec ses tables dans notre
+propre base. Deux adresses seront autorisées, point. Il n'y aura pas d'inscription : un hook
+devra rejeter toute adresse hors allowlist, **et un test devra le vérifier**. Ce test reste
+à écrire.
 
 ## Commandes
 
