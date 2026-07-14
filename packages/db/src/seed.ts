@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
 import { sql } from 'drizzle-orm'
 import { db, pool } from './client.js'
+import { assertBaseEffacable } from './garde-base.js'
 import { VERSIONS_INITIALES, importerDepenses } from './import-sheet.js'
 import { depense } from './schema.js'
 
@@ -15,7 +16,15 @@ const CSV = readFileSync(
 
 const SOLDE_ATTENDU = 114580
 
+const DEFAUT_LOCAL = 'postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget'
+
 async function main() {
+  // AVANT la moindre ecriture : on ne truncate pas une base qu'on ne connait pas.
+  assertBaseEffacable(
+    process.env.DATABASE_URL ?? DEFAUT_LOCAL,
+    process.env.HOMEBUDGET_CONFIRME_EFFACEMENT,
+  )
+
   // Tout ou rien : une base a moitie seedee serait pire qu'une base vide.
   await db.transaction(async (tx) => {
     console.log('Purge...')
