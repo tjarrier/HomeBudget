@@ -23,6 +23,25 @@ describe('versions initiales', () => {
   })
 })
 
+describe('cross-check des parts du Sheet', () => {
+  const ENTETE =
+    'Date,Description,Montant,Payé par,Type,Part Thomas,Part Liz,Solde Thomas,Solde Liz,Commentaire'
+
+  it('refuse une ligne dont les parts du Sheet ne somment pas au montant', () => {
+    // 60 + 30 = 90, pas 100. Le Sheet se contredit : on ne devine pas laquelle
+    // des trois colonnes est fausse, on refuse d'importer.
+    const csv = `${ENTETE}\n2025-08-05,Courses,100,Thomas,Courante,60,30,0,0,`
+
+    expect(() => importerDepenses(csv, VERSIONS_INITIALES)).toThrow(/ne somment pas/i)
+  })
+
+  it('accepte une ligne dont les parts du Sheet somment au montant', () => {
+    const csv = `${ENTETE}\n2025-08-05,Courses,100,Thomas,Courante,60,40,0,0,`
+
+    expect(() => importerDepenses(csv, VERSIONS_INITIALES)).not.toThrow()
+  })
+})
+
 describe('import du Sheet', () => {
   const depenses = importerDepenses(CSV, VERSIONS_INITIALES)
 

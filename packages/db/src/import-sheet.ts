@@ -107,6 +107,17 @@ function construireDepense(ligne: LigneCsv, versions: VersionConfig[], index: nu
   const ratio = ratioThomas(version)
 
   const partThomasSheet = eurosVersCents(ligne.partThomas)
+  const partLizSheet = eurosVersCents(ligne.partLiz)
+
+  // Le mode `personnalise` derive liz = montant - thomas : la colonne « Part Liz »
+  // du Sheet ne sert donc jamais au calcul. On s'en sert comme temoin : si les
+  // trois colonnes du Sheet se contredisent, on ne devine pas laquelle est fausse.
+  if (partThomasSheet + partLizSheet !== montant) {
+    throw new Error(
+      `Ligne « ${ligne.description} » du ${date} : les parts du Sheet (${partThomasSheet} + ${partLizSheet} = ${partThomasSheet + partLizSheet}) ne somment pas au montant (${montant}).`,
+    )
+  }
+
   const { type, mode } = classer(ligne, montant, partThomasSheet, ratio)
 
   const parts: Parts = calculerParts({
