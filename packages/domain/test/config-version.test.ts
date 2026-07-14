@@ -141,7 +141,7 @@ describe('verifierContinuite', () => {
 
   it('refuse deux versions ouvertes', () => {
     const ouverte = { ...V1, dateFin: null }
-    expect(() => verifierContinuite([ouverte, V2])).toThrow()
+    expect(() => verifierContinuite([ouverte, V2])).toThrow(/versions ouvertes/i)
   })
 })
 
@@ -226,6 +226,8 @@ describe('cloturerEtAjouter (append-only)', () => {
       dateDebut: '2027-01-01',
       dateFin: null,
     }
-    expect(() => cloturerEtAjouter([versionA, versionB], suivante)).toThrow()
+    // La garde est celle de verifierContinuite, pas le controle de dateDebut :
+    // la liste est refusee AVANT qu'on regarde la date de la nouvelle version.
+    expect(() => cloturerEtAjouter([versionA, versionB], suivante)).toThrow(/ouverte mais/i)
   })
 })
