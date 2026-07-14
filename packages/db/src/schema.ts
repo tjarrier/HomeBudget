@@ -54,6 +54,14 @@ export const versionConfig = pgTable(
       'salaires_cumules_non_nuls',
       sql`${t.salaireNetThomasCents} + ${t.salaireNetLizCents} > 0`,
     ),
+    // Le CHECK ci-dessus ne portait que sur la SOMME : un salaire individuel negatif
+    // passait des lors que l'autre compensait. Le domaine, lui, refuse (`ratioThomas`
+    // jette) — la base laissait donc ecrire une config qui fait planter le domaine A
+    // LA LECTURE, et un ratio hors de [0,1] n'a aucun sens.
+    check(
+      'salaires_positifs',
+      sql`${t.salaireNetThomasCents} >= 0 and ${t.salaireNetLizCents} >= 0`,
+    ),
     check('periode_coherente', sql`${t.dateFin} is null or ${t.dateFin} >= ${t.dateDebut}`),
   ],
 )

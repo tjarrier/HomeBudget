@@ -36,6 +36,13 @@
       "when": 1784042041495,
       "tag": "0004_depense_dans_sa_version",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784043848201,
+      "tag": "0005_solid_runaways",
+      "breakpoints": true
     }
   ]
 }

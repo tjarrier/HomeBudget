@@ -1,0 +1,1 @@
+ALTER TABLE "version_config" ADD CONSTRAINT "salaires_positifs" CHECK ("version_config"."salaire_net_thomas_cents" >= 0 and "version_config"."salaire_net_liz_cents" >= 0);
