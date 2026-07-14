@@ -78,6 +78,21 @@ describe('invariants portes par la base', () => {
     expect(versions).toHaveLength(0)
   })
 
+  // Le CHECK ne portait que sur la SOMME (`salaires_cumules_non_nuls`) : un salaire
+  // individuel negatif passait tant que l'autre compensait. Le domaine, lui, refuse
+  // (`ratioThomas` jette) — la base laissait donc ecrire une config qui fait planter
+  // le domaine a la LECTURE.
+  it('refuse un salaire individuel negatif, meme si la somme reste positive', async () => {
+    await expect(
+      db.execute(sql`
+        select * from creer_version_config(
+          'Piege', '2025-07-01'::date, -100000, 300000,
+          '[]'::jsonb, '[]'::jsonb, '[]'::jsonb
+        )
+      `),
+    ).rejects.toThrow(/salaires_positifs/i)
+  })
+
   it('refuse deux versions qui se chevauchent', async () => {
     await creerVersion('v1', '2025-07-01')
 
