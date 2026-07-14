@@ -174,6 +174,18 @@ function classer(
   return { type, mode: 'personnalise' }
 }
 
+/**
+ * Le payeur porte le SIGNE du solde : le compter a l'envers inverse la dette. Un
+ * ternaire `=== 'Thomas' ? 'thomas' : 'liz'` faisait retomber sur Liz TOUT ce qui
+ * n'etait pas exactement « Thomas » — une coquille, un accent, une colonne decalee.
+ * On refuse plutot que de deviner.
+ */
+function personneDepuisSheet(valeur: string): Personne {
+  if (valeur === 'Thomas') return 'thomas'
+  if (valeur === 'Liz') return 'liz'
+  throw new Error(`Payeur inconnu dans le Sheet : « ${valeur} ». Attendu « Thomas » ou « Liz ».`)
+}
+
 /** Parseur CSV minimal : gere les champs cites et les guillemets doubles. */
 function parserCsv(csv: string): LigneCsv[] {
   const lignes = csv.trim().split('\n')
@@ -187,7 +199,7 @@ function parserCsv(csv: string): LigneCsv[] {
       date,
       description,
       montant: Number(montant),
-      payePar: payePar === 'Thomas' ? 'thomas' : 'liz',
+      payePar: personneDepuisSheet(payePar),
       partThomas: Number(partThomas),
       partLiz: Number(partLiz),
       commentaire: commentaire ?? '',
