@@ -126,3 +126,203 @@ describe('invariants portes par la base', () => {
     ).rejects.toThrow(/foreign key|violates/i)
   })
 })
+
+/**
+ * I2 : « les parts sont figees d'apres la config en vigueur A LA DATE de la depense ».
+ * La FK seule ne dit rien de la DATE : elle laisse rattacher une depense a n'importe
+ * quelle version. C'est le bug du Sheet qui rentre par la porte de derriere — une
+ * Server Action qui attrape la config *courante* au lieu de celle *a la date* produit
+ * des parts au mauvais ratio, et le CHECK parts_somment_au_montant est satisfait
+ * (elles somment, elles sont juste fausses).
+ */
+describe('I2 — une depense appartient a la version qui couvre sa date', () => {
+  function ligne(date: string, versionId: string) {
+    return {
+      date,
+      description: 'test',
+      montantCents: 10000,
+      payePar: 'thomas' as const,
+      type: 'courante' as const,
+      modeRepartition: 'moitie' as const,
+      partThomasCents: 5000,
+      partLizCents: 5000,
+      versionConfigId: versionId,
+    }
+  }
+
+  it('accepte une depense dans la plage de sa version', async () => {
+    const v1 = await creerVersion('v1', '2025-07-01')
+    await expect(db.insert(depense).values(ligne('2025-08-05', v1.id))).resolves.toBeDefined()
+  })
+
+  it('accepte une depense le PREMIER jour de sa version (borne incluse)', async () => {
+    const v1 = await creerVersion('v1', '2025-07-01')
+    await expect(db.insert(depense).values(ligne('2025-07-01', v1.id))).resolves.toBeDefined()
+  })
+
+  it('accepte une depense le DERNIER jour de sa version (borne incluse)', async () => {
+    await creerVersion('v1', '2025-07-01')
+    await creerVersion('v2', '2026-07-01') // cloture v1 au 2026-06-30
+    const [v1] = await db.select().from(versionConfig).where(sql`libelle = 'v1'`)
+    if (!v1) throw new Error('v1 introuvable')
+
+    await expect(db.insert(depense).values(ligne('2026-06-30', v1.id))).resolves.toBeDefined()
+  })
+
+  it('refuse une depense APRES la fin de sa version', async () => {
+    await creerVersion('v1', '2025-07-01')
+    await creerVersion('v2', '2026-07-01')
+    const [v1] = await db.select().from(versionConfig).where(sql`libelle = 'v1'`)
+    if (!v1) throw new Error('v1 introuvable')
+
+    // Le cas exact de la Server Action qui prend la version courante par erreur.
+    await expect(db.insert(depense).values(ligne('2026-08-01', v1.id))).rejects.toThrow(
+      /ne couvre pas/i,
+    )
+  })
+
+  it('refuse une depense AVANT le debut de sa version', async () => {
+    const v1 = await creerVersion('v1', '2025-07-01')
+
+    // La depense antidatee : la version courante ne la couvre pas.
+    await expect(db.insert(depense).values(ligne('2025-06-30', v1.id))).rejects.toThrow(
+      /ne couvre pas/i,
+    )
+  })
+
+  it('refuse aussi de DEPLACER une depense hors de la plage de sa version', async () => {
+    const v1 = await creerVersion('v1', '2025-07-01')
+    await db.insert(depense).values(ligne('2025-08-05', v1.id))
+
+    // Un INSERT valide suivi d'un UPDATE de la date contournerait un trigger
+    // pose sur le seul INSERT.
+    await expect(
+      db.execute(sql`update depense set date = '2020-01-01' where description = 'test'`),
+    ).rejects.toThrow(/ne couvre pas/i)
+  })
+})
+
+/**
+ * Le piege qui coute de l'argent, dans sa variante SQL : rien ne couplait `type` et
+ * `mode_repartition`. Un remboursement de 400 € reparti « moitie » ne deplace la dette
+ * que de 200 €.
+ */
+describe('couplage type / mode de repartition', () => {
+  it('accepte un transfert reparti en transfert', async () => {
+    const v1 = await creerVersion('v1', '2025-07-01')
+    await expect(
+      db.insert(depense).values({
+        date: '2025-08-05',
+        description: 'Virement de Liz',
+        montantCents: 40000,
+        payePar: 'liz',
+        type: 'transfert',
+        modeRepartition: 'transfert',
+        partThomasCents: 40000,
+        partLizCents: 0,
+        versionConfigId: v1.id,
+      }),
+    ).resolves.toBeDefined()
+  })
+
+  it('refuse un transfert reparti en moitie', async () => {
+    const v1 = await creerVersion('v1', '2025-07-01')
+    await expect(
+      db.insert(depense).values({
+        date: '2025-08-05',
+        description: 'Virement de Liz',
+        montantCents: 40000,
+        payePar: 'liz',
+        type: 'transfert',
+        modeRepartition: 'moitie', // la dette ne bougerait que de 200 €
+        partThomasCents: 20000,
+        partLizCents: 20000,
+        versionConfigId: v1.id,
+      }),
+    ).rejects.toThrow(/transfert_couple_type_et_mode/i)
+  })
+
+  it('refuse une depense courante repartie en transfert', async () => {
+    const v1 = await creerVersion('v1', '2025-07-01')
+    await expect(
+      db.insert(depense).values({
+        date: '2025-08-05',
+        description: 'Courses',
+        montantCents: 10000,
+        payePar: 'thomas',
+        type: 'courante', // comptee dans totalDepenses...
+        modeRepartition: 'transfert', // ...mais repartie 0 / 100
+        partThomasCents: 0,
+        partLizCents: 10000,
+        versionConfigId: v1.id,
+      }),
+    ).rejects.toThrow(/transfert_couple_type_et_mode/i)
+  })
+})
+
+/**
+ * I1 (suite) : une version OUVERTE restait librement mutable, meme quand des depenses
+ * la referencaient deja. Les parts figees ne bougeaient pas (I2 tenait), mais l'audit
+ * « part = f(version, montant) » n'etait plus reproductible : deux depenses pointant la
+ * meme version pouvaient avoir ete figees avec deux ratios differents.
+ */
+describe('I1 — une version qui porte des depenses est verrouillee', () => {
+  async function versionAvecDepense() {
+    const v1 = await creerVersion('v1', '2025-07-01')
+    await db.insert(depense).values({
+      date: '2025-08-05',
+      description: 'Courses',
+      montantCents: 10000,
+      payePar: 'thomas',
+      type: 'courante',
+      modeRepartition: 'moitie',
+      partThomasCents: 5000,
+      partLizCents: 5000,
+      versionConfigId: v1.id,
+    })
+    return v1
+  }
+
+  it('refuse de changer un salaire quand des depenses sont deja figees dessus', async () => {
+    await versionAvecDepense()
+
+    await expect(
+      db.execute(
+        sql`update version_config set salaire_net_thomas_cents = 999999 where libelle = 'v1'`,
+      ),
+    ).rejects.toThrow(/depense/i)
+  })
+
+  it('refuse de deplacer la date_debut d une version qui porte des depenses', async () => {
+    await versionAvecDepense()
+
+    // Ce UPDATE creait en prime un TROU de calendrier, que l'EXCLUDE ne voit pas :
+    // il ne detecte que les chevauchements.
+    await expect(
+      db.execute(sql`update version_config set date_debut = '2027-01-01' where libelle = 'v1'`),
+    ).rejects.toThrow(/depense/i)
+  })
+
+  it('autorise quand meme la CLOTURE d une version qui porte des depenses', async () => {
+    // Le verrou ne doit pas casser le mecanisme normal : une revision de loyer
+    // cloture forcement une version qui porte deja des depenses.
+    await versionAvecDepense()
+
+    await expect(creerVersion('v2', '2026-07-01')).resolves.toBeDefined()
+
+    const [v1] = await db.select().from(versionConfig).where(sql`libelle = 'v1'`)
+    expect(v1?.dateFin).toBe('2026-06-30')
+  })
+
+  it('laisse mutable une version ouverte qui ne porte AUCUNE depense', async () => {
+    // Pas de sur-correction : tant que rien n'est fige dessus, corriger une coquille
+    // de saisie reste legitime.
+    await creerVersion('v1', '2025-07-01')
+
+    await expect(
+      db.execute(
+        sql`update version_config set salaire_net_thomas_cents = 340000 where libelle = 'v1'`,
+      ),
+    ).resolves.toBeDefined()
+  })
+})

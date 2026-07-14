@@ -86,6 +86,14 @@ export const depense = pgTable(
       'parts_somment_au_montant',
       sql`${t.partThomasCents} + ${t.partLizCents} = ${t.montantCents}`,
     ),
+    // `type` et `mode` etaient libres l'un de l'autre, et c'est le piege qui coute de
+    // l'argent : un `type='transfert'` reparti en `moitie` ne deplace la dette que de
+    // la MOITIE du remboursement. Une equivalence, pas une implication : ni un
+    // transfert reparti autrement, ni une depense repartie « en transfert ».
+    check(
+      'transfert_couple_type_et_mode',
+      sql`(${t.type} = 'transfert') = (${t.modeRepartition} = 'transfert')`,
+    ),
     index('depense_date_idx').on(t.date.desc()),
     index('depense_version_idx').on(t.versionConfigId),
   ],

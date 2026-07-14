@@ -1,0 +1,297 @@
+{
+  "id": "0a9eae06-fe70-486e-876c-4b83316ba378",
+  "prevId": "0a0f8ce9-dd0b-4c09-abf4-b9f3c5f59f53",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.depense": {
+      "name": "depense",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "montant_cents": {
+          "name": "montant_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paye_par": {
+          "name": "paye_par",
+          "type": "personne",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "type_depense",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mode_repartition": {
+          "name": "mode_repartition",
+          "type": "mode_repartition",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "part_thomas_cents": {
+          "name": "part_thomas_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "part_liz_cents": {
+          "name": "part_liz_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_config_id": {
+          "name": "version_config_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "genere_auto": {
+          "name": "genere_auto",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "commentaire": {
+          "name": "commentaire",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "depense_date_idx": {
+          "name": "depense_date_idx",
+          "columns": [
+            {
+              "expression": "date",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "depense_version_idx": {
+          "name": "depense_version_idx",
+          "columns": [
+            {
+              "expression": "version_config_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "depense_version_config_id_version_config_id_fk": {
+          "name": "depense_version_config_id_version_config_id_fk",
+          "tableFrom": "depense",
+          "tableTo": "version_config",
+          "columnsFrom": [
+            "version_config_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "description_non_vide": {
+          "name": "description_non_vide",
+          "value": "length(trim(\"depense\".\"description\")) > 0"
+        },
+        "montant_positif": {
+          "name": "montant_positif",
+          "value": "\"depense\".\"montant_cents\" > 0"
+        },
+        "parts_somment_au_montant": {
+          "name": "parts_somment_au_montant",
+          "value": "\"depense\".\"part_thomas_cents\" + \"depense\".\"part_liz_cents\" = \"depense\".\"montant_cents\""
+        },
+        "transfert_couple_type_et_mode": {
+          "name": "transfert_couple_type_et_mode",
+          "value": "(\"depense\".\"type\" = 'transfert') = (\"depense\".\"mode_repartition\" = 'transfert')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.version_config": {
+      "name": "version_config",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "libelle": {
+          "name": "libelle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_debut": {
+          "name": "date_debut",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "date_fin": {
+          "name": "date_fin",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "salaire_net_thomas_cents": {
+          "name": "salaire_net_thomas_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "salaire_net_liz_cents": {
+          "name": "salaire_net_liz_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "charges_communes": {
+          "name": "charges_communes",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "charges_perso_thomas": {
+          "name": "charges_perso_thomas",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "charges_perso_liz": {
+          "name": "charges_perso_liz",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "libelle_non_vide": {
+          "name": "libelle_non_vide",
+          "value": "length(trim(\"version_config\".\"libelle\")) > 0"
+        },
+        "salaires_cumules_non_nuls": {
+          "name": "salaires_cumules_non_nuls",
+          "value": "\"version_config\".\"salaire_net_thomas_cents\" + \"version_config\".\"salaire_net_liz_cents\" > 0"
+        },
+        "periode_coherente": {
+          "name": "periode_coherente",
+          "value": "\"version_config\".\"date_fin\" is null or \"version_config\".\"date_fin\" >= \"version_config\".\"date_debut\""
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.mode_repartition": {
+      "name": "mode_repartition",
+      "schema": "public",
+      "values": [
+        "prorata",
+        "moitie",
+        "personnalise",
+        "transfert"
+      ]
+    },
+    "public.personne": {
+      "name": "personne",
+      "schema": "public",
+      "values": [
+        "thomas",
+        "liz"
+      ]
+    },
+    "public.type_depense": {
+      "name": "type_depense",
+      "schema": "public",
+      "values": [
+        "charge_fixe",
+        "courante",
+        "transfert"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
