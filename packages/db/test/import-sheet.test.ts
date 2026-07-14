@@ -40,6 +40,21 @@ describe('cross-check des parts du Sheet', () => {
 
     expect(() => importerDepenses(csv, VERSIONS_INITIALES)).not.toThrow()
   })
+
+  // `payePar === 'Thomas' ? 'thomas' : 'liz'` faisait retomber TOUT le reste sur Liz :
+  // une coquille, un accent, une colonne decalee, et le payeur bascule en silence.
+  // Or le payeur porte le SIGNE du solde : se tromper de payeur inverse la dette.
+  it('refuse un payeur que le Sheet ne connait pas, plutot que de le compter comme Liz', () => {
+    const csv = `${ENTETE}\n2025-08-05,Courses,100,Thoams,Courante,60,40,0,0,`
+
+    expect(() => importerDepenses(csv, VERSIONS_INITIALES)).toThrow(/payeur/i)
+  })
+
+  it('refuse une colonne payeur vide', () => {
+    const csv = `${ENTETE}\n2025-08-05,Courses,100,,Courante,60,40,0,0,`
+
+    expect(() => importerDepenses(csv, VERSIONS_INITIALES)).toThrow(/incomplete|payeur/i)
+  })
 })
 
 describe('import du Sheet', () => {
