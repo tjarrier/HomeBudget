@@ -1,0 +1,1 @@
+ALTER TABLE "depense" ADD CONSTRAINT "transfert_couple_type_et_mode" CHECK (("depense"."type" = 'transfert') = ("depense"."mode_repartition" = 'transfert'));
