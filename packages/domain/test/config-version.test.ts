@@ -143,6 +143,14 @@ describe('verifierContinuite', () => {
     const ouverte = { ...V1, dateFin: null }
     expect(() => verifierContinuite([ouverte, V2])).toThrow(/versions ouvertes/i)
   })
+
+  it('refuse une liste ou AUCUNE version n est ouverte', () => {
+    // Continue, sans chevauchement... mais plus aucune version courante. Une telle
+    // liste ne peut plus figer aucune depense — et elle piegeait cloturerEtAjouter,
+    // qui prend « la derniere » pour la version ouverte.
+    const toutesCloses = [V1, { ...V2, dateFin: '2026-12-31' }]
+    expect(() => verifierContinuite(toutesCloses)).toThrow(/aucune version ouverte/i)
+  })
 })
 
 describe('veilleDe - validation de date', () => {
@@ -229,5 +237,16 @@ describe('cloturerEtAjouter (append-only)', () => {
     // La garde est celle de verifierContinuite, pas le controle de dateDebut :
     // la liste est refusee AVANT qu'on regarde la date de la nouvelle version.
     expect(() => cloturerEtAjouter([versionA, versionB], suivante)).toThrow(/ouverte mais/i)
+  })
+
+  it('refuse de RE-CLOTURER une version deja close quand aucune n est ouverte', () => {
+    // Le trou laisse par le correctif de la task 4 : il attrapait « une version
+    // ouverte suivie d'une autre », jamais « aucune version ouverte ». La liste est
+    // pourtant continue, sans chevauchement — elle passait verifierContinuite.
+    const b = { ...V2, id: 'B', dateFin: '2026-12-31' } // deja CLOSE
+    const suivante = { ...V2, id: 'C', dateDebut: '2027-06-01', dateFin: null }
+
+    // Sans garde : dateFin de B passe silencieusement de 2026-12-31 a 2027-05-31.
+    expect(() => cloturerEtAjouter([V1, b], suivante)).toThrow(/aucune version ouverte/i)
   })
 })

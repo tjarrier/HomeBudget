@@ -73,7 +73,21 @@ export function verifierContinuite(versions: VersionConfig[]): void {
 
   const triees = [...versions].sort((a, b) => a.dateDebut.localeCompare(b.dateDebut))
 
+  // Exactement une version ouverte, jamais zero, jamais deux.
+  //
+  // Zero etait le trou : une liste continue et sans chevauchement mais entierement
+  // close passait la validation, et piegeait `cloturerEtAjouter` — qui prend « la
+  // derniere par dateDebut » pour la version courante et lui REECRIT sa dateFin,
+  // alors qu'elle est deja close. L'append-only sautait en silence.
+  //
+  // Une config sans version courante ne peut de toute facon plus figer aucune
+  // depense : `versionEnVigueurLe` ne couvrirait plus aujourd'hui.
   const ouvertes = triees.filter((v) => v.dateFin === null)
+  if (ouvertes.length === 0) {
+    throw new Error(
+      'Aucune version ouverte : une configuration doit toujours avoir une version courante (dateFin === null).',
+    )
+  }
   if (ouvertes.length > 1) {
     throw new Error(`${ouvertes.length} versions ouvertes : une seule peut avoir dateFin === null.`)
   }
