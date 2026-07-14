@@ -8,6 +8,29 @@ on:
 jobs:
   qualite:
     runs-on: ubuntu-latest
+
+    # Les invariants I1 et I2 ne sont PAS des `if` : ce sont un EXCLUDE, des CHECK et
+    # des triggers, qui ne s'executent que dans Postgres. Sans ce service, une CI verte
+    # ne prouvait rien sur `0001`..`0003` — le coeur du projet n'etait exerce qu'a la
+    # main, en local.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: homebudget
+          POSTGRES_PASSWORD: homebudget
+          POSTGRES_DB: homebudget
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U homebudget"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      DATABASE_URL: postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget
+
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -22,3 +45,12 @@ jobs:
 
       # Le canari. S'il tombe, la PR ne passe pas : un invariant a ete viole.
       - run: pnpm test
+
+      # Les migrations doivent s'appliquer sur une base vierge, et les garde-fous
+      # qu'elles posent doivent refuser ce qu'ils sont censes refuser.
+      - run: pnpm --filter @homebudget/db db:migrate
+      - run: pnpm --filter @homebudget/db test:integration
+
+      # Le seed se verifie lui-meme : il relit la base, recalcule le solde, et annule
+      # tout s'il ne tombe pas exactement sur 114 580 centimes.
+      - run: pnpm --filter @homebudget/db db:seed
