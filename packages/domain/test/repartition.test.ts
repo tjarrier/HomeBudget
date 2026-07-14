@@ -151,6 +151,40 @@ describe('mode personnalise', () => {
   })
 })
 
+// La base refuse deja `montant <= 0` (CHECK montant_positif). Le domaine est la
+// source de verite : il doit refuser en premier, pas se faire rattraper par la base.
+describe('montant', () => {
+  it.each(['prorata', 'moitie', 'transfert', 'personnalise'] as const)(
+    'refuse un montant nul en mode %s',
+    (mode) => {
+      expect(() =>
+        calculerParts({
+          montant: 0,
+          mode,
+          payePar: 'thomas',
+          ratioThomas: RATIO_THOMAS,
+          partsPersonnalisees: { thomas: 0, liz: 0 },
+        }),
+      ).toThrow(/strictement positif/i)
+    },
+  )
+
+  it.each(['prorata', 'moitie', 'transfert', 'personnalise'] as const)(
+    'refuse un montant negatif en mode %s',
+    (mode) => {
+      expect(() =>
+        calculerParts({
+          montant: -10000,
+          mode,
+          payePar: 'thomas',
+          ratioThomas: RATIO_THOMAS,
+          partsPersonnalisees: { thomas: -10000, liz: 0 },
+        }),
+      ).toThrow(/strictement positif/i)
+    },
+  )
+})
+
 describe('invariant universel', () => {
   it('la somme des parts egale toujours le montant', () => {
     for (const mode of ['prorata', 'moitie', 'transfert'] as const) {

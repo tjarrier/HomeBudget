@@ -25,6 +25,14 @@ export function modeParDefaut(type: TypeDepense): ModeRepartition {
 export function calculerParts(entree: EntreeRepartition): Parts {
   const { montant, mode, payePar, ratioThomas, partsPersonnalisees } = entree
 
+  // Le domaine est la source de verite, pas la base. Sans cette garde, seul le
+  // CHECK `montant_positif` rattrapait un montant nul ou negatif — et il ne
+  // couvre que ce qui passe par Postgres, pas un calcul fait en memoire.
+  assertEntier(montant)
+  if (montant <= 0) {
+    throw new Error(`Le montant doit etre strictement positif (recu : ${montant} centimes).`)
+  }
+
   switch (mode) {
     case 'prorata': {
       const [thomas, liz] = repartirAuRatio(montant, ratioThomas)
@@ -37,7 +45,6 @@ export function calculerParts(entree: EntreeRepartition): Parts {
     }
 
     case 'transfert': {
-      assertEntier(montant)
       // La part du payeur vaut 0 : il ne se doit rien a lui-meme.
       // Sa creance sur l'autre est le montant entier. Ne pas inverser.
       return payePar === 'liz' ? { thomas: montant, liz: 0 } : { thomas: 0, liz: montant }
