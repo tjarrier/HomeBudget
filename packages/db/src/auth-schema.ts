@@ -1,19 +1,29 @@
 import type { Personne } from '@homebudget/domain'
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
+import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
 
-export const utilisateur = pgTable('user', {
-  id: text('id').primaryKey(),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  emailVerified: boolean('email_verified').notNull().default(false),
-  image: text('image'),
-  // Le pont identite Google -> personne du budget. Pose une seule fois, par le
-  // hook d'allowlist, a la creation du compte. Nullable en base parce que Better
-  // Auth insere la ligne : c'est le hook `before` qui garantit qu'elle est remplie.
-  personne: text('personne').$type<Personne>(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-})
+export const utilisateur = pgTable(
+  'user',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    emailVerified: boolean('email_verified').notNull().default(false),
+    image: text('image'),
+    // Le pont identite Google -> personne du budget. Pose une seule fois, par le
+    // hook d'allowlist, a la creation du compte. Nullable en base parce que Better
+    // Auth insere la ligne : c'est le hook `before` qui garantit qu'elle est remplie.
+    personne: text('personne').$type<Personne>(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    // $type<Personne>() n'est qu'une annotation TypeScript : sans ce CHECK, la
+    // colonne est du text libre en base. La base doit refuser physiquement toute
+    // valeur hors thomas/liz, tout en restant nullable (voir commentaire ci-dessus).
+    check('personne_valide', sql`${t.personne} is null or ${t.personne} in ('thomas', 'liz')`),
+  ],
+)
 
 export const session = pgTable('session', {
   id: text('id').primaryKey(),
