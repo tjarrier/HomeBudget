@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD CONSTRAINT "personne_valide" CHECK ("user"."personne" is null or "user"."personne" in ('thomas', 'liz'));
