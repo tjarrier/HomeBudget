@@ -2,6 +2,7 @@ import { formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { db, pool } from '../src/client.js'
+import { ajouterDepense } from '../src/ecriture.js'
 import { VERSIONS_INITIALES, importerDepenses } from '../src/import-sheet.js'
 import { listerDepenses, listerVersions } from '../src/lecture.js'
 import { depense } from '../src/schema.js'
@@ -67,6 +68,126 @@ describe('listerDepenses', () => {
 
     expect(depenses).toHaveLength(1)
     expect(depenses[0]?.parts).toEqual({ thomas: 9000, liz: 1000 })
+  })
+})
+
+describe('ajouterDepense — I2, snapshot on write', () => {
+  /**
+   * Le piege central du projet, exerce explicitement. Deux versions aux ratios
+   * DIFFERENTS, et une depense ANTIDATEE dans la premiere. Une implementation
+   * qui attrape la version courante (`date_fin is null`) produirait des parts
+   * qui somment au bon montant mais au MAUVAIS ratio — et passerait le CHECK.
+   */
+  async function deuxVersions(): Promise<{ ancienne: string; courante: string }> {
+    // v1 : salaires 300000 / 100000  -> ratio Thomas = 0,75
+    const { rows: r1 } = await db.execute<{ id: string }>(sql`
+      select * from creer_version_config(
+        'v1 ratio 75', '2025-01-01'::date, 300000, 100000, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb)
+    `)
+    // v2 : salaires 100000 / 300000  -> ratio Thomas = 0,25
+    const { rows: r2 } = await db.execute<{ id: string }>(sql`
+      select * from creer_version_config(
+        'v2 ratio 25', '2026-01-01'::date, 100000, 300000, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb)
+    `)
+    const ancienne = r1[0]?.id
+    const courante = r2[0]?.id
+    if (!ancienne || !courante) throw new Error('creer_version_config n a rien renvoye')
+    return { ancienne, courante }
+  }
+
+  it('fige les parts d apres la version A LA DATE, pas la version courante', async () => {
+    const { ancienne } = await deuxVersions()
+
+    const d = await ajouterDepense({
+      date: '2025-06-15', // dans v1, ratio 0,75 — v2 est la courante, ratio 0,25
+      description: 'Course antidatee',
+      montant: 10000,
+      payePar: 'thomas',
+      type: 'charge_fixe',
+      mode: 'prorata',
+    })
+
+    expect(d.parts).toEqual({ thomas: 7500, liz: 2500 }) // et NON { 2500, 7500 }
+    expect(d.versionConfigId).toBe(ancienne)
+    expect(d.parts.thomas + d.parts.liz).toBe(d.montant)
+  })
+
+  it('fige au ratio courant une depense datee dans la version courante', async () => {
+    // Le pendant du test precedent : interdire la sur-correction.
+    const { courante } = await deuxVersions()
+
+    const d = await ajouterDepense({
+      date: '2026-03-10',
+      description: 'Course du mois',
+      montant: 10000,
+      payePar: 'liz',
+      type: 'charge_fixe',
+      mode: 'prorata',
+    })
+
+    expect(d.parts).toEqual({ thomas: 2500, liz: 7500 })
+    expect(d.versionConfigId).toBe(courante)
+  })
+
+  it('refuse une depense a une date qu aucune version ne couvre', async () => {
+    await deuxVersions()
+    await expect(
+      ajouterDepense({
+        date: '2024-01-01',
+        description: 'Avant toute config',
+        montant: 5000,
+        payePar: 'thomas',
+        type: 'courante',
+        mode: 'moitie',
+      }),
+    ).rejects.toThrow(/Aucune version de config ne couvre/i)
+  })
+
+  it('donne au payeur une part nulle sur un transfert — la dette du payeur BAISSE', async () => {
+    // Le piege qui coute de l'argent : `transfert` n'est PAS « 100 % au payeur ».
+    // Liz verse 400 € : part_liz = 0, part_thomas = 400, solde_liz = +400.
+    await deuxVersions()
+
+    const d = await ajouterDepense({
+      date: '2026-03-10',
+      description: 'Virement Liz vers Thomas',
+      montant: 40000,
+      payePar: 'liz',
+      type: 'transfert',
+      mode: 'transfert',
+    })
+
+    expect(d.parts).toEqual({ thomas: 40000, liz: 0 })
+    expect(resumer([d]).soldeLiz).toBe(40000)
+  })
+
+  it('accepte des parts personnalisees qui somment au montant', async () => {
+    await deuxVersions()
+    const d = await ajouterDepense({
+      date: '2026-03-10',
+      description: 'Cadeau partage inegalement',
+      montant: 10000,
+      payePar: 'thomas',
+      type: 'courante',
+      mode: 'personnalise',
+      partsPersonnalisees: { thomas: 7000, liz: 3000 },
+    })
+    expect(d.parts).toEqual({ thomas: 7000, liz: 3000 })
+  })
+
+  it('refuse des parts personnalisees qui ne somment pas au montant', async () => {
+    await deuxVersions()
+    await expect(
+      ajouterDepense({
+        date: '2026-03-10',
+        description: 'Parts incoherentes',
+        montant: 10000,
+        payePar: 'thomas',
+        type: 'courante',
+        mode: 'personnalise',
+        partsPersonnalisees: { thomas: 7000, liz: 4000 },
+      }),
+    ).rejects.toThrow(/somme des parts/i)
   })
 })
 
