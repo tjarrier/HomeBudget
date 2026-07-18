@@ -22,7 +22,7 @@ export const modeRepartitionEnum = pgEnum('mode_repartition', [
   'transfert',
 ])
 
-interface ChargeJson {
+export interface ChargeJson {
   libelle: string
   montant: number
 }
