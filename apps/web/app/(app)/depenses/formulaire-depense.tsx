@@ -71,6 +71,12 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
     }
   }, [date, description, montant, payePar, type, mode, partThomas, partLiz])
 
+  // Un resultat de soumission ecrase l'erreur d'apercu : on ne veut jamais
+  // deux messages rouges empiles qui se contredisent.
+  useEffect(() => {
+    if (etat) setMessageApercu(null)
+  }, [etat])
+
   return (
     <form
       action={action}
@@ -201,12 +207,12 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
       )}
 
       {messageApercu && (
-        <p data-testid="message-erreur" className="text-sm text-red-700">
+        <p data-testid="message-erreur-apercu" className="text-sm text-red-700">
           {messageApercu}
         </p>
       )}
       {etat && !etat.ok && (
-        <p data-testid="message-erreur" className="text-sm text-red-700">
+        <p data-testid="message-erreur-envoi" className="text-sm text-red-700">
           {etat.message}
         </p>
       )}
