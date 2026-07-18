@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm'
 import { db, pool } from './client.js'
 import { assertBaseEffacable } from './garde-base.js'
 import { VERSIONS_INITIALES, importerDepenses } from './import-sheet.js'
+import { depenseDepuisLigne } from './mapper.js'
 import { depense } from './schema.js'
 
 const CSV = readFileSync(
@@ -76,21 +77,7 @@ async function main() {
     // Le seed se verifie lui-meme : on RELIT la base et on recalcule. Verifier
     // l'objet qu'on vient de construire en memoire ne prouverait rien.
     const relues = await tx.select().from(depense)
-    const resume = resumer(
-      relues.map((r) => ({
-        id: r.id,
-        date: r.date, // Drizzle rend une chaine ISO : rien a convertir.
-        description: r.description,
-        montant: r.montantCents,
-        payePar: r.payePar,
-        type: r.type,
-        mode: r.modeRepartition,
-        parts: { thomas: r.partThomasCents, liz: r.partLizCents },
-        versionConfigId: r.versionConfigId,
-        genereAuto: r.genereAuto,
-        commentaire: r.commentaire,
-      })),
-    )
+    const resume = resumer(relues.map(depenseDepuisLigne))
 
     console.log(`\n${phraseSynthese(resume)}`)
 

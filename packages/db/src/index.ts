@@ -1,3 +1,5 @@
 export * from './import-sheet.js'
 export * from './auth-schema.js'
+export * from './mapper.js'
+export * from './lecture.js'
 export { db } from './client.js'
