@@ -1,32 +1,11 @@
 'use server'
 
+import { parserCharges } from '@/lib/charges'
 import { exigerSession } from '@/lib/session'
 import { type SaisieVersion, creerVersion } from '@homebudget/db'
-import { type Charge, parserEurosSaisis } from '@homebudget/domain'
+import { parserEurosSaisis } from '@homebudget/domain'
 import { revalidatePath } from 'next/cache'
 import { type Resultat, enEchec } from './resultat'
-
-/**
- * Les charges arrivent en lignes « libelle=montant », une par ligne : c'est ce
- * que le formulaire produit dans un <textarea>. Les montants passent par le
- * parseur du domaine — aucun flottant n'entre.
- */
-function parserCharges(brut: string): Charge[] {
-  return brut
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l !== '')
-    .map((ligne) => {
-      const separateur = ligne.lastIndexOf('=')
-      if (separateur < 1) {
-        throw new Error(`Charge illisible : « ${ligne} ». Format attendu : Libellé=791,00`)
-      }
-      return {
-        libelle: ligne.slice(0, separateur).trim(),
-        montant: parserEurosSaisis(ligne.slice(separateur + 1)),
-      }
-    })
-}
 
 export async function creerVersionAction(
   _precedent: Resultat<null> | null,
