@@ -12,5 +12,15 @@
       "correctness": { "noUnusedVariables": "error" }
     }
   },
-  "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" } }
+  "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" } },
+  "overrides": [
+    {
+      "include": ["apps/web/components/ui/**"],
+      "linter": {
+        "rules": {
+          "a11y": { "noLabelWithoutControl": "off" }
+        }
+      }
+    }
+  ]
 }
