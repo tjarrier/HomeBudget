@@ -1,4 +1,5 @@
 import type { Personne } from '@homebudget/domain'
+import { APIError } from 'better-auth/api'
 
 export const MESSAGE_REFUS =
   "Cette adresse n'est pas autorisee. HomeBudget est un budget prive a deux personnes."
@@ -18,6 +19,17 @@ function allowlist(): ReadonlyMap<string, Personne> {
     const normalisee = adresse?.trim().toLowerCase()
     if (normalisee) map.set(normalisee, personne)
   }
+  // Deux adresses distinctes mais configurees identiques : `map.set` ecraserait
+  // silencieusement la premiere et Thomas se retrouverait connecte comme Liz (ou
+  // l'inverse). Une entree vide, elle, est un choix legitime (porte fermee) : ne
+  // pas la compter ici. Ne throw donc que si des adresses non vides sont entrees
+  // en double.
+  const nonVides = entrees.filter(([adresse]) => adresse?.trim())
+  if (map.size !== nonVides.length) {
+    throw new Error(
+      'Allowlist mal configuree : ALLOWLIST_THOMAS et ALLOWLIST_LIZ pointent vers la meme adresse.',
+    )
+  }
   return map
 }
 
@@ -31,10 +43,21 @@ export function resoudrePersonne(email: string): Personne {
 /**
  * Hook `databaseHooks.user.create.before` de Better Auth.
  * Sans RLS, c'est ici — et nulle part ailleurs — que se joue le controle d'acces.
+ *
+ * `resoudrePersonne` reste une fonction pure (elle throw une `Error` ordinaire) :
+ * c'est ce hook, seul point de contact avec Better Auth, qui traduit le refus en
+ * `APIError`. Better Auth ne distingue une erreur controlee (reponse/redirection
+ * lisible) d'un throw inattendu (500 generique) que via `APIError` — un `Error`
+ * nu ne serait jamais presente a la personne qu'on refuse.
  */
 export async function avantCreationUtilisateur(user: {
   email: string
 }): Promise<{ data: Record<string, unknown> }> {
-  const personne = resoudrePersonne(user.email)
+  let personne: Personne
+  try {
+    personne = resoudrePersonne(user.email)
+  } catch {
+    throw new APIError('FORBIDDEN', { message: MESSAGE_REFUS })
+  }
   return { data: { ...user, personne } }
 }

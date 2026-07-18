@@ -40,6 +40,15 @@ describe('resoudrePersonne', () => {
     expect(() => resoudrePersonne('thomas@exemple.fr')).toThrow(/pas autorisee/i)
     expect(() => resoudrePersonne('')).toThrow(/pas autorisee/i)
   })
+
+  it('refuse de resoudre quand les deux adresses configurees sont identiques', () => {
+    // Sinon `map.set` ecrase silencieusement Thomas par Liz : la personne
+    // entre, mais sous la mauvaise identite — ce qui fausse tous les
+    // "paye par" et les parts enregistrees ensuite.
+    process.env.ALLOWLIST_THOMAS = 'meme@exemple.fr'
+    process.env.ALLOWLIST_LIZ = 'meme@exemple.fr'
+    expect(() => resoudrePersonne('meme@exemple.fr')).toThrow(/mal configuree/i)
+  })
 })
 
 describe('avantCreationUtilisateur — le hook Better Auth', () => {
@@ -64,10 +73,41 @@ describe('le hook est reellement branche sur Better Auth', () => {
     expect(auth.options.databaseHooks?.user?.create?.before).toBe(avantCreationUtilisateur)
   })
 
+  it('rejette reellement une adresse non autorisee, appelee via le cablage Better Auth', async () => {
+    // Contrairement au test precedent (une simple identite `toBe`), celui-ci
+    // n'importe pas `avantCreationUtilisateur` pour l'appeler : il passe par
+    // `auth.options.databaseHooks...before`, exactement comme le ferait Better
+    // Auth. Si le cablage se rompt un jour (mauvaise cle, hook remplace), ce
+    // test echoue meme si `avantCreationUtilisateur` reste correcte — les deux
+    // garanties (cablage + refus) sont ainsi verifiees ensemble, composees,
+    // et non chacune isolement.
+    const { auth } = await import('../lib/auth.js')
+    const before = auth.options.databaseHooks?.user?.create?.before
+    await expect(before?.({ email: 'intrus@exemple.fr' })).rejects.toThrow(/pas autorisee/i)
+  })
+
   it("n'autorise aucune inscription par e-mail/mot de passe", async () => {
     // Il n'y a pas d'inscription : deux personnes, point. Un provider
     // email/password ouvert contournerait entierement l'allowlist Google.
+    //
+    // Une simple assertion sur la config declaree (`enabled === true`)
+    // laisserait passer une valeur "truthy" non stricte (`enabled: 'true'`
+    // venant d'une env var, par ex.) que Better Auth traite pourtant comme
+    // active : ce test appelle donc la vraie route de creation par
+    // e-mail/mot de passe et verifie qu'elle refuse, exactement comme le fait
+    // le garde-fou interne de la librairie (`!options.emailAndPassword?.enabled`).
+    //
+    // Cet appel ne touche jamais la base : avec `drizzleAdapter` configure
+    // sans `transaction: true` (notre cas), Better Auth n'ouvre pas de vraie
+    // transaction SQL pour ce chemin — il execute le callback directement
+    // (`createAsIsTransaction`), et le refus arrive avant tout acces reel aux
+    // donnees. Verifie manuellement en pointant `DATABASE_URL` vers un hote
+    // injoignable : le refus est identique, aucune connexion n'est tentee.
     const { auth } = await import('../lib/auth.js')
-    expect(auth.options.emailAndPassword?.enabled).not.toBe(true)
+    await expect(
+      auth.api.signUpEmail({
+        body: { email: 'intrus@exemple.fr', password: 'peu-importe-1234', name: 'intrus' },
+      }),
+    ).rejects.toThrow(/email and password sign up is not enabled/i)
   })
 })
