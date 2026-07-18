@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { centsVersEuros, eurosVersCents, formaterEuros, repartirAuRatio } from '../src/money.js'
+import {
+  centsVersEuros,
+  eurosVersCents,
+  formaterEuros,
+  parserEurosSaisis,
+  repartirAuRatio,
+} from '../src/money.js'
 
 describe('eurosVersCents', () => {
   it('convertit un montant simple', () => {
@@ -37,6 +43,29 @@ describe('formaterEuros', () => {
 describe('centsVersEuros', () => {
   it('fait l aller-retour', () => {
     expect(centsVersEuros(111058)).toBe(1110.58)
+  })
+})
+
+describe('parserEurosSaisis', () => {
+  it('accepte la virgule francaise et les separateurs de milliers', () => {
+    expect(parserEurosSaisis('1 110,58')).toBe(111058)
+    expect(parserEurosSaisis('1110,58')).toBe(111058)
+    expect(parserEurosSaisis('1110.58')).toBe(111058)
+    expect(parserEurosSaisis('791')).toBe(79100)
+    expect(parserEurosSaisis(' 400,00 € ')).toBe(40000)
+  })
+
+  it('arrondit au centime plutot que de laisser fuir un flottant', () => {
+    // 0.1 + 0.2 en flottant vaut 0.30000000000000004 : sans Math.round,
+    // eurosVersCents laisserait passer 30.000000000000004 centimes.
+    expect(parserEurosSaisis('0,30')).toBe(30)
+    expect(Number.isInteger(parserEurosSaisis('19,99'))).toBe(true)
+  })
+
+  it('refuse ce qui n est pas un montant', () => {
+    expect(() => parserEurosSaisis('')).toThrow(/Montant invalide/)
+    expect(() => parserEurosSaisis('abc')).toThrow(/Montant invalide/)
+    expect(() => parserEurosSaisis('12,345')).toThrow(/au centime/i)
   })
 })
 

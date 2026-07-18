@@ -18,6 +18,23 @@ export function eurosVersCents(euros: number): Cents {
   return Math.round(euros * 100)
 }
 
+/**
+ * Saisie humaine ("1 110,58", "1110.58", "400,00 €") -> centimes entiers.
+ * Vit dans le domaine, pas dans l'UI : c'est la derniere barriere avant qu'un
+ * flottant n'entre dans le systeme.
+ */
+export function parserEurosSaisis(saisie: string): Cents {
+  const nettoye = saisie.replace(/[\s\xa0\u202F€]/g, '').replace(',', '.')
+  if (nettoye === '' || !/^-?\d+(\.\d+)?$/.test(nettoye)) {
+    throw new Error(`Montant invalide : ${saisie}`)
+  }
+  const [, decimales] = nettoye.split('.')
+  if (decimales !== undefined && decimales.length > 2) {
+    throw new Error(`Un montant s'arrete au centime : ${saisie}`)
+  }
+  return eurosVersCents(Number(nettoye))
+}
+
 export function centsVersEuros(c: Cents): number {
   assertEntier(c)
   return c / 100
