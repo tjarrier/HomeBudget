@@ -1,5 +1,6 @@
 import {
   type Cents,
+  type Charge,
   type Depense,
   type ModeRepartition,
   type Parts,
@@ -10,10 +11,11 @@ import {
   ratioThomas,
   versionEnVigueurLe,
 } from '@homebudget/domain'
+import { eq, sql } from 'drizzle-orm'
 import { db } from './client.js'
 import { listerVersions } from './lecture.js'
-import { depenseDepuisLigne } from './mapper.js'
-import { depense } from './schema.js'
+import { depenseDepuisLigne, versionDepuisLigne } from './mapper.js'
+import { depense, versionConfig } from './schema.js'
 
 export interface SaisieDepense {
   /** ISO YYYY-MM-DD. */
@@ -88,4 +90,47 @@ export async function ajouterDepense(saisie: SaisieDepense): Promise<Depense> {
   const ligne = lignes[0]
   if (!ligne) throw new Error("L'insertion de la depense n'a rien renvoye.")
   return depenseDepuisLigne(ligne)
+}
+
+export interface SaisieVersion {
+  libelle: string
+  /** ISO YYYY-MM-DD : date de prise d'effet. */
+  dateDebut: string
+  salaireNetThomas: Cents
+  salaireNetLiz: Cents
+  chargesCommunes: Charge[]
+  chargesPersoThomas: Charge[]
+  chargesPersoLiz: Charge[]
+}
+
+/**
+ * Cree une version. Delegue a `creer_version_config()`, qui cloture la
+ * precedente LA VEILLE et insere la nouvelle en une seule transaction.
+ * On ne reimplemente pas cette logique ici : c'est le point de passage oblige
+ * de l'append-only, et il vit en SQL.
+ */
+export async function creerVersion(saisie: SaisieVersion): Promise<VersionConfig> {
+  const { rows } = await db.execute<{ id: string }>(sql`
+    select * from creer_version_config(
+      ${saisie.libelle},
+      ${saisie.dateDebut}::date,
+      ${saisie.salaireNetThomas},
+      ${saisie.salaireNetLiz},
+      ${JSON.stringify(saisie.chargesCommunes)}::jsonb,
+      ${JSON.stringify(saisie.chargesPersoThomas)}::jsonb,
+      ${JSON.stringify(saisie.chargesPersoLiz)}::jsonb
+    )
+  `)
+  const ligne = rows[0]
+  if (!ligne) throw new Error("creer_version_config n'a rien renvoye.")
+  // `db.execute` rend les colonnes SQL brutes (snake_case : `date_fin`,
+  // `salaire_net_thomas_cents`...), pas le vocabulaire camelCase de Drizzle
+  // qu'attend `versionDepuisLigne` : verifie empiriquement, `nouvelle.dateFin`
+  // ressort `undefined` au lieu de `null` sans cette relecture. On relit donc
+  // la ligne par son id via `db.select()`, pour ne garder qu'un seul
+  // vocabulaire de colonnes dans le mapper.
+  const relues = await db.select().from(versionConfig).where(eq(versionConfig.id, ligne.id))
+  const relue = relues[0]
+  if (!relue) throw new Error("La version creee n'a pas ete retrouvee a la relecture.")
+  return versionDepuisLigne(relue)
 }

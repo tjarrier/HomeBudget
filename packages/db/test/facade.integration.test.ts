@@ -2,7 +2,7 @@ import { formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { db, pool } from '../src/client.js'
-import { ajouterDepense } from '../src/ecriture.js'
+import { ajouterDepense, creerVersion } from '../src/ecriture.js'
 import { VERSIONS_INITIALES, importerDepenses } from '../src/import-sheet.js'
 import { listerDepenses, listerVersions } from '../src/lecture.js'
 import { depense } from '../src/schema.js'
@@ -15,7 +15,7 @@ beforeEach(async () => {
   await db.execute(sql`truncate depense, version_config cascade`)
 })
 
-async function creerVersion(libelle: string, dateDebut: string): Promise<{ id: string }> {
+async function creerVersionSql(libelle: string, dateDebut: string): Promise<{ id: string }> {
   const { rows } = await db.execute<{ id: string }>(sql`
     select * from creer_version_config(
       ${libelle}, ${dateDebut}::date, 330000, 180000,
@@ -30,8 +30,8 @@ async function creerVersion(libelle: string, dateDebut: string): Promise<{ id: s
 
 describe('listerVersions', () => {
   it('rend les versions de la plus ancienne a la plus recente, dates en chaines ISO', async () => {
-    await creerVersion('v1', '2025-07-01')
-    await creerVersion('v2', '2026-07-01')
+    await creerVersionSql('v1', '2025-07-01')
+    await creerVersionSql('v2', '2026-07-01')
 
     const versions = await listerVersions()
 
@@ -46,7 +46,7 @@ describe('listerVersions', () => {
 
 describe('listerDepenses', () => {
   it('rend les parts figees, jamais recalculees', async () => {
-    const v = await creerVersion('v1', '2026-07-01')
+    const v = await creerVersionSql('v1', '2026-07-01')
     // Des parts volontairement absurdes au regard du ratio : elles doivent
     // ressortir TELLES QUELLES. Toute lecture qui les "corrige" recalcule, donc
     // reintroduit le bug du Sheet.
@@ -188,6 +188,100 @@ describe('ajouterDepense — I2, snapshot on write', () => {
         partsPersonnalisees: { thomas: 7000, liz: 4000 },
       }),
     ).rejects.toThrow(/somme des parts/i)
+  })
+})
+
+describe('creerVersion', () => {
+  it('cloture la precedente LA VEILLE de la nouvelle prise d effet', async () => {
+    await creerVersion({
+      libelle: 'Config initiale',
+      dateDebut: '2025-07-01',
+      salaireNetThomas: 330000,
+      salaireNetLiz: 180000,
+      chargesCommunes: [{ libelle: 'Loyer', montant: 78500 }],
+      chargesPersoThomas: [],
+      chargesPersoLiz: [],
+    })
+
+    const nouvelle = await creerVersion({
+      libelle: 'Revision de loyer',
+      dateDebut: '2026-07-01',
+      salaireNetThomas: 340000,
+      salaireNetLiz: 190000,
+      chargesCommunes: [{ libelle: 'Loyer', montant: 79100 }],
+      chargesPersoThomas: [],
+      chargesPersoLiz: [],
+    })
+
+    expect(nouvelle.dateFin).toBeNull()
+    expect(nouvelle.chargesCommunes).toEqual([{ libelle: 'Loyer', montant: 79100 }])
+
+    const versions = await listerVersions()
+    expect(versions).toHaveLength(2)
+    // La VEILLE : le 30 juin, pas le 1er juillet. Un chevauchement d'un jour
+    // ferait echouer l'EXCLUDE ; un trou d'un jour rendrait une depense infigeable.
+    expect(versions[0]?.dateFin).toBe('2026-06-30')
+    expect(versions[1]?.dateDebut).toBe('2026-07-01')
+  })
+
+  it("n'altere aucune part deja figee", async () => {
+    // La raison d'etre du projet, exercee de bout en bout : une revision de
+    // config ne doit RIEN changer a l'historique.
+    await creerVersion({
+      libelle: 'v1',
+      dateDebut: '2025-01-01',
+      salaireNetThomas: 300000,
+      salaireNetLiz: 100000,
+      chargesCommunes: [],
+      chargesPersoThomas: [],
+      chargesPersoLiz: [],
+    })
+    const avant = await ajouterDepense({
+      date: '2025-06-15',
+      description: 'Course',
+      montant: 10000,
+      payePar: 'thomas',
+      type: 'charge_fixe',
+      mode: 'prorata',
+    })
+    expect(avant.parts).toEqual({ thomas: 7500, liz: 2500 })
+
+    await creerVersion({
+      libelle: 'v2 — ratio inverse',
+      dateDebut: '2026-01-01',
+      salaireNetThomas: 100000,
+      salaireNetLiz: 300000,
+      chargesCommunes: [],
+      chargesPersoThomas: [],
+      chargesPersoLiz: [],
+    })
+
+    const apres = await listerDepenses()
+    expect(apres[0]?.parts).toEqual({ thomas: 7500, liz: 2500 })
+    expect(apres[0]?.versionConfigId).toBe(avant.versionConfigId)
+  })
+
+  it('refuse une date de prise d effet anterieure ou egale a la version courante', async () => {
+    await creerVersion({
+      libelle: 'v1',
+      dateDebut: '2026-01-01',
+      salaireNetThomas: 300000,
+      salaireNetLiz: 100000,
+      chargesCommunes: [],
+      chargesPersoThomas: [],
+      chargesPersoLiz: [],
+    })
+    await expect(
+      creerVersion({
+        libelle: 'v0 retroactive',
+        dateDebut: '2025-06-01',
+        salaireNetThomas: 300000,
+        salaireNetLiz: 100000,
+        chargesCommunes: [],
+        chargesPersoThomas: [],
+        chargesPersoLiz: [],
+      }),
+    ).rejects.toThrow(/anterieure ou egale/i)
   })
 })
 
