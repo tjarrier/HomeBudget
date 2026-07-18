@@ -15,7 +15,7 @@
   "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "asNeeded" } },
   "overrides": [
     {
-      "include": ["apps/web/components/ui/**"],
+      "include": ["apps/web/components/ui/label.tsx"],
       "linter": {
         "rules": {
           "a11y": { "noLabelWithoutControl": "off" }
