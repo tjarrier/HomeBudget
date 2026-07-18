@@ -30,6 +30,10 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget
+      BETTER_AUTH_SECRET: secret-de-ci-non-sensible-32-caracteres
+      BETTER_AUTH_URL: http://localhost:3000
+      ALLOWLIST_THOMAS: thomas@exemple.fr
+      ALLOWLIST_LIZ: liz@exemple.fr
 
     steps:
       - uses: actions/checkout@v4
@@ -54,3 +58,18 @@ jobs:
       # Le seed se verifie lui-meme : il relit la base, recalcule le solde, et annule
       # tout s'il ne tombe pas exactement sur 114 580 centimes.
       - run: pnpm --filter @homebudget/db db:seed
+
+      # L'application se construit, et les trois parcours du design v1 tournent
+      # sur le seed : le canari a 114 580 centimes est verifie jusque dans l'UI.
+      - run: pnpm --filter @homebudget/web build
+
+      - run: pnpm --filter @homebudget/web exec playwright install --with-deps chromium
+
+      - run: pnpm --filter @homebudget/web test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

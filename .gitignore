@@ -6,3 +6,5 @@ dist/
 .next/
 coverage/
 .superpowers/
+apps/web/test-results/
+apps/web/playwright-report/
