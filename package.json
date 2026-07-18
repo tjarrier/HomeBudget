@@ -7,7 +7,8 @@
   "scripts": {
     "test": "pnpm -r test",
     "test:domain": "pnpm --filter @homebudget/domain test",
-    "typecheck": "tsc --build --force",
+    "dev": "pnpm --filter @homebudget/web dev",
+    "typecheck": "tsc --build --force && pnpm --filter @homebudget/web typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
     "db:up": "docker compose up -d --wait",
