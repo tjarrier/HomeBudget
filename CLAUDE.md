@@ -58,7 +58,9 @@ un fuseau, ce qui décale les bornes de version d'un jour). Drizzle rend les col
 **Postgres, et rien d'autre.** Un conteneur Docker en local (`pnpm db:up`), Supabase
 en production. On n'utilise **aucun** SDK Supabase : ni `supabase-js`, ni PostgREST,
 ni Supabase Auth. Si tu vois passer `createClient` de `@supabase/supabase-js`, c'est
-une erreur. Une seule variable d'environnement : `DATABASE_URL`.
+une erreur. Une seule variable d'environnement pour la connexion : `DATABASE_URL`
+(l'authentification a les siennes — `BETTER_AUTH_SECRET`, `ALLOWLIST_THOMAS`,
+`ALLOWLIST_LIZ`, etc. —, voir « L'application web » plus bas).
 
 **Drizzle ne possède pas le schéma.** Il donne le typage et les requêtes. Mais les
 invariants vivent dans des migrations **écrites à la main** :
@@ -69,6 +71,12 @@ invariants vivent dans des migrations **écrites à la main** :
 - `0004_depense_dans_sa_version.sql` — **le point de passage obligé de la règle 4** :
   une dépense ne peut référencer qu'une version qui *couvre sa date*. Et une version
   qui porte déjà des dépenses n'accepte plus que sa clôture.
+- `0006` — les tables de Better Auth (`user`, `session`, `account`, `verification`),
+  dans notre propre Postgres. Aucun SDK Supabase, toujours aucune Row Level Security :
+  la frontière de sécurité est le hook d'allowlist du serveur, pas la base.
+- `0007` — `CHECK personne_valide` sur `user.personne` : la base refuse physiquement
+  toute valeur hors `thomas`/`liz`, tout en laissant la colonne nullable (Better Auth
+  insère la ligne avant que le hook ne la remplisse).
 
 C'est là que se joue le projet. Une dépense rattachée à la config *courante* au lieu de
 celle *à sa date* produit des parts qui somment juste au mauvais ratio : le bug du Sheet,
@@ -79,22 +87,27 @@ que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
 > Le seul chemin autorisé est `db:generate` puis `db:migrate`. Si tu modifies le
 > schéma, génère une migration ; ne pousse jamais.
 
-## À construire au plan 2 — rien de tout ceci n'existe encore
+## L'application web
 
-> ⚠️ Les deux sections qui suivent décrivent la **cible**, pas le dépôt. `apps/web`
-> n'existe pas, il n'y a ni Server Action, ni authentification, ni allowlist. Ne les
-> lis pas comme un acquis : ce sont des garde-fous **à écrire**, et personne ne les
-> écrira si tu les crois déjà là.
+`apps/web` est une application Next.js (App Router). Elle est **UI seulement** :
 
-**Accès à la base.** L'accès se fera depuis les Server Actions uniquement. Le navigateur
-n'aura jamais d'accès direct — c'est ce qui permettra de se passer de Row Level Security :
-la frontière de sécurité sera le serveur. Tant qu'aucune frontière n'est écrite, il n'y en
-a pas.
+- Elle n'importe ni `drizzle-orm`, ni `pg`, ni `client.ts`, et n'écrit aucune ligne de
+  SQL. Son seul accès aux données est la façade de `packages/db` : `listerVersions`,
+  `listerDepenses`, `ajouterDepense`, `creerVersion`. Un test le vérifie
+  (`apps/web/test/architecture.test.ts`).
+- Elle n'implémente aucun calcul de répartition, de solde ou de résolution de version.
+- Toute écriture passe par une Server Action qui appelle `exigerSession()` **en première
+  ligne** : une Server Action est un endpoint HTTP, joignable sans jamais charger la page.
 
-**Authentification.** **Better Auth** est prévu, provider Google, avec ses tables dans notre
-propre base. Deux adresses seront autorisées, point. Il n'y aura pas d'inscription : un hook
-devra rejeter toute adresse hors allowlist, **et un test devra le vérifier**. Ce test reste
-à écrire.
+**Authentification.** Better Auth, provider Google, ses tables dans notre Postgres
+(migration `0006`). Il n'y a pas d'inscription : un hook `databaseHooks.user.create.before`
+(`apps/web/lib/allowlist.ts`) rejette toute adresse hors des deux autorisées et pose la
+colonne `user.personne`. Sans RLS, **ce hook est la sécurité du projet** ; il est verrouillé
+par `apps/web/test/allowlist.test.ts`, qui ne dépend d'aucun credential Google.
+
+**L'aperçu des parts** partage la fonction `calculerPartsPourSaisie()` avec l'écriture
+réelle. Ne les dédouble jamais : un aperçu qui diverge de l'écriture est un mensonge
+affiché à l'utilisateur.
 
 ## Commandes
 
@@ -103,6 +116,9 @@ devra rejeter toute adresse hors allowlist, **et un test devra le vérifier**. C
     pnpm typecheck       vérification des types du monorepo
     pnpm lint            Biome
     pnpm format          Biome, en écriture
+
+    pnpm dev             lance l'application sur http://localhost:3000
+    pnpm --filter @homebudget/web test:e2e    les trois parcours Playwright
 
     pnpm db:up           Postgres local (un conteneur)
     pnpm db:reset        détruit, remonte, migre et seede la base
@@ -114,3 +130,7 @@ devra rejeter toute adresse hors allowlist, **et un test devra le vérifier**. C
 vérifie que le solde vaut **exactement 114 580 centimes** (« Liz doit 1 145,80 €
 à Thomas »). Si ce test tombe, une des quatre règles ci-dessus a été violée.
 Ne l'ajuste pas pour le faire passer : trouve ce qui a cassé.
+
+Le même solde est vérifié après un aller-retour complet par Postgres
+(`packages/db/test/facade.integration.test.ts`) et à l'écran
+(`apps/web/e2e/parcours.spec.ts`).

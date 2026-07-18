@@ -1,7 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
-    "ignore": ["dist", "node_modules", ".next", "coverage", "packages/*/drizzle/meta"]
+    "ignore": [
+      "dist",
+      "node_modules",
+      ".next",
+      "coverage",
+      "packages/*/drizzle/meta",
+      "apps/web/test-results",
+      "apps/web/playwright-report"
+    ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
   "linter": {
