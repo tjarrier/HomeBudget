@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { parserEurosSaisis } from '@homebudget/domain'
 import { describe, expect, it } from 'vitest'
-import { formaterDate, formaterMontant } from '../lib/format.js'
+import { formaterDate, formaterMontant, formaterMontantSigne } from '../lib/format.js'
 
 describe('formaterMontant', () => {
   it('rend des euros lisibles avec des espaces normaux', () => {
@@ -38,5 +38,33 @@ describe("l'aide de saisie du formulaire de version ne ment pas", () => {
 
   it.each(exemples)('« %s » est accepte par parserEurosSaisis', (exemple) => {
     expect(() => parserEurosSaisis(exemple as string)).not.toThrow()
+  })
+})
+
+describe('formaterMontantSigne', () => {
+  it('affiche un montant positif sans signe par defaut', () => {
+    expect(formaterMontantSigne(114580, false)).toBe('1 145,80 €')
+  })
+
+  it('affiche un plus devant un positif quand on le demande', () => {
+    expect(formaterMontantSigne(114580, true)).toBe('+1 145,80 €')
+  })
+
+  it('affiche TOUJOURS le moins sur un negatif, meme sans le demander', () => {
+    // Un negatif rendu comme un positif serait un mensonge affiche. Le drapeau
+    // ne commande QUE le plus explicite ; le moins n'est jamais masquable.
+    expect(formaterMontantSigne(-114580, false)).toBe('−1 145,80 €')
+    expect(formaterMontantSigne(-114580, true)).toBe('−1 145,80 €')
+  })
+
+  it('utilise le vrai moins typographique, pas un trait d union', () => {
+    // U+2212. Il a la meme chasse que le plus en chiffres tabulaires : une
+    // colonne de soldes signes reste alignee au caractere pres.
+    expect(formaterMontantSigne(-100, true)).toContain('−')
+    expect(formaterMontantSigne(-100, true)).not.toContain('-')
+  })
+
+  it('n affiche aucun signe a zero', () => {
+    expect(formaterMontantSigne(0, true)).toBe('0,00 €')
   })
 })
