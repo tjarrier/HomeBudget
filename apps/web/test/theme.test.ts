@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -43,5 +44,61 @@ describe('globals.css ne garde rien du theme shadcn par defaut', () => {
   it('charge les deux familles de la direction visuelle', () => {
     expect(GLOBALS).toMatch(/--font-sans:\s*var\(--font-inter\)/)
     expect(GLOBALS).toMatch(/--font-heading:\s*var\(--font-instrument-serif\)/)
+  })
+})
+
+const RACINE = fileURLToPath(new URL('..', import.meta.url))
+const DOSSIERS = ['app', 'components']
+
+function fichiersTsx(dossier: string): string[] {
+  const trouves: string[] = []
+  const parcourir = (d: string) => {
+    for (const entree of readdirSync(d)) {
+      const complet = join(d, entree)
+      if (statSync(complet).isDirectory()) parcourir(complet)
+      else if (/\.tsx?$/.test(entree)) trouves.push(complet)
+    }
+  }
+  try {
+    parcourir(join(RACINE, dossier))
+  } catch {
+    // Dossier absent : rien a verifier.
+  }
+  return trouves
+}
+
+/**
+ * Une classe de palette Tailwind ecrite en dur court-circuite le theme : le
+ * critere de fin de l'issue A2 — « changer un token se repercute partout » —
+ * serait faux. Les couleurs passent par les tokens (`bg-background`,
+ * `text-muted-foreground`, `border-border`, `text-destructive`), sans
+ * exception.
+ */
+const PALETTE_EN_DUR =
+  /\b(?:bg|text|border|ring|divide|placeholder|from|via|to)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/
+
+describe('aucune couleur ne court-circuite les tokens', () => {
+  it('n utilise aucune classe de palette Tailwind en dur', () => {
+    const fautifs: string[] = []
+    for (const dossier of DOSSIERS) {
+      for (const fichier of fichiersTsx(dossier)) {
+        if (PALETTE_EN_DUR.test(readFileSync(fichier, 'utf-8'))) {
+          fautifs.push(fichier.replace(RACINE, ''))
+        }
+      }
+    }
+    expect(fautifs).toEqual([])
+  })
+
+  it('n utilise ni bg-white ni text-white en dur', () => {
+    const fautifs: string[] = []
+    for (const dossier of DOSSIERS) {
+      for (const fichier of fichiersTsx(dossier)) {
+        if (/\b(?:bg|text|border)-white\b/.test(readFileSync(fichier, 'utf-8'))) {
+          fautifs.push(fichier.replace(RACINE, ''))
+        }
+      }
+    }
+    expect(fautifs).toEqual([])
   })
 })
