@@ -1,4 +1,5 @@
 import { formaterMontant } from '@/lib/format'
+import { exigerSession } from '@/lib/session'
 import { listerDepenses } from '@homebudget/db'
 import { type Resume, phraseSynthese, resumer } from '@homebudget/domain'
 
@@ -15,6 +16,14 @@ function Chiffre({ libelle, valeur }: { libelle: string; valeur: number }) {
 }
 
 export default async function TableauDeBord() {
+  // EN PREMIERE LIGNE, avant toute lecture. Le layout du groupe (app) appelle
+  // deja `exigerSession()`, mais Next.js ne garantit pas de re-rendre un layout
+  // a chaque requete d'un segment : sa documentation deconseille explicitement
+  // le controle d'acces en layout. Le middleware ne rattrape pas non plus — il
+  // constate la PRESENCE du cookie, sans en verifier la signature. Cet ecran
+  // expose le solde : la garde vit ici, le layout n'est que la profondeur.
+  await exigerSession()
+
   // Les lignes sont lues telles quelles ; le calcul est fait par le domaine, ici,
   // en TypeScript. Aucun SELECT n'additionne de solde.
   const resume: Resume = resumer(await listerDepenses())
