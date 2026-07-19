@@ -35,6 +35,19 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
     setMode(modeParDefaut(nouveau))
   }
 
+  // `type` et `mode` ne sont PAS independants : le mode « transfert » va avec le
+  // type « transfert », et avec lui seul. Le serveur refuse desormais les
+  // combinaisons croisees (`lib/saisie.ts`) ; l'UI ne doit donc pas les proposer,
+  // sous peine de faire echouer un choix qu'elle offrait elle-meme.
+  const estTransfert = type === 'transfert'
+  const modesProposes = estTransfert
+    ? ([['transfert', 'Transfert']] as const)
+    : ([
+        ['prorata', 'Au prorata des revenus'],
+        ['moitie', 'Moitié-moitié'],
+        ['personnalise', 'Parts personnalisées'],
+      ] as const)
+
   // Apercu en direct : chaque changement significatif redemande au SERVEUR de
   // rejouer le calcul. Rien de la config ne descend dans le navigateur.
   useEffect(() => {
@@ -152,14 +165,24 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
         <select
           name="mode"
           value={mode}
+          disabled={estTransfert}
           onChange={(e) => setMode(e.target.value)}
-          className="rounded-md border border-slate-300 p-2"
+          className="rounded-md border border-slate-300 p-2 disabled:bg-slate-100"
         >
-          <option value="prorata">Au prorata des revenus</option>
-          <option value="moitie">Moitié-moitié</option>
-          <option value="personnalise">Parts personnalisées</option>
-          <option value="transfert">Transfert</option>
+          {modesProposes.map(([valeur, libelle]) => (
+            <option key={valeur} value={valeur}>
+              {libelle}
+            </option>
+          ))}
         </select>
+        {/* Un <select disabled> n'est pas soumis par le navigateur : sans ce
+            champ cache, `mode` arriverait vide au serveur. */}
+        {estTransfert && <input type="hidden" name="mode" value="transfert" />}
+        {estTransfert && (
+          <span className="text-xs text-slate-500">
+            Un transfert ne se répartit pas : la totalité est portée au crédit de celui qui verse.
+          </span>
+        )}
       </label>
 
       {mode === 'personnalise' && (

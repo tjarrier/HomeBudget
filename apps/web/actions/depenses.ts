@@ -1,81 +1,21 @@
 'use server'
 
+import { type SaisieBrute, normaliser } from '@/lib/saisie'
 import { exigerSession } from '@/lib/session'
-import {
-  type SaisieDepense,
-  ajouterDepense,
-  calculerPartsPourSaisie,
-  listerVersions,
-} from '@homebudget/db'
-import {
-  type Cents,
-  type ModeRepartition,
-  type Parts,
-  type Personne,
-  type TypeDepense,
-  parserEurosSaisis,
-  totalChargesCommunes,
-} from '@homebudget/domain'
+import { ajouterDepense, calculerPartsPourSaisie, listerVersions } from '@homebudget/db'
+import { type Cents, type Parts, totalChargesCommunes } from '@homebudget/domain'
 import { revalidatePath } from 'next/cache'
 import { type Resultat, enEchec } from './resultat'
 
-/** Ce que le navigateur envoie : des chaines, jamais des nombres. */
-export interface SaisieBrute {
-  date: string
-  description: string
-  montant: string
-  payePar: string
-  type: string
-  mode: string
-  partThomas?: string
-  partLiz?: string
-  commentaire?: string
-}
+// Le formulaire client importe ce type depuis '@/actions/depenses' : on le
+// reexporte pour ne pas etaler le changement de module dans le composant.
+export type { SaisieBrute }
 
 export interface Apercu {
   parts: Parts
   versionLibelle: string
   versionDateDebut: string
   totalChargesCommunes: Cents
-}
-
-const PERSONNES: readonly string[] = ['thomas', 'liz']
-const TYPES: readonly string[] = ['charge_fixe', 'courante', 'transfert']
-const MODES: readonly string[] = ['prorata', 'moitie', 'personnalise', 'transfert']
-
-/**
- * Validation de la frontiere : le navigateur peut envoyer n'importe quoi.
- * On convertit en centimes ICI, une fois — aucun flottant ne va plus loin.
- */
-function normaliser(brut: SaisieBrute): SaisieDepense {
-  if (!PERSONNES.includes(brut.payePar)) throw new Error(`Payeur inconnu : ${brut.payePar}`)
-  if (!TYPES.includes(brut.type)) throw new Error(`Type de dépense inconnu : ${brut.type}`)
-  if (!MODES.includes(brut.mode)) throw new Error(`Mode de répartition inconnu : ${brut.mode}`)
-  if (!brut.description.trim()) throw new Error('La description ne peut pas être vide.')
-
-  const mode = brut.mode as ModeRepartition
-  const partsPersonnalisees =
-    mode === 'personnalise'
-      ? {
-          thomas: parserEurosSaisis(brut.partThomas ?? ''),
-          liz: parserEurosSaisis(brut.partLiz ?? ''),
-        }
-      : undefined
-
-  const commentaire = brut.commentaire?.trim()
-
-  return {
-    date: brut.date,
-    description: brut.description.trim(),
-    montant: parserEurosSaisis(brut.montant),
-    payePar: brut.payePar as Personne,
-    type: brut.type as TypeDepense,
-    mode,
-    // `exactOptionalPropertyTypes` interdit d'assigner `undefined` a une cle
-    // optionnelle : on n'ajoute la cle que lorsqu'elle a une valeur.
-    ...(partsPersonnalisees ? { partsPersonnalisees } : {}),
-    ...(commentaire ? { commentaire } : {}),
-  }
 }
 
 /**
