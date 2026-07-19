@@ -14,13 +14,18 @@ import { cn } from '@/lib/utils'
  *
  * Le natif porte gratuitement le clavier, l'ARIA et l'etat disabled : c'est la
  * raison meme pour laquelle la spec garde les controles.
+ *
+ * `appearance-none` retire la fleche du systeme ; le chevron qui la remplace
+ * est pose par une regle CSS ciblant `[data-slot="select"]` dans
+ * `app/globals.css` (un `background-image` colore au token, pas un litteral).
+ * `pr-9` laisse la place pour qu'un intitule long ne passe jamais dessous.
  */
 function Select({ className, ...props }: React.ComponentProps<'select'>) {
   return (
     <select
       data-slot="select"
       className={cn(
-        'h-12 w-full min-w-0 appearance-none rounded-t-md border-0 border-b border-border bg-muted px-3 text-base outline-none transition-colors focus-visible:border-b-2 focus-visible:border-primary disabled:pointer-events-none disabled:opacity-50',
+        'h-12 w-full min-w-0 appearance-none rounded-t-md border-0 border-b border-input bg-muted pr-9 pl-3 text-base outline-none transition-colors focus-visible:border-b-2 focus-visible:border-primary disabled:pointer-events-none disabled:opacity-50',
         className,
       )}
       {...props}

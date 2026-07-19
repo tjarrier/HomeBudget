@@ -17,6 +17,9 @@ export default async function Depenses() {
 
   return (
     <div className="flex flex-col gap-10 sm:gap-14">
+      {/* `sr-only` par coherence avec les deux autres ecrans (issue #6) :
+          « Ajouter une depense » (h2 ci-dessous) porte deja le titre visuel. */}
+      <h1 className="sr-only">Dépenses</h1>
       <FormulaireDepense personne={session.personne} />
 
       <Section titre="Dépenses">
