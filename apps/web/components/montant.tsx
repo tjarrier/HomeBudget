@@ -10,16 +10,22 @@ import type { Cents } from '@homebudget/domain'
  * la personne regardee, ne derive jamais un signe d'un contexte. C'est la garde
  * contre le piege du mode transfert documente dans CLAUDE.md.
  *
- * Aucune couleur ne code un sens : le solde est une DIRECTION (qui doit a qui),
- * pas un positif/negatif. Rouge/vert s'inverserait selon lequel des deux
- * utilisateurs regarde l'ecran.
+ * Aucune couleur ne teinte un solde. La maquette du design system tinte le
+ * positif en emerald et le negatif en rouge ; l'ecran « Répartition » affiche
+ * les deux soldes cote a cote, et ces deux soldes sont LE MEME FAIT vu des deux
+ * bouts (+1 145,80 pour Thomas, −1 145,80 pour Liz). Les teinter reviendrait a
+ * dire que Thomas a raison et Liz a tort d'une seule et meme dette. Le signe et
+ * le libelle portent la direction ; la couleur n'ajouterait qu'un jugement.
  */
 const NIVEAUX = {
-  // Instrument Serif : chiffres proportionnels. Reserve a un montant ISOLE,
-  // jamais a un montant qui a un voisin au-dessus ou en dessous.
-  heros: 'font-heading text-[clamp(2.75rem,12vw,4rem)] leading-none tracking-[-0.02em]',
-  notable: 'text-xl font-semibold tabular-nums',
-  discret: 'text-[0.9375rem] font-medium tabular-nums text-muted-foreground',
+  /** Le solde du bandeau sombre. Le seul montant de cette taille. */
+  heros: 'text-3xl font-semibold tabular-nums tracking-[-0.02em]',
+  /** Les quatre chiffres cles du tableau de bord. */
+  notable: 'text-[1.375rem] font-semibold tabular-nums tracking-[-0.02em]',
+  /** Le montant d'une ligne de liste, d'une ligne de bilan. */
+  courant: 'text-sm font-semibold tabular-nums',
+  /** Une valeur de second plan : meta, detail de parts. */
+  discret: 'text-xs font-medium tabular-nums text-muted-foreground',
 } as const
 
 export function Montant({

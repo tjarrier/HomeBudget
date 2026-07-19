@@ -30,7 +30,16 @@ describe("l'aide de saisie du formulaire de version ne ment pas", () => {
     fileURLToPath(new URL('../app/(app)/config/formulaire-version.tsx', import.meta.url)),
     'utf-8',
   )
-  const exemples = [...source.matchAll(/placeholder="([^"]+)"/g)].map(([, v]) => v)
+  // Seuls les champs MONETAIRES sont concernes : `inputMode="decimal"` est
+  // exactement ce qui les distingue. Ratisser tous les placeholders du fichier
+  // ferait echouer ce test des qu'un champ texte en recoit un (« Révision loyer
+  // 2027 » sur le libelle), ce qui ne dit rien du format des montants.
+  const exemples = source
+    .split('<Input')
+    .slice(1)
+    .map((element) => element.split('/>')[0] ?? '')
+    .filter((element) => element.includes('inputMode="decimal"'))
+    .flatMap((element) => [...element.matchAll(/placeholder="([^"]+)"/g)].map(([, v]) => v))
 
   it('propose au moins un exemple de format', () => {
     expect(exemples.length).toBeGreaterThan(0)

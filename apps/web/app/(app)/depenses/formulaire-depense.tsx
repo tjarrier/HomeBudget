@@ -6,6 +6,7 @@ import {
   ajouterDepenseAction,
   previsualiserPartsAction,
 } from '@/actions/depenses'
+import { Carte } from '@/components/carte'
 import { Montant } from '@/components/montant'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -103,161 +104,167 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
   }, [etat])
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <h2 className="font-heading text-[1.75rem] leading-tight">Ajouter une dépense</h2>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="date">Date</Label>
-        <Input
-          id="date"
-          name="date"
-          type="date"
-          required
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="description">Description</Label>
-        <Input
-          id="description"
-          name="description"
-          required
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="montant">Montant (€)</Label>
-        <Input
-          id="montant"
-          name="montant"
-          required
-          inputMode="decimal"
-          placeholder="1 110,58"
-          value={montant}
-          onChange={(e) => setMontant(e.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="payePar">Payé par</Label>
-        <Select
-          id="payePar"
-          name="payePar"
-          value={payePar}
-          onChange={(e) => setPayePar(e.target.value)}
-        >
-          <option value="thomas">Thomas</option>
-          <option value="liz">Liz</option>
-        </Select>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="type">Type</Label>
-        <Select
-          id="type"
-          name="type"
-          value={type}
-          onChange={(e) => changerType(e.target.value as TypeDepense)}
-        >
-          <option value="courante">Dépense courante</option>
-          <option value="charge_fixe">Charge fixe</option>
-          <option value="transfert">Transfert / remboursement</option>
-        </Select>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="mode">Répartition</Label>
-        <Select
-          id="mode"
-          name="mode"
-          value={mode}
-          disabled={estTransfert}
-          onChange={(e) => setMode(e.target.value)}
-        >
-          {modesProposes.map(([valeur, libelle]) => (
-            <option key={valeur} value={valeur}>
-              {libelle}
-            </option>
-          ))}
-        </Select>
-        {/* Un <select disabled> n'est pas soumis par le navigateur : sans ce
-            champ cache, `mode` arriverait vide au serveur. */}
-        {estTransfert && <input type="hidden" name="mode" value="transfert" />}
-        {estTransfert && (
-          <span className="text-[0.8125rem] text-muted-foreground">
-            Un transfert ne se répartit pas : la totalité est portée au crédit de celui qui verse.
-          </span>
-        )}
-      </div>
-
-      {mode === 'personnalise' && (
+    <Carte titre="Ajouter une dépense">
+      <form action={action} className="flex flex-col gap-3.5">
         <div className="flex gap-3">
           <div className="flex flex-1 flex-col gap-1.5">
-            <Label htmlFor="partThomas">Part Thomas (€)</Label>
+            <Label htmlFor="date">Date</Label>
             <Input
-              id="partThomas"
-              name="partThomas"
-              inputMode="decimal"
-              value={partThomas}
-              onChange={(e) => setPartThomas(e.target.value)}
+              id="date"
+              name="date"
+              type="date"
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
             />
           </div>
           <div className="flex flex-1 flex-col gap-1.5">
-            <Label htmlFor="partLiz">Part Liz (€)</Label>
-            <Input
-              id="partLiz"
-              name="partLiz"
-              inputMode="decimal"
-              value={partLiz}
-              onChange={(e) => setPartLiz(e.target.value)}
-            />
+            <Label htmlFor="payePar">Payé par</Label>
+            <Select
+              id="payePar"
+              name="payePar"
+              value={payePar}
+              onChange={(e) => setPayePar(e.target.value)}
+            >
+              <option value="thomas">Thomas</option>
+              <option value="liz">Liz</option>
+            </Select>
           </div>
         </div>
-      )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="commentaire">Commentaire (facultatif)</Label>
-        <Input id="commentaire" name="commentaire" />
-      </div>
-
-      {apercu && (
-        <div data-testid="apercu-parts" className="flex flex-col gap-1 rounded-md bg-muted p-4">
-          <p className="font-medium">
-            Thomas{' '}
-            <span data-testid="apercu-thomas">
-              <Montant cents={apercu.parts.thomas} niveau="notable" />
-            </span>
-            {' · '}
-            Liz{' '}
-            <span data-testid="apercu-liz">
-              <Montant cents={apercu.parts.liz} niveau="notable" />
-            </span>
-          </p>
-          <p className="text-[0.8125rem] text-muted-foreground">
-            Config en vigueur au {formaterDate(apercu.versionDateDebut)} : {apercu.versionLibelle} —
-            charges communes <Montant cents={apercu.totalChargesCommunes} niveau="discret" />
-          </p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="description">Description</Label>
+          <Input
+            id="description"
+            name="description"
+            required
+            placeholder="Loyer + charges juillet"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
-      )}
 
-      {messageApercu && (
-        <p data-testid="message-erreur-apercu" className="text-sm text-destructive">
-          {messageApercu}
-        </p>
-      )}
-      {etat && !etat.ok && (
-        <p data-testid="message-erreur-envoi" className="text-sm text-destructive">
-          {etat.message}
-        </p>
-      )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="montant">Montant (€)</Label>
+          <Input
+            id="montant"
+            name="montant"
+            required
+            inputMode="decimal"
+            placeholder="1 110,58"
+            value={montant}
+            onChange={(e) => setMontant(e.target.value)}
+          />
+        </div>
 
-      <Button type="submit" disabled={enCours}>
-        {enCours ? 'Enregistrement…' : 'Ajouter la dépense'}
-      </Button>
-    </form>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="type">Type</Label>
+          <Select
+            id="type"
+            name="type"
+            value={type}
+            onChange={(e) => changerType(e.target.value as TypeDepense)}
+          >
+            <option value="courante">Dépense courante</option>
+            <option value="charge_fixe">Charge fixe</option>
+            <option value="transfert">Transfert / remboursement</option>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="mode">Répartition</Label>
+          <Select
+            id="mode"
+            name="mode"
+            value={mode}
+            disabled={estTransfert}
+            onChange={(e) => setMode(e.target.value)}
+          >
+            {modesProposes.map(([valeur, libelle]) => (
+              <option key={valeur} value={valeur}>
+                {libelle}
+              </option>
+            ))}
+          </Select>
+          {/* Un <select disabled> n'est pas soumis par le navigateur : sans ce
+              champ cache, `mode` arriverait vide au serveur. */}
+          {estTransfert && <input type="hidden" name="mode" value="transfert" />}
+          {estTransfert && (
+            <span className="text-xs text-muted-foreground">
+              Un transfert ne se répartit pas : la totalité est portée au crédit de celui qui verse.
+            </span>
+          )}
+        </div>
+
+        {mode === 'personnalise' && (
+          <div className="flex gap-3">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="partThomas">Part Thomas (€)</Label>
+              <Input
+                id="partThomas"
+                name="partThomas"
+                inputMode="decimal"
+                value={partThomas}
+                onChange={(e) => setPartThomas(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="partLiz">Part Liz (€)</Label>
+              <Input
+                id="partLiz"
+                name="partLiz"
+                inputMode="decimal"
+                value={partLiz}
+                onChange={(e) => setPartLiz(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="commentaire">Commentaire (facultatif)</Label>
+          <Input id="commentaire" name="commentaire" />
+        </div>
+
+        {/* L'apercu est calcule par la MEME fonction que l'ecriture, cote
+            serveur. Un apercu qui divergerait de ce qui sera enregistre serait
+            un mensonge affiche a l'utilisateur. */}
+        {apercu && (
+          <div
+            data-testid="apercu-parts"
+            className="rounded-lg border border-subtle bg-muted px-3.5 py-3"
+          >
+            <p className="text-sm font-semibold">Aperçu des parts</p>
+            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
+              <span data-testid="apercu-thomas">
+                Thomas <Montant cents={apercu.parts.thomas} niveau="courant" />
+              </span>
+              <span data-testid="apercu-liz">
+                Liz <Montant cents={apercu.parts.liz} niveau="courant" />
+              </span>
+            </p>
+            <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
+              Config en vigueur au {formaterDate(apercu.versionDateDebut)} : {apercu.versionLibelle}{' '}
+              — charges communes <Montant cents={apercu.totalChargesCommunes} niveau="discret" />
+            </p>
+          </div>
+        )}
+
+        {messageApercu && (
+          <p data-testid="message-erreur-apercu" className="text-sm text-destructive">
+            {messageApercu}
+          </p>
+        )}
+        {etat && !etat.ok && (
+          <p data-testid="message-erreur-envoi" className="text-sm text-destructive">
+            {etat.message}
+          </p>
+        )}
+
+        <Button type="submit" disabled={enCours} className="w-full">
+          {enCours ? 'Enregistrement…' : 'Ajouter la dépense'}
+        </Button>
+      </form>
+    </Carte>
   )
 }
