@@ -93,8 +93,18 @@ que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
 
 - Elle n'importe ni `drizzle-orm`, ni `pg`, ni `client.ts`, et n'écrit aucune ligne de
   SQL. Son seul accès aux données est la façade de `packages/db` : `listerVersions`,
-  `listerDepenses`, `ajouterDepense`, `creerVersion`. Un test le vérifie
-  (`apps/web/test/architecture.test.ts`).
+  `listerDepenses`, `ajouterDepense`, `creerVersion`, `calculerPartsPourSaisie`.
+  `apps/web/test/architecture.test.ts` le vérifie par **liste blanche** : tout nom
+  importé de `@homebudget/db` hors de cette façade fait échouer le test — en
+  particulier `db`, le client Drizzle brut, que `packages/db` réexporte.
+  **Une seule exception, déclarée et commentée dans le test** : `lib/auth.ts`, qui
+  reçoit `db` et les tables d'auth parce que `drizzleAdapter` de Better Auth exige
+  l'instance Drizzle elle-même. Ce fichier ne contient aucune requête métier.
+- Chaque `page.tsx` du groupe `(app)` appelle `exigerSession()` **en première ligne**.
+  Le layout l'appelle aussi, mais Next.js ne garantit pas de re-rendre un layout à
+  chaque requête de segment, et `middleware.ts` ne fait qu'une vérification
+  *optimiste* (présence du cookie, pas sa signature) — délibérément. La garde réelle
+  est dans la page ; un test statique la verrouille pour toute page future.
 - Elle n'implémente aucun calcul de répartition, de solde ou de résolution de version.
 - Toute écriture passe par une Server Action qui appelle `exigerSession()` **en première
   ligne** : une Server Action est un endpoint HTTP, joignable sans jamais charger la page.

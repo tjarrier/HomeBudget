@@ -114,6 +114,95 @@ describe("apps/web n'accede jamais a la base directement", () => {
   })
 })
 
+/**
+ * La facade autorisee de `@homebudget/db`. Liste BLANCHE, volontairement : une
+ * liste noire de motifs interdits ne protege que de ce qu'on a su prevoir, et
+ * `packages/db/src/index.ts` reexporte `db` (le client Drizzle brut) ainsi que
+ * les tables de Better Auth. Un composant qui ecrirait
+ * `db.select().from(depense)` en chainage multi-lignes echapperait a MOTIFS_SQL
+ * (qui ne matche `select...from` que sur une meme ligne) : c'est l'import qu'il
+ * faut fermer, pas la requete.
+ *
+ * Ajouter un nom ici est une decision d'architecture : la valeur par defaut est
+ * de le refuser, et d'elargir plutot la facade de `packages/db`.
+ */
+const FACADE_DB = [
+  'listerVersions',
+  'listerDepenses',
+  'ajouterDepense',
+  'creerVersion',
+  'calculerPartsPourSaisie',
+  'SaisieDepense',
+  'SaisieVersion',
+]
+
+/**
+ * L'UNIQUE exception, explicite et justifiee : Better Auth exige l'instance
+ * Drizzle elle-meme (`drizzleAdapter(db, ...)`) et les objets de tables de son
+ * schema. Aucune facade ne peut se substituer a cela. Ce fichier ne contient
+ * aucune requete metier — il cable l'adaptateur, rien de plus.
+ *
+ * Toute autre entree dans cette liste doit etre justifiee ici de la meme
+ * maniere ; a defaut, c'est une regression.
+ */
+const EXCEPTIONS_ACCES_DB = ['lib/auth.ts']
+
+/** Les noms importes depuis `@homebudget/db`, imports mono ou multi-lignes. */
+function importsDepuisDb(contenu: string): string[] {
+  const noms: string[] = []
+  // La clause est soit un bloc `{...}` (qui peut s'etaler sur plusieurs lignes,
+  // d'ou `[^}]`), soit une clause sans accolades bornee a UNE ligne. Un `[\s\S]*?`
+  // libre traverserait l'import precedent et rapporterait ses noms a tort.
+  const motif = /import\s+(\{[^}]*\}|[^;\n]*?)\s+from\s+['"]@homebudget\/db['"]/g
+
+  for (const [, clause] of contenu.matchAll(motif)) {
+    if (!clause) continue
+    const accolades = clause.match(/\{([\s\S]*)\}/)
+    if (!accolades?.[1]) {
+      // `import db from ...` ou `import * as db from ...` : jamais legitime,
+      // on le signale sous un nom parlant.
+      noms.push(clause.trim() || '(import sans accolades)')
+      continue
+    }
+    for (const brut of accolades[1].split(',')) {
+      const nom = brut.replace(/^\s*type\s+/, '').trim()
+      // `x as y` : c'est `x` qui vient du paquet.
+      const source = nom.split(/\s+as\s+/)[0]?.trim()
+      if (source) noms.push(source)
+    }
+  }
+
+  return noms
+}
+
+describe("apps/web n'importe de packages/db que sa facade", () => {
+  it('n importe ni `db`, ni une table, hors de l exception commentee lib/auth.ts', () => {
+    const fautifs: string[] = []
+
+    for (const dossier of DOSSIERS) {
+      for (const fichier of fichiersTs(dossier)) {
+        const relatif = fichier.replace(RACINE, '')
+        if (EXCEPTIONS_ACCES_DB.includes(relatif)) continue
+
+        const hors = importsDepuisDb(readFileSync(fichier, 'utf-8')).filter(
+          (nom) => !FACADE_DB.includes(nom),
+        )
+        for (const nom of hors) fautifs.push(`${relatif} : ${nom}`)
+      }
+    }
+
+    expect(fautifs).toEqual([])
+  })
+
+  it("l'exception ne couvre qu'un fichier reellement present", () => {
+    // Une exception qui pointe un fichier disparu est une porte laissee
+    // ouverte pour rien : on veut qu'elle tombe avec le fichier.
+    for (const relatif of EXCEPTIONS_ACCES_DB) {
+      expect(() => statSync(join(RACINE, relatif))).not.toThrow()
+    }
+  })
+})
+
 describe('chaque page du groupe (app) exige une session', () => {
   it('appelle exigerSession(), sans dependre du rendu du layout', () => {
     // Next.js ne garantit PAS de re-rendre un layout a chaque requete d'un
