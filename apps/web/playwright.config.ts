@@ -14,8 +14,10 @@ export default defineConfig({
   reporter: 'list',
   use: { baseURL: 'http://localhost:3000' },
   webServer: {
-    // `build` puis `start` : on teste ce qui sera reellement servi.
-    command: 'pnpm build && pnpm start',
+    // `start` seul : on teste ce qui sera reellement servi, mais le build est un
+    // prerequis, pas une etape d'ici. La CI et `task test:e2e` construisent avant ;
+    // le refaire ici ferait payer deux builds de production a chaque passage.
+    command: 'pnpm start',
     url: 'http://localhost:3000/login',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

@@ -4,8 +4,14 @@ version: '3'
 # une commande, elle l'appelle. Ce fichier ajoute ce qu'un script npm ne sait pas
 # dire — les prerequis (Docker, `.env`) et l'ordre dans lequel les suites doivent
 # tourner pour que le canari a 114 580 centimes veuille dire quelque chose.
-
-dotenv: ['.env']
+#
+# Le `.env` racine n'est charge QUE par les taches qui parlent a Postgres en dehors
+# de Next (migrations, seed, integration). Le charger globalement casserait
+# l'application : Task l'exporterait dans l'environnement du processus, et Next
+# n'ecrase jamais une variable deja presente dans `process.env` — les identifiants
+# Google d'`apps/web/.env.local` seraient ignores au profit des champs vides du
+# `.env.example` recopie. La connexion echouerait sur une erreur OAuth
+# incomprehensible, et seulement via `task dev`.
 
 vars:
   WEB: pnpm --filter @homebudget/web
@@ -54,7 +60,8 @@ tasks:
 
   test:integration:
     desc: Les invariants SQL et la facade, contre Postgres (necessite `task db:up`)
-    deps: [_docker-requis]
+    deps: [_postgres-requis]
+    dotenv: ['.env']
     cmds:
       - '{{.DB}} test:integration'
 
@@ -62,21 +69,24 @@ tasks:
     desc: >-
       Les trois parcours Playwright. Ils ecrivent en base et le canari verifie le
       seed : lance `task test:e2e:frais` si la base a deja servi.
-    deps: [_docker-requis]
+    deps: [_postgres-requis]
     cmds:
+      # Playwright ne sert plus que `next start` : le build est ici, une seule fois.
+      - task: build
+      - task: _playwright-installe
       - '{{.WEB}} test:e2e'
 
   test:e2e:frais:
     desc: Reinitialise la base (DESTRUCTIF) puis joue les parcours Playwright
     cmds:
-      - task: db:reset
+      - task: _db:reset
       - task: test:e2e
 
   # --- Application ---------------------------------------------------------
 
   dev:
     desc: Lance l'application sur http://localhost:3000
-    deps: [_docker-requis]
+    deps: [_postgres-requis]
     cmds:
       - pnpm dev
 
@@ -99,13 +109,18 @@ tasks:
 
   db:reset:
     desc: DESTRUCTIF — detruit le volume, remonte, migre et seede la base
+    # La confirmation vit sur ce point d'entree interactif, et nulle part ailleurs :
+    # sans TTY (hook git, runner, shell d'agent) Task abandonne avec un exit 201 que
+    # rien ne distingue d'un test rouge. Les chaines automatisees passent par
+    # `_db:reset`, dont le nom des appelants dit deja qu'ils detruisent.
     prompt: Cela detruit les donnees locales. Continuer ?
     cmds:
-      - pnpm db:reset
+      - task: _db:reset
 
   db:migrate:
     desc: Applique les migrations en attente
-    deps: [_docker-requis]
+    deps: [_postgres-requis]
+    dotenv: ['.env']
     cmds:
       - '{{.DB}} db:migrate'
 
@@ -113,12 +128,14 @@ tasks:
     desc: >-
       Genere une migration depuis le schema Drizzle. Le seul chemin autorise —
       `drizzle-kit push` supprimerait nos garde-fous.
+    dotenv: ['.env']
     cmds:
       - '{{.DB}} db:generate'
 
   db:seed:
     desc: Rejoue le Sheet en base ; le seed annule tout s'il ne tombe pas sur 114 580
-    deps: [_docker-requis]
+    deps: [_postgres-requis]
+    dotenv: ['.env']
     cmds:
       - '{{.DB}} db:seed'
 
@@ -136,20 +153,42 @@ tasks:
       DESTRUCTIF — rejoue localement la sequence exacte du job GitHub Actions,
       base neuve comprise. C'est ce qui decide si une PR passe.
     cmds:
+      # L'ordre suit le workflow pas a pas. Le seed vient APRES l'integration :
+      # chaque `*.integration.test.ts` fait un `truncate ... cascade`, donc seeder
+      # avant reviendrait a jouer le canari a l'ecran contre les fixtures du dernier
+      # test d'integration.
+      - pnpm install --frozen-lockfile
       - task: lint
       - task: typecheck
       - task: test
-      - task: db:reset
+      - pnpm db:fresh
+      - task: db:migrate
       - task: test:integration
-      - task: build
+      - task: db:seed
       - task: test:e2e
 
   # --- Interne --------------------------------------------------------------
 
-  _docker-requis:
+  _db:reset:
     internal: true
-    # Sans conteneur, ces suites echouent sur un timeout de connexion illisible.
-    # Mieux vaut dire tout de suite quoi lancer.
+    cmds:
+      - pnpm db:reset
+
+  _playwright-installe:
+    internal: true
+    # La CI fait `playwright install --with-deps chromium`. En local on omet
+    # `--with-deps` : il lance apt-get sous sudo, ce qui n'a pas sa place dans une
+    # commande de test. Sans cette etape, un premier clone meurt sur
+    # « Executable doesn't exist at ~/.cache/ms-playwright/chromium-… ».
+    cmds:
+      - '{{.WEB}} exec playwright install chromium'
+
+  _postgres-requis:
+    internal: true
+    # `docker compose ps --status running` ne dit que « le conteneur existe ». Pendant
+    # la fenetre de demarrage de Postgres, il passe et la suite echoue sur
+    # « the database system is starting up » — l'erreur illisible que ce garde-fou
+    # promet justement de remplacer. `pg_isready` verifie ce qui compte vraiment.
     preconditions:
-      - sh: docker compose ps --status running --quiet postgres | grep -q .
-        msg: 'Postgres ne tourne pas. Lance `task db:up` (ou `task db:reset`).'
+      - sh: docker compose exec -T postgres pg_isready -U homebudget -q
+        msg: 'Postgres ne repond pas. Lance `task db:up` (ou `task db:reset`).'
