@@ -236,11 +236,12 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
           >
             <p className="text-sm font-semibold">Aperçu des parts</p>
             <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
-              <span data-testid="apercu-thomas">
-                Thomas <Montant cents={apercu.parts.thomas} niveau="courant" />
+              <span>
+                Thomas{' '}
+                <Montant cents={apercu.parts.thomas} niveau="courant" testId="apercu-thomas" />
               </span>
-              <span data-testid="apercu-liz">
-                Liz <Montant cents={apercu.parts.liz} niveau="courant" />
+              <span>
+                Liz <Montant cents={apercu.parts.liz} niveau="courant" testId="apercu-liz" />
               </span>
             </p>
             <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
