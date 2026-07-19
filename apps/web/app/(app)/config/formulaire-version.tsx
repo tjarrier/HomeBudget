@@ -95,7 +95,7 @@ export function FormulaireVersion({ courante }: { courante: VersionConfig | null
             name={nom}
             rows={3}
             defaultValue={enLignes(charges as Charge[])}
-            className="rounded-t-md border-0 border-b border-border bg-muted p-3 font-mono text-xs outline-none transition-colors focus-visible:border-b-2 focus-visible:border-primary"
+            className="rounded-t-md border-0 border-b border-input bg-muted p-3 font-mono text-xs outline-none transition-colors focus-visible:border-b-2 focus-visible:border-primary"
           />
         </div>
       ))}
