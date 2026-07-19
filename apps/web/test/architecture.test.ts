@@ -113,3 +113,27 @@ describe("apps/web n'accede jamais a la base directement", () => {
     expect(fautifs).toEqual([])
   })
 })
+
+describe('chaque page du groupe (app) exige une session', () => {
+  it('appelle exigerSession(), sans dependre du rendu du layout', () => {
+    // Next.js ne garantit PAS de re-rendre un layout a chaque requete d'un
+    // segment — sa documentation deconseille explicitement d'y placer le
+    // controle d'acces. Et `middleware.ts` ne fait qu'une verification
+    // optimiste : `getSessionCookie()` constate la presence du cookie sans en
+    // verifier la signature. La garde reelle est donc dans chaque page ; le
+    // layout n'est que de la defense en profondeur. Ce test verrouille la
+    // regle pour toute page AJOUTEE PLUS TARD, qui autrement se croirait
+    // protegee par le layout.
+    const pages = fichiersTs(join('app', '(app)')).filter((f) => /[/\\]page\.tsx$/.test(f))
+
+    // Si le glob ne trouve plus rien (dossier renomme), le test doit crier
+    // plutot que de passer sur une liste vide.
+    expect(pages.length).toBeGreaterThan(0)
+
+    const sansGarde = pages
+      .filter((f) => !/\bexigerSession\s*\(/.test(readFileSync(f, 'utf-8')))
+      .map((f) => f.replace(RACINE, ''))
+
+    expect(sansGarde).toEqual([])
+  })
+})

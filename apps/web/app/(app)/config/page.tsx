@@ -1,4 +1,5 @@
 import { formaterDate, formaterMontant } from '@/lib/format'
+import { exigerSession } from '@/lib/session'
 import { listerVersions } from '@homebudget/db'
 import { ratioThomas, totalChargesCommunes } from '@homebudget/domain'
 import { FormulaireVersion } from './formulaire-version'
@@ -6,6 +7,12 @@ import { FormulaireVersion } from './formulaire-version'
 export const dynamic = 'force-dynamic'
 
 export default async function Config() {
+  // EN PREMIERE LIGNE : cet ecran affiche les salaires nets et tout l'historique
+  // de configuration. Meme raison qu'au tableau de bord — le layout du groupe
+  // (app) n'est pas garanti re-rendu a chaque requete de segment, et le
+  // middleware ne fait qu'une verification optimiste de la presence du cookie.
+  await exigerSession()
+
   const versions = await listerVersions()
   const courante = versions.find((v) => v.dateFin === null)
 
