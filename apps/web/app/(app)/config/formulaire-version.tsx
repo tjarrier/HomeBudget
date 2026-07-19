@@ -49,6 +49,12 @@ export function FormulaireVersion({ courante }: { courante: VersionConfig | null
         />
       </label>
 
+      {/* Un salaire depasse toujours 999 € : c'est le seul champ du projet ou le
+          separateur de milliers se pose des la premiere saisie. Le parseur accepte
+          l'espace (« 3 300,00 ») et la virgule decimale, mais REFUSE le point
+          (« 3.300,00 »). Ce choix strict se defend — il ne peut pas confondre un
+          separateur de milliers avec un separateur decimal ; l'absence
+          d'indication, elle, ne se defendait pas. */}
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1 text-sm">
           Salaire net Thomas (€)
@@ -56,6 +62,7 @@ export function FormulaireVersion({ courante }: { courante: VersionConfig | null
             name="salaireNetThomas"
             required
             inputMode="decimal"
+            placeholder="3 300,00"
             defaultValue={courante ? enEuros(courante.salaireNetThomas) : ''}
             className="rounded-md border border-slate-300 p-2"
           />
@@ -66,11 +73,16 @@ export function FormulaireVersion({ courante }: { courante: VersionConfig | null
             name="salaireNetLiz"
             required
             inputMode="decimal"
+            placeholder="2 100,00"
             defaultValue={courante ? enEuros(courante.salaireNetLiz) : ''}
             className="rounded-md border border-slate-300 p-2"
           />
         </label>
       </div>
+      <p className="text-xs text-slate-500">
+        Format attendu : <code>3 300,00</code> — virgule pour les décimales, espace (ou rien) pour
+        les milliers. Le point n’est pas accepté comme séparateur de milliers.
+      </p>
 
       {(
         [

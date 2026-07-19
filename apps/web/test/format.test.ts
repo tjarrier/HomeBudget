@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { parserEurosSaisis } from '@homebudget/domain'
 import { describe, expect, it } from 'vitest'
 import { formaterDate, formaterMontant } from '../lib/format.js'
 
@@ -14,5 +17,26 @@ describe('formaterMontant', () => {
 describe('formaterDate', () => {
   it('rend une date ISO au format francais sans passer par un objet Date', () => {
     expect(formaterDate('2026-07-05')).toBe('05/07/2026')
+  })
+})
+
+describe("l'aide de saisie du formulaire de version ne ment pas", () => {
+  // Le parseur refuse le point comme separateur de milliers (« 3.300,00 »), et
+  // un salaire depasse toujours 999 € : c'est le seul champ ou l'utilisateur
+  // rencontre le probleme des sa premiere saisie. On affiche donc un exemple —
+  // et ce test verifie que l'exemple affiche est REELLEMENT accepte. Une aide
+  // fausse serait pire que pas d'aide.
+  const source = readFileSync(
+    fileURLToPath(new URL('../app/(app)/config/formulaire-version.tsx', import.meta.url)),
+    'utf-8',
+  )
+  const exemples = [...source.matchAll(/placeholder="([^"]+)"/g)].map(([, v]) => v)
+
+  it('propose au moins un exemple de format', () => {
+    expect(exemples.length).toBeGreaterThan(0)
+  })
+
+  it.each(exemples)('« %s » est accepte par parserEurosSaisis', (exemple) => {
+    expect(() => parserEurosSaisis(exemple as string)).not.toThrow()
   })
 })
