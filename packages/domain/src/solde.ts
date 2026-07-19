@@ -1,5 +1,11 @@
 import { type Cents, formaterEuros } from './money.js'
-import type { ModeRepartition, Parts, Personne, TypeDepense } from './types.js'
+import {
+  type ModeRepartition,
+  type Parts,
+  type Personne,
+  type TypeDepense,
+  nomPersonne,
+} from './types.js'
 
 /**
  * Une depense enregistree. `parts` est FIGE a la creation d'apres la version de
@@ -72,9 +78,33 @@ export function resumer(depenses: Depense[]): Resume {
   return r
 }
 
-export function phraseSynthese(r: Resume): string {
-  if (r.soldeThomas === 0) return 'Vous êtes à jour'
+/**
+ * Qui doit combien a qui, sous forme de STRUCTURE.
+ *
+ * Le tableau de bord compose lui-meme son bandeau : un montant heros en serif
+ * a 64px enchasse au milieu d'une phrase en Inter est incomposable. `montant`
+ * est toujours POSITIF — c'est `debiteur`/`crediteur` qui porte le sens, de
+ * sorte qu'aucun consommateur n'ait a nier une valeur pour l'afficher.
+ */
+export type Synthese =
+  | { etat: 'a-jour' }
+  | { etat: 'dette'; debiteur: Personne; crediteur: Personne; montant: Cents }
+
+export function synthese(r: Resume): Synthese {
+  if (r.soldeThomas === 0) return { etat: 'a-jour' }
   return r.soldeThomas > 0
-    ? `Liz doit ${formaterEuros(r.soldeThomas)} à Thomas`
-    : `Thomas doit ${formaterEuros(-r.soldeThomas)} à Liz`
+    ? { etat: 'dette', debiteur: 'liz', crediteur: 'thomas', montant: r.soldeThomas }
+    : { etat: 'dette', debiteur: 'thomas', crediteur: 'liz', montant: -r.soldeThomas }
+}
+
+/**
+ * La meme information en une phrase. REECRITE PAR-DESSUS `synthese()` : il n'y
+ * a donc toujours qu'une seule source de verite sur qui doit a qui. Sa sortie
+ * ne change pas — cinq assertions la verrouillent (domain, db x2, seed), dont
+ * le canari `Liz doit 1 145,80 € à Thomas`.
+ */
+export function phraseSynthese(r: Resume): string {
+  const s = synthese(r)
+  if (s.etat === 'a-jour') return 'Vous êtes à jour'
+  return `${nomPersonne(s.debiteur)} doit ${formaterEuros(s.montant)} à ${nomPersonne(s.crediteur)}`
 }

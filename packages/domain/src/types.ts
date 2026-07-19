@@ -18,3 +18,11 @@ export interface Parts {
 export function autre(p: Personne): Personne {
   return p === 'thomas' ? 'liz' : 'thomas'
 }
+
+const NOMS: Record<Personne, string> = { thomas: 'Thomas', liz: 'Liz' }
+
+/** Le libelle affichable d'une personne. Le domaine porte deja ces deux noms
+ *  dans `phraseSynthese` : les dupliquer dans l'UI ferait diverger les deux. */
+export function nomPersonne(p: Personne): string {
+  return NOMS[p]
+}

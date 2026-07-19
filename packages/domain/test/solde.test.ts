@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type Depense, phraseSynthese, resumer, soldeDepense } from '../src/solde.js'
+import { type Depense, phraseSynthese, resumer, soldeDepense, synthese } from '../src/solde.js'
 
 function depense(p: Partial<Depense>): Depense {
   return {
@@ -104,5 +104,41 @@ describe('phraseSynthese', () => {
 
   it('annonce l equilibre quand le solde est nul', () => {
     expect(phraseSynthese(resumer([]))).toBe('Vous êtes à jour')
+  })
+})
+
+describe('synthese', () => {
+  it('rend la structure quand Thomas est crediteur', () => {
+    const r = resumer([depense({})])
+    expect(synthese(r)).toEqual({
+      etat: 'dette',
+      debiteur: 'liz',
+      crediteur: 'thomas',
+      montant: 39197,
+    })
+  })
+
+  it('rend la structure quand Liz est crediteure', () => {
+    const r = resumer([
+      depense({
+        montant: 40000,
+        payePar: 'liz',
+        mode: 'transfert',
+        type: 'transfert',
+        parts: { thomas: 40000, liz: 0 },
+      }),
+    ])
+    // Le montant est TOUJOURS positif : c'est `debiteur`/`crediteur` qui porte
+    // le sens, jamais le signe. Un consommateur n'a donc rien a nier.
+    expect(synthese(r)).toEqual({
+      etat: 'dette',
+      debiteur: 'thomas',
+      crediteur: 'liz',
+      montant: 40000,
+    })
+  })
+
+  it('annonce l equilibre quand le solde est nul', () => {
+    expect(synthese(resumer([]))).toEqual({ etat: 'a-jour' })
   })
 })
