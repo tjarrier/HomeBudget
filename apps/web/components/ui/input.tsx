@@ -3,19 +3,26 @@ import type * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-// Pas de contour : l'affordance vient du fond `muted` et du filet inferieur,
-// qui s'epaissit et prend l'accent au focus. C'est la traduction de la
-// direction epuree sur un champ, sans le rendre invisible. Le filet utilise
-// `border-input` (pas `border-border`) : c'est le token de LIMITE d'un
-// controle, assombri pour tenir 3:1 (WCAG 1.4.11), distinct du filet de liste
-// qui doit rester leger.
+/**
+ * Un champ borde, sur fond blanc, rayon 10px — la forme que porte le design
+ * system. Le focus epaissit un anneau de 3px et fonce la limite.
+ *
+ * `h-10` (40px) et non les 32px de la maquette : celle-ci mesure une vignette
+ * de composant, pas une cible tactile. `border-input` (et non `border-subtle`)
+ * parce qu'une LIMITE de controle doit tenir 3:1 sur le fond (WCAG 1.4.11),
+ * la ou le filet entre deux surfaces doit rester leger.
+ */
 function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   return (
     <InputPrimitive
       type={type}
       data-slot="input"
       className={cn(
-        'h-12 w-full min-w-0 rounded-t-md border-0 border-b border-input bg-muted px-3 text-base outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-b-2 focus-visible:border-primary disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive',
+        'h-10 w-full min-w-0 rounded-lg border border-input bg-surface px-3 text-sm transition-[color,box-shadow] outline-none',
+        'placeholder:text-faint',
+        'focus-visible:border-strong focus-visible:ring-[3px] focus-visible:ring-ring/50',
+        'disabled:pointer-events-none disabled:opacity-50',
+        'aria-invalid:border-destructive aria-invalid:ring-destructive/30',
         className,
       )}
       {...props}

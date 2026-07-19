@@ -41,9 +41,15 @@ describe('globals.css ne garde rien du theme shadcn par defaut', () => {
     expect(restantes).toEqual([])
   })
 
-  it('charge les deux familles de la direction visuelle', () => {
+  /**
+   * UNE famille, pas deux. Le design system importe (`HomeBudget.dc.html`) ne
+   * porte pas de serif : la hierarchie vient du poids, de la taille et du
+   * contraste de surface. Ce test verrouille l'absence de seconde famille — un
+   * `--font-heading` qui reapparaitrait ferait diverger l'app de sa maquette.
+   */
+  it('ne charge qu une seule famille de caracteres', () => {
     expect(GLOBALS).toMatch(/--font-sans:\s*var\(--font-inter\)/)
-    expect(GLOBALS).toMatch(/--font-heading:\s*var\(--font-instrument-serif\)/)
+    expect(GLOBALS).not.toMatch(/--font-heading/)
   })
 })
 

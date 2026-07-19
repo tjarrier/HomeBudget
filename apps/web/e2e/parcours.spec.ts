@@ -28,11 +28,10 @@ test.describe('parcours authentifies', () => {
     // Si cette assertion echoue avec une URL /login, le cookie est mal forme :
     // verifier BETTER_AUTH_SECRET et la signature dans e2e/session.ts.
     await expect(page).toHaveURL('http://localhost:3000/')
-    // LE CANARI, jusque dans l'UI. Le bandeau compose desormais un libelle et
-    // un montant en serif : on verifie le SENS et la VALEUR, pas la ponctuation
-    // d'une phrase qui n'existe plus comme telle. Le solde reste 114 580.
-    // `uppercase` est une regle CSS : textContent garde la casse d'origine.
-    await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
+    // LE CANARI, jusque dans l'UI. Le bandeau enchasse le montant AU MILIEU de
+    // la phrase (« Liz doit 1 145,80 € à Thomas ») : le sens se verifie donc par
+    // motif, la valeur reste epinglee au nœud <data>. Le solde reste 114 580.
+    await expect(page.getByTestId('phrase-synthese')).toContainText(/Liz doit .+ à Thomas/)
     await expect(page.getByTestId('phrase-synthese').locator('data')).toHaveText('1 145,80 €')
   })
 
@@ -53,7 +52,7 @@ test.describe('parcours authentifies', () => {
 
     await page.goto('/')
     // Liz a paye 50 € dont 25 € pour Thomas : la dette de Liz baisse de 25 €.
-    await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
+    await expect(page.getByTestId('phrase-synthese')).toContainText(/Liz doit .+ à Thomas/)
     await expect(page.getByTestId('phrase-synthese').locator('data')).toHaveText('1 120,80 €')
   })
 
