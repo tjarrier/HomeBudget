@@ -33,16 +33,19 @@ export function Montant({
   niveau,
   signe = false,
   className,
+  testId,
 }: {
   cents: Cents
   niveau: keyof typeof NIVEAUX
   signe?: boolean
   className?: string
+  /** Cible le montant lui-meme, jamais le libelle qui l'accompagne. */
+  testId?: string
 }) {
   return (
     // <data> : la valeur exacte en centimes reste lisible par une machine,
     // jamais l'euro arrondi.
-    <data value={cents} className={cn(NIVEAUX[niveau], className)}>
+    <data value={cents} data-testid={testId} className={cn(NIVEAUX[niveau], className)}>
       {formaterMontantSigne(cents, signe)}
     </data>
   )
