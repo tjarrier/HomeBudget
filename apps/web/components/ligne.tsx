@@ -30,17 +30,19 @@ export function Ligne({
 }) {
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1 border-b border-border py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_9rem_9rem_auto]">
-      <span className="min-w-0 font-medium break-words sm:col-start-1 sm:row-start-1">
+      <span className="min-w-0 font-medium break-words col-start-1 row-start-1 sm:col-start-1 sm:row-start-1">
         {intitule}
       </span>
-      <span className="justify-self-end sm:col-start-4 sm:row-start-1">{montant}</span>
+      <span className="justify-self-end col-start-2 row-start-1 sm:col-start-4 sm:row-start-1">
+        {montant}
+      </span>
       {meta ? (
-        <span className="text-[0.8125rem] text-muted-foreground sm:col-start-2 sm:row-start-1">
+        <span className="text-[0.8125rem] text-muted-foreground min-w-0 break-words col-start-1 row-start-2 sm:col-start-2 sm:row-start-1">
           {meta}
         </span>
       ) : null}
       {detail ? (
-        <span className="justify-self-end text-[0.8125rem] text-muted-foreground sm:col-start-3 sm:row-start-1">
+        <span className="justify-self-end text-[0.8125rem] text-muted-foreground min-w-0 break-words col-start-2 row-start-2 sm:col-start-3 sm:row-start-1">
           {detail}
         </span>
       ) : null}
