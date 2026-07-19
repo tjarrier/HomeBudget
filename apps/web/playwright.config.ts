@@ -1,4 +1,11 @@
+import { existsSync } from 'node:fs'
 import { defineConfig } from '@playwright/test'
+
+// Next lit `.env.local` pour le serveur, mais PAS pour le processus de test :
+// `e2e/session.ts` a besoin de BETTER_AUTH_SECRET pour signer un cookie, et
+// echouait donc sur un `pnpm test:e2e` nu. On le charge nous-memes.
+// En CI le fichier n'existe pas : les variables viennent des secrets du job.
+if (existsSync('.env.local')) process.loadEnvFile('.env.local')
 
 export default defineConfig({
   testDir: './e2e',
