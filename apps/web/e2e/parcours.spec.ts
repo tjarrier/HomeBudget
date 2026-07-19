@@ -33,7 +33,7 @@ test.describe('parcours authentifies', () => {
     // d'une phrase qui n'existe plus comme telle. Le solde reste 114 580.
     // `uppercase` est une regle CSS : textContent garde la casse d'origine.
     await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
-    await expect(page.getByTestId('phrase-synthese')).toContainText('1 145,80 €')
+    await expect(page.getByTestId('phrase-synthese').locator('data')).toHaveText('1 145,80 €')
   })
 
   test('ajouter une depense fait bouger le solde', async ({ page }) => {
@@ -54,7 +54,7 @@ test.describe('parcours authentifies', () => {
     await page.goto('/')
     // Liz a paye 50 € dont 25 € pour Thomas : la dette de Liz baisse de 25 €.
     await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
-    await expect(page.getByTestId('phrase-synthese')).toContainText('1 120,80 €')
+    await expect(page.getByTestId('phrase-synthese').locator('data')).toHaveText('1 120,80 €')
   })
 
   test('creer une version ne change aucune depense passee', async ({ page }) => {
