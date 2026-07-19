@@ -2,7 +2,7 @@ import { type Cents, formaterEuros } from '@homebudget/domain'
 
 /** Espaces insecables produits par Intl, remplaces par des espaces ordinaires. */
 export function formaterMontant(c: Cents): string {
-  return formaterEuros(c).replace(/[\xa0 ]/g, ' ')
+  return formaterEuros(c).replace(/[\xa0\u202f]/g, ' ')
 }
 
 /**
