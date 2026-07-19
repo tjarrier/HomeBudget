@@ -5,6 +5,7 @@ recalculaient rétroactivement tout l'historique à chaque changement de config.
 
 **Spec :** `docs/superpowers/specs/2026-07-12-homebudget-harness-design.md`
 **Données source :** `docs/data/sheet-export-2026-07-12/`
+**Installation et prise en main :** `README.md`
 
 ## Les règles qui ne se négocient pas
 
@@ -55,7 +56,7 @@ un fuseau, ce qui décale les bornes de version d'un jour). Drizzle rend les col
 
 ## Base de données
 
-**Postgres, et rien d'autre.** Un conteneur Docker en local (`pnpm db:up`), Supabase
+**Postgres, et rien d'autre.** Un conteneur Docker en local (`task db:up`), Supabase
 en production. On n'utilise **aucun** SDK Supabase : ni `supabase-js`, ni PostgREST,
 ni Supabase Auth. Si tu vois passer `createClient` de `@supabase/supabase-js`, c'est
 une erreur. Une seule variable d'environnement pour la connexion : `DATABASE_URL`
@@ -121,20 +122,36 @@ affiché à l'utilisateur.
 
 ## Commandes
 
-    pnpm test            tous les tests (aucune dépendance à Docker)
-    pnpm test:domain     le cœur métier seul (rapide)
-    pnpm typecheck       vérification des types du monorepo
-    pnpm lint            Biome
-    pnpm format          Biome, en écriture
+Le point d'entrée est `Taskfile.yml` (`task` seul liste tout). Il n'y a pas deux
+sources de vérité : chaque tâche appelle le script pnpm correspondant. Ce que le
+Taskfile ajoute, ce sont les prérequis qu'un script npm ne sait pas exprimer.
 
-    pnpm dev             lance l'application sur http://localhost:3000
-    pnpm --filter @homebudget/web test:e2e    les trois parcours Playwright
-                                             (fais `db:reset` avant : ils ecrivent
-                                             en base, et le canari verifie le seed)
+    task verif           la porte avant de committer : lint + typecheck + test
+    task test            tous les tests unitaires (aucune dépendance à Docker)
+    task test:domain     le cœur métier seul (rapide)
+    task typecheck       vérification des types du monorepo
+    task lint            Biome
+    task format          Biome, en écriture
 
-    pnpm db:up           Postgres local (un conteneur)
-    pnpm db:reset        détruit, remonte, migre et seede la base
-    pnpm db:down         arrête Postgres
+    task dev             lance l'application sur http://localhost:3000
+    task test:integration    les invariants SQL et la façade, contre Postgres
+    task test:e2e:frais      base neuve, puis les trois parcours Playwright
+
+    task db:up           Postgres local (un conteneur)
+    task db:reset        détruit, remonte, migre et seede la base — DESTRUCTIF
+    task db:down         arrête Postgres
+    task ci              rejoue localement la séquence exacte de la CI — DESTRUCTIF
+
+Deux garde-fous y sont encodés, et ce sont les seules raisons d'utiliser `task`
+plutôt que `pnpm` directement :
+
+- Les tâches qui touchent la base **refusent de démarrer** si le conteneur ne tourne
+  pas. Sans ça, l'échec arrive plus tard, sous la forme d'un timeout de connexion que
+  personne ne relie à Docker.
+- `task test:e2e` ne réinitialise **pas** la base : les parcours y écrivent, et le
+  canari vérifie le seed, donc un second passage sur la même base échoue à juste titre.
+  `task test:e2e:frais` fait le `db:reset` d'abord. La destruction est nommée, jamais
+  implicite — ce n'est pas à une commande de test d'effacer des données sans le dire.
 
 ## Le canari
 

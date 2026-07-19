@@ -1,0 +1,155 @@
+version: '3'
+
+# Les scripts pnpm restent la source de verite : une tache ne reimplemente jamais
+# une commande, elle l'appelle. Ce fichier ajoute ce qu'un script npm ne sait pas
+# dire — les prerequis (Docker, `.env`) et l'ordre dans lequel les suites doivent
+# tourner pour que le canari a 114 580 centimes veuille dire quelque chose.
+
+dotenv: ['.env']
+
+vars:
+  WEB: pnpm --filter @homebudget/web
+  DB: pnpm --filter @homebudget/db
+
+tasks:
+  default:
+    desc: Liste les taches disponibles
+    silent: true
+    cmds:
+      - task --list
+
+  install:
+    desc: Installe les dependances du monorepo
+    cmds:
+      - pnpm install
+
+  # --- Qualite -------------------------------------------------------------
+
+  lint:
+    desc: Biome, en lecture seule
+    cmds:
+      - pnpm lint
+
+  format:
+    desc: Biome, en ecriture
+    cmds:
+      - pnpm format
+
+  typecheck:
+    desc: Verifie les types du monorepo
+    cmds:
+      - pnpm typecheck
+
+  # --- Tests ---------------------------------------------------------------
+
+  test:
+    desc: Tous les tests unitaires (aucune dependance a Docker)
+    cmds:
+      - pnpm test
+
+  test:domain:
+    desc: Le coeur metier seul — la boucle la plus rapide
+    cmds:
+      - pnpm test:domain
+
+  test:integration:
+    desc: Les invariants SQL et la facade, contre Postgres (necessite `task db:up`)
+    deps: [_docker-requis]
+    cmds:
+      - '{{.DB}} test:integration'
+
+  test:e2e:
+    desc: >-
+      Les trois parcours Playwright. Ils ecrivent en base et le canari verifie le
+      seed : lance `task test:e2e:frais` si la base a deja servi.
+    deps: [_docker-requis]
+    cmds:
+      - '{{.WEB}} test:e2e'
+
+  test:e2e:frais:
+    desc: Reinitialise la base (DESTRUCTIF) puis joue les parcours Playwright
+    cmds:
+      - task: db:reset
+      - task: test:e2e
+
+  # --- Application ---------------------------------------------------------
+
+  dev:
+    desc: Lance l'application sur http://localhost:3000
+    deps: [_docker-requis]
+    cmds:
+      - pnpm dev
+
+  build:
+    desc: Construit l'application Next.js
+    cmds:
+      - '{{.WEB}} build'
+
+  # --- Base de donnees -----------------------------------------------------
+
+  db:up:
+    desc: Demarre le Postgres local (un conteneur, port 5433)
+    cmds:
+      - pnpm db:up
+
+  db:down:
+    desc: Arrete le Postgres local (le volume survit)
+    cmds:
+      - pnpm db:down
+
+  db:reset:
+    desc: DESTRUCTIF — detruit le volume, remonte, migre et seede la base
+    prompt: Cela detruit les donnees locales. Continuer ?
+    cmds:
+      - pnpm db:reset
+
+  db:migrate:
+    desc: Applique les migrations en attente
+    deps: [_docker-requis]
+    cmds:
+      - '{{.DB}} db:migrate'
+
+  db:generate:
+    desc: >-
+      Genere une migration depuis le schema Drizzle. Le seul chemin autorise —
+      `drizzle-kit push` supprimerait nos garde-fous.
+    cmds:
+      - '{{.DB}} db:generate'
+
+  db:seed:
+    desc: Rejoue le Sheet en base ; le seed annule tout s'il ne tombe pas sur 114 580
+    deps: [_docker-requis]
+    cmds:
+      - '{{.DB}} db:seed'
+
+  # --- Portes ---------------------------------------------------------------
+
+  verif:
+    desc: La porte rapide avant de committer — lint, types, tests unitaires
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test
+
+  ci:
+    desc: >-
+      DESTRUCTIF — rejoue localement la sequence exacte du job GitHub Actions,
+      base neuve comprise. C'est ce qui decide si une PR passe.
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test
+      - task: db:reset
+      - task: test:integration
+      - task: build
+      - task: test:e2e
+
+  # --- Interne --------------------------------------------------------------
+
+  _docker-requis:
+    internal: true
+    # Sans conteneur, ces suites echouent sur un timeout de connexion illisible.
+    # Mieux vaut dire tout de suite quoi lancer.
+    preconditions:
+      - sh: docker compose ps --status running --quiet postgres | grep -q .
+        msg: 'Postgres ne tourne pas. Lance `task db:up` (ou `task db:reset`).'
