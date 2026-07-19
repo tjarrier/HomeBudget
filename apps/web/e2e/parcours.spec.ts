@@ -28,7 +28,12 @@ test.describe('parcours authentifies', () => {
     // Si cette assertion echoue avec une URL /login, le cookie est mal forme :
     // verifier BETTER_AUTH_SECRET et la signature dans e2e/session.ts.
     await expect(page).toHaveURL('http://localhost:3000/')
-    await expect(page.getByTestId('phrase-synthese')).toHaveText('Liz doit 1 145,80 € à Thomas')
+    // LE CANARI, jusque dans l'UI. Le bandeau compose desormais un libelle et
+    // un montant en serif : on verifie le SENS et la VALEUR, pas la ponctuation
+    // d'une phrase qui n'existe plus comme telle. Le solde reste 114 580.
+    // `uppercase` est une regle CSS : textContent garde la casse d'origine.
+    await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
+    await expect(page.getByTestId('phrase-synthese')).toContainText('1 145,80 €')
   })
 
   test('ajouter une depense fait bouger le solde', async ({ page }) => {
@@ -48,7 +53,8 @@ test.describe('parcours authentifies', () => {
 
     await page.goto('/')
     // Liz a paye 50 € dont 25 € pour Thomas : la dette de Liz baisse de 25 €.
-    await expect(page.getByTestId('phrase-synthese')).toHaveText('Liz doit 1 120,80 € à Thomas')
+    await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
+    await expect(page.getByTestId('phrase-synthese')).toContainText('1 120,80 €')
   })
 
   test('creer une version ne change aucune depense passee', async ({ page }) => {
