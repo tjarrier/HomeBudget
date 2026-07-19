@@ -6,7 +6,12 @@ import {
   ajouterDepenseAction,
   previsualiserPartsAction,
 } from '@/actions/depenses'
-import { formaterDate, formaterMontant } from '@/lib/format'
+import { Montant } from '@/components/montant'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
+import { formaterDate } from '@/lib/format'
 import { type Personne, type TypeDepense, modeParDefaut } from '@homebudget/domain'
 import { useActionState, useEffect, useState } from 'react'
 
@@ -98,162 +103,161 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
   }, [etat])
 
   return (
-    <form
-      action={action}
-      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4"
-    >
-      <h2 className="text-lg font-semibold">Ajouter une dépense</h2>
+    <form action={action} className="flex flex-col gap-4">
+      <h2 className="font-heading text-[1.75rem] leading-tight">Ajouter une dépense</h2>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Date
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="date">Date</Label>
+        <Input
+          id="date"
           name="date"
           type="date"
           required
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded-md border border-slate-300 p-2"
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Description
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="description">Description</Label>
+        <Input
+          id="description"
           name="description"
           required
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="rounded-md border border-slate-300 p-2"
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Montant (€)
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="montant">Montant (€)</Label>
+        <Input
+          id="montant"
           name="montant"
           required
           inputMode="decimal"
           placeholder="1 110,58"
           value={montant}
           onChange={(e) => setMontant(e.target.value)}
-          className="rounded-md border border-slate-300 p-2"
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Payé par
-        <select
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="payePar">Payé par</Label>
+        <Select
+          id="payePar"
           name="payePar"
           value={payePar}
           onChange={(e) => setPayePar(e.target.value)}
-          className="rounded-md border border-slate-300 p-2"
         >
           <option value="thomas">Thomas</option>
           <option value="liz">Liz</option>
-        </select>
-      </label>
+        </Select>
+      </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Type
-        <select
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="type">Type</Label>
+        <Select
+          id="type"
           name="type"
           value={type}
           onChange={(e) => changerType(e.target.value as TypeDepense)}
-          className="rounded-md border border-slate-300 p-2"
         >
           <option value="courante">Dépense courante</option>
           <option value="charge_fixe">Charge fixe</option>
           <option value="transfert">Transfert / remboursement</option>
-        </select>
-      </label>
+        </Select>
+      </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Répartition
-        <select
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="mode">Répartition</Label>
+        <Select
+          id="mode"
           name="mode"
           value={mode}
           disabled={estTransfert}
           onChange={(e) => setMode(e.target.value)}
-          className="rounded-md border border-slate-300 p-2 disabled:bg-slate-100"
         >
           {modesProposes.map(([valeur, libelle]) => (
             <option key={valeur} value={valeur}>
               {libelle}
             </option>
           ))}
-        </select>
+        </Select>
         {/* Un <select disabled> n'est pas soumis par le navigateur : sans ce
             champ cache, `mode` arriverait vide au serveur. */}
         {estTransfert && <input type="hidden" name="mode" value="transfert" />}
         {estTransfert && (
-          <span className="text-xs text-slate-500">
+          <span className="text-[0.8125rem] text-muted-foreground">
             Un transfert ne se répartit pas : la totalité est portée au crédit de celui qui verse.
           </span>
         )}
-      </label>
+      </div>
 
       {mode === 'personnalise' && (
         <div className="flex gap-3">
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Part Thomas (€)
-            <input
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label htmlFor="partThomas">Part Thomas (€)</Label>
+            <Input
+              id="partThomas"
               name="partThomas"
               inputMode="decimal"
               value={partThomas}
               onChange={(e) => setPartThomas(e.target.value)}
-              className="rounded-md border border-slate-300 p-2"
             />
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Part Liz (€)
-            <input
+          </div>
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Label htmlFor="partLiz">Part Liz (€)</Label>
+            <Input
+              id="partLiz"
               name="partLiz"
               inputMode="decimal"
               value={partLiz}
               onChange={(e) => setPartLiz(e.target.value)}
-              className="rounded-md border border-slate-300 p-2"
             />
-          </label>
+          </div>
         </div>
       )}
 
-      <label className="flex flex-col gap-1 text-sm">
-        Commentaire (facultatif)
-        <input name="commentaire" className="rounded-md border border-slate-300 p-2" />
-      </label>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="commentaire">Commentaire (facultatif)</Label>
+        <Input id="commentaire" name="commentaire" />
+      </div>
 
       {apercu && (
-        <div data-testid="apercu-parts" className="rounded-lg bg-slate-100 p-3 text-sm">
+        <div data-testid="apercu-parts" className="flex flex-col gap-1 rounded-md bg-muted p-4">
           <p className="font-medium">
-            Thomas <span data-testid="apercu-thomas">{formaterMontant(apercu.parts.thomas)}</span>
+            Thomas{' '}
+            <span data-testid="apercu-thomas">
+              <Montant cents={apercu.parts.thomas} niveau="notable" />
+            </span>
             {' · '}
-            Liz <span data-testid="apercu-liz">{formaterMontant(apercu.parts.liz)}</span>
+            Liz{' '}
+            <span data-testid="apercu-liz">
+              <Montant cents={apercu.parts.liz} niveau="notable" />
+            </span>
           </p>
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="text-[0.8125rem] text-muted-foreground">
             Config en vigueur au {formaterDate(apercu.versionDateDebut)} : {apercu.versionLibelle} —
-            charges communes {formaterMontant(apercu.totalChargesCommunes)}
+            charges communes <Montant cents={apercu.totalChargesCommunes} niveau="discret" />
           </p>
         </div>
       )}
 
       {messageApercu && (
-        <p data-testid="message-erreur-apercu" className="text-sm text-red-700">
+        <p data-testid="message-erreur-apercu" className="text-sm text-destructive">
           {messageApercu}
         </p>
       )}
       {etat && !etat.ok && (
-        <p data-testid="message-erreur-envoi" className="text-sm text-red-700">
+        <p data-testid="message-erreur-envoi" className="text-sm text-destructive">
           {etat.message}
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={enCours}
-        className="rounded-md bg-slate-900 px-4 py-3 text-white disabled:opacity-50"
-      >
+      <Button type="submit" disabled={enCours}>
         {enCours ? 'Enregistrement…' : 'Ajouter la dépense'}
-      </button>
+      </Button>
     </form>
   )
 }
