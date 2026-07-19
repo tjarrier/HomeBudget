@@ -10,7 +10,14 @@ import { formaterDate, formaterMontant } from '@/lib/format'
 import { type Personne, type TypeDepense, modeParDefaut } from '@homebudget/domain'
 import { useActionState, useEffect, useState } from 'react'
 
-const AUJOURDHUI = () => new Date().toISOString().slice(0, 10)
+// `toISOString()` daterait en UTC : saisi a 23 h a Paris, le champ proposerait
+// demain. Un `<input type="date">` attend la date locale de celui qui saisit.
+const AUJOURDHUI = () => {
+  const maintenant = new Date()
+  const mois = String(maintenant.getMonth() + 1).padStart(2, '0')
+  const jour = String(maintenant.getDate()).padStart(2, '0')
+  return `${maintenant.getFullYear()}-${mois}-${jour}`
+}
 
 export function FormulaireDepense({ personne }: { personne: Personne }) {
   const [etat, action, enCours] = useActionState(ajouterDepenseAction, null)

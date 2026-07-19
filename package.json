@@ -13,6 +13,7 @@
     "format": "biome check --write .",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
+    "db:fresh": "docker compose down -v && docker compose up -d --wait",
     "db:reset": "docker compose down -v && docker compose up -d --wait && pnpm --filter @homebudget/db db:migrate && pnpm --filter @homebudget/db db:seed"
   },
   "devDependencies": {
