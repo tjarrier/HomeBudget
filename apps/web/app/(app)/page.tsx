@@ -23,6 +23,12 @@ export default async function TableauDeBord() {
 
   return (
     <div className="flex flex-col gap-10 sm:gap-14">
+      {/* `sr-only`, volontairement : le solde EST le titre visuel de cet ecran
+          (issue #6). Un <h1> visible lui ferait concurrence et casserait la
+          hierarchie que `phrase-synthese` porte deja a l'oeil. `sr-only`
+          (Tailwind v4) decoupe par clip, pas par `display:none` : le lecteur
+          d'ecran et la navigation par plan y ont toujours acces. */}
+      <h1 className="sr-only">Tableau de bord</h1>
       {/* Le solde est la seule chose qui compte vraiment : il est traite comme
           tel. Pas de cadre, pas de fond — c'est l'echelle typographique qui
           porte la hierarchie. */}

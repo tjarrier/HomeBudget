@@ -59,4 +59,16 @@
   html {
     @apply font-sans;
   }
+
+  /* `appearance-none` (composants/ui/select.tsx) retire la fleche native du
+     systeme sans rien y substituer : ce controle redevient un champ texte a
+     l'oeil. On la remplace par un chevron SVG encode en URI — `url()` ne peut
+     pas lire une variable CSS, donc la couleur est le hex calcule du token
+     --muted-foreground (#676C76) : a garder synchronise si ce token change. */
+  select[data-slot="select"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23676c76' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 8l4.5 4.5L14.5 8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 0.85rem;
+  }
 }

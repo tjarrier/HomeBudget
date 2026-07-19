@@ -87,7 +87,11 @@ export function FormulaireVersion({ courante }: { courante: VersionConfig | null
         ] as const
       ).map(([nom, libelle, charges]) => (
         <div key={nom} className="flex flex-col gap-1.5">
-          <Label htmlFor={nom}>
+          {/* `flex-wrap` : a 360px, ce libelle long suivi de son exemple en
+              <code> se chevauchent sinon (issue #6). Les douze autres Label de
+              l'app n'ont pas ce probleme ; on ne touche donc pas le composant,
+              seulement ces trois usages. */}
+          <Label htmlFor={nom} className="flex-wrap">
             {libelle} — une par ligne, au format <code>Libellé=791,00</code>
           </Label>
           <textarea

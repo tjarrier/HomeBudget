@@ -20,6 +20,9 @@ export default async function Config() {
 
   return (
     <div className="flex flex-col gap-10 sm:gap-14">
+      {/* `sr-only` par coherence avec les deux autres ecrans (issue #6) : le
+          titre de `Section` ci-dessous porte deja le titre visuel. */}
+      <h1 className="sr-only">Configuration</h1>
       <Section titre="Historique de la configuration">
         <ol data-testid="timeline-versions" className="flex flex-col gap-6">
           {versions.map((v) => (
