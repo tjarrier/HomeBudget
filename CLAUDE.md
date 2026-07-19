@@ -129,6 +129,8 @@ affiché à l'utilisateur.
 
     pnpm dev             lance l'application sur http://localhost:3000
     pnpm --filter @homebudget/web test:e2e    les trois parcours Playwright
+                                             (fais `db:reset` avant : ils ecrivent
+                                             en base, et le canari verifie le seed)
 
     pnpm db:up           Postgres local (un conteneur)
     pnpm db:reset        détruit, remonte, migre et seede la base
