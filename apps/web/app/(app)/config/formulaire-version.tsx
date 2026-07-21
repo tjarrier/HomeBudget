@@ -205,10 +205,12 @@ function ApercuClotureVue({
                   <li key={l.libelle} className="flex items-center justify-between gap-2.5 text-xs">
                     <span className="text-muted-foreground">{l.libelle}</span>
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      <span className="sr-only">avant : </span>
                       <ValeurCloture ligne={l} bord="avant" />
                       <span aria-hidden="true" className="text-faint">
                         →
                       </span>
+                      <span className="sr-only">après : </span>
                       <ValeurCloture ligne={l} bord="apres" />
                     </span>
                   </li>
