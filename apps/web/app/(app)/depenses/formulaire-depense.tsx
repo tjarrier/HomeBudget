@@ -25,6 +25,19 @@ const AUJOURDHUI = () => {
   return `${maintenant.getFullYear()}-${mois}-${jour}`
 }
 
+const LIBELLE_TYPE: Record<TypeDepense, string> = {
+  courante: 'courante',
+  charge_fixe: 'charge fixe',
+  transfert: 'transfert',
+}
+
+const LIBELLE_MODE: Record<string, string> = {
+  prorata: 'au prorata',
+  moitie: 'moitié-moitié',
+  personnalise: 'parts personnalisées',
+  transfert: 'transfert',
+}
+
 export function FormulaireDepense({ personne }: { personne: Personne }) {
   const [etat, action, enCours] = useActionState(ajouterDepenseAction, null)
 
@@ -40,12 +53,30 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
   const [partThomas, setPartThomas] = useState('')
   const [partLiz, setPartLiz] = useState('')
 
+  // B3 : les champs a defaut correct sont replies par defaut. Ils restent
+  // MONTES (masques par `hidden`, pas demontes) : un <input>/<select> hidden
+  // mais non disabled est serialise normalement a la soumission. Les demonter
+  // enverrait la depense sans date ni payeur.
+  const [detailsOuverts, setDetailsOuverts] = useState(false)
+
   const [apercu, setApercu] = useState<Apercu | null>(null)
   const [messageApercu, setMessageApercu] = useState<string | null>(null)
 
   function changerType(nouveau: TypeDepense) {
     setType(nouveau)
     setMode(modeParDefaut(nouveau))
+  }
+
+  // La ligne de resume DIT TOUJOURS LA VERITE sur ce qui sera enregistre :
+  // rien n'est derive d'un contexte fige, tout vient de l'etat courant.
+  function construireResume(): string {
+    const dateTxt = date === AUJOURDHUI() ? "Aujourd'hui" : formaterDate(date)
+    const payeurTxt = `payé par ${payePar === 'thomas' ? 'Thomas' : 'Liz'}`
+    // Cas transfert : type et mode valent tous deux `transfert` — on n'affiche
+    // qu'une fois `transfert`, jamais « transfert, transfert ».
+    const typeMode =
+      type === 'transfert' ? 'transfert' : `${LIBELLE_TYPE[type]}, ${LIBELLE_MODE[mode] ?? mode}`
+    return `${dateTxt} · ${payeurTxt} · ${typeMode}`
   }
 
   // `type` et `mode` ne sont PAS independants : le mode « transfert » va avec le
@@ -106,30 +137,18 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
   return (
     <Carte titre="Ajouter une dépense">
       <form action={action} className="flex flex-col gap-3.5">
-        <div className="flex gap-3">
-          <div className="flex flex-1 flex-col gap-1.5">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              name="date"
-              type="date"
-              required
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-1 flex-col gap-1.5">
-            <Label htmlFor="payePar">Payé par</Label>
-            <Select
-              id="payePar"
-              name="payePar"
-              value={payePar}
-              onChange={(e) => setPayePar(e.target.value)}
-            >
-              <option value="thomas">Thomas</option>
-              <option value="liz">Liz</option>
-            </Select>
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="montant">Montant (€)</Label>
+          <Input
+            id="montant"
+            name="montant"
+            required
+            autoFocus
+            inputMode="decimal"
+            placeholder="1 110,58"
+            value={montant}
+            onChange={(e) => setMontant(e.target.value)}
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -144,86 +163,130 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="montant">Montant (€)</Label>
-          <Input
-            id="montant"
-            name="montant"
-            required
-            inputMode="decimal"
-            placeholder="1 110,58"
-            value={montant}
-            onChange={(e) => setMontant(e.target.value)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="type">Type</Label>
-          <Select
-            id="type"
-            name="type"
-            value={type}
-            onChange={(e) => changerType(e.target.value as TypeDepense)}
-          >
-            <option value="courante">Dépense courante</option>
-            <option value="charge_fixe">Charge fixe</option>
-            <option value="transfert">Transfert / remboursement</option>
-          </Select>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="mode">Répartition</Label>
-          <Select
-            id="mode"
-            name="mode"
-            value={mode}
-            disabled={estTransfert}
-            onChange={(e) => setMode(e.target.value)}
-          >
-            {modesProposes.map(([valeur, libelle]) => (
-              <option key={valeur} value={valeur}>
-                {libelle}
-              </option>
-            ))}
-          </Select>
-          {/* Un <select disabled> n'est pas soumis par le navigateur : sans ce
-              champ cache, `mode` arriverait vide au serveur. */}
-          {estTransfert && <input type="hidden" name="mode" value="transfert" />}
-          {estTransfert && (
-            <span className="text-xs text-muted-foreground">
-              Un transfert ne se répartit pas : la totalité est portée au crédit de celui qui verse.
-            </span>
-          )}
-        </div>
-
-        {mode === 'personnalise' && (
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="partThomas">Part Thomas (€)</Label>
-              <Input
-                id="partThomas"
-                name="partThomas"
-                inputMode="decimal"
-                value={partThomas}
-                onChange={(e) => setPartThomas(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="partLiz">Part Liz (€)</Label>
-              <Input
-                id="partLiz"
-                name="partLiz"
-                inputMode="decimal"
-                value={partLiz}
-                onChange={(e) => setPartLiz(e.target.value)}
-              />
-            </div>
+        {!detailsOuverts && (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">{construireResume()}</p>
+            <Button
+              type="button"
+              variant="discret"
+              aria-expanded={false}
+              onClick={() => setDetailsOuverts(true)}
+            >
+              Modifier
+            </Button>
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="commentaire">Commentaire (facultatif)</Label>
-          <Input id="commentaire" name="commentaire" />
+        {/* Champs a defaut correct : MONTES en permanence, masques par `hidden`
+            quand replies. Voir CLAUDE.md — un select hidden reste soumis, un
+            select disabled ne l'est pas. */}
+        <div hidden={!detailsOuverts} className="flex flex-col gap-3.5">
+          <div className="flex gap-3">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="date">Date</Label>
+              <Input
+                id="date"
+                name="date"
+                type="date"
+                required
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label htmlFor="payePar">Payé par</Label>
+              <Select
+                id="payePar"
+                name="payePar"
+                value={payePar}
+                onChange={(e) => setPayePar(e.target.value)}
+              >
+                <option value="thomas">Thomas</option>
+                <option value="liz">Liz</option>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="type">Type</Label>
+            <Select
+              id="type"
+              name="type"
+              value={type}
+              onChange={(e) => changerType(e.target.value as TypeDepense)}
+            >
+              <option value="courante">Dépense courante</option>
+              <option value="charge_fixe">Charge fixe</option>
+              <option value="transfert">Transfert / remboursement</option>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="mode">Répartition</Label>
+            <Select
+              id="mode"
+              name="mode"
+              value={mode}
+              disabled={estTransfert}
+              onChange={(e) => setMode(e.target.value)}
+            >
+              {modesProposes.map(([valeur, libelle]) => (
+                <option key={valeur} value={valeur}>
+                  {libelle}
+                </option>
+              ))}
+            </Select>
+            {/* Un <select disabled> n'est pas soumis par le navigateur : sans ce
+                champ cache, `mode` arriverait vide au serveur. */}
+            {estTransfert && <input type="hidden" name="mode" value="transfert" />}
+            {estTransfert && (
+              <span className="text-xs text-muted-foreground">
+                Un transfert ne se répartit pas : la totalité est portée au crédit de celui qui
+                verse.
+              </span>
+            )}
+          </div>
+
+          {mode === 'personnalise' && (
+            <div className="flex gap-3">
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Label htmlFor="partThomas">Part Thomas (€)</Label>
+                <Input
+                  id="partThomas"
+                  name="partThomas"
+                  inputMode="decimal"
+                  value={partThomas}
+                  onChange={(e) => setPartThomas(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-1 flex-col gap-1.5">
+                <Label htmlFor="partLiz">Part Liz (€)</Label>
+                <Input
+                  id="partLiz"
+                  name="partLiz"
+                  inputMode="decimal"
+                  value={partLiz}
+                  onChange={(e) => setPartLiz(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="commentaire">Commentaire (facultatif)</Label>
+            <Input id="commentaire" name="commentaire" />
+          </div>
+
+          <div>
+            <Button
+              type="button"
+              variant="discret"
+              aria-expanded={true}
+              onClick={() => setDetailsOuverts(false)}
+            >
+              Replier
+            </Button>
+          </div>
         </div>
 
         {/* L'apercu est calcule par la MEME fonction que l'ecriture, cote
