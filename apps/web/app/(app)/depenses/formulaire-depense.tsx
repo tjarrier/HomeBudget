@@ -67,6 +67,16 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
     setMode(modeParDefaut(nouveau))
   }
 
+  // Un <input type="date"> vide renvoie '' : replier rafficherait alors un
+  // resume qui appelle formaterDate('') (throw, cf. lib/format.ts) et laisserait
+  // un champ `required` masque bloquer la soumission sans focus possible. On
+  // retablit le defaut avant de replier — c'est justement la valeur que le
+  // resume annonce (« Aujourd'hui »).
+  function replier() {
+    if (!date) setDate(AUJOURDHUI())
+    setDetailsOuverts(false)
+  }
+
   // La ligne de resume DIT TOUJOURS LA VERITE sur ce qui sera enregistre :
   // rien n'est derive d'un contexte fige, tout vient de l'etat courant.
   function construireResume(): string {
@@ -278,12 +288,7 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
           </div>
 
           <div>
-            <Button
-              type="button"
-              variant="discret"
-              aria-expanded={true}
-              onClick={() => setDetailsOuverts(false)}
-            >
+            <Button type="button" variant="discret" aria-expanded={true} onClick={replier}>
               Replier
             </Button>
           </div>
