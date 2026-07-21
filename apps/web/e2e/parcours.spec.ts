@@ -74,6 +74,15 @@ test.describe('parcours authentifies', () => {
     await page.fill('input[name="dateDebut"]', '2026-09-01')
     await page.fill('input[name="salaireNetThomas"]', '4000,00')
     await page.fill('input[name="salaireNetLiz"]', '1000,00')
+
+    // B4 : avant de valider, l'apercu montre ce qu'on ferme, quand, et ce qui
+    // change. La date de cloture est la VEILLE de la prise d'effet.
+    const apercu = page.getByTestId('apercu-cloture')
+    await expect(apercu).toContainText('31/08/2026')
+    await expect(apercu).toContainText('Ce qui change')
+    // Le nouveau salaire Thomas (400 000 centimes) est une ligne modifiee.
+    await expect(apercu).toContainText('4 000,00')
+
     await page.getByRole('button', { name: 'Créer la version' }).click()
 
     // La precedente est close LA VEILLE, pas le jour meme.
