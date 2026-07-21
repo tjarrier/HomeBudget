@@ -37,6 +37,12 @@ test.describe('parcours authentifies', () => {
 
   test('ajouter une depense fait bouger le solde', async ({ page }) => {
     await page.goto('/depenses')
+
+    // La promesse de B3 : les champs a defaut correct sont replies.
+    await expect(page.getByLabel('Date')).toBeHidden()
+    await expect(page.getByText(/Aujourd'hui · payé par/)).toBeVisible()
+    await page.getByRole('button', { name: 'Modifier' }).click()
+
     await page.fill('input[name="date"]', '2026-07-10')
     await page.fill('input[name="description"]', 'Courses du samedi')
     await page.fill('input[name="montant"]', '50,00')
