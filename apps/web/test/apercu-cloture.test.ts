@@ -95,4 +95,13 @@ describe('apercuCloture', () => {
     const charges = a.lignes.find((l) => l.libelle === 'Charges communes')
     expect(charges).toMatchObject({ unite: 'euros', avant: 91100, apres: 94100 })
   })
+
+  it('ligne de charges illisible : ligne charges omise, pas d’exception', () => {
+    const a = apercuCloture(COURANTE, {
+      ...SAISIE_IDENTIQUE,
+      dateDebut: '2026-09-01',
+      chargesCommunes: 'Loyer 791,00', // pas de « = » → parserCharges lève
+    })
+    expect(a.lignes.some((l) => l.libelle === 'Charges communes')).toBe(false)
+  })
 })
