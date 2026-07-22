@@ -173,6 +173,15 @@ dur : rien que des tokens sémantiques (sinon `theme.test.ts` échoue, à raison
   Aucune dépendance à un credential Google : la page rend l'encart purement à
   partir de `searchParams`.
 
+**La couture non testée de bout en bout.** Faute d'un credential Google refusable,
+rien n'exerce le maillon Better Auth lui-même : que `e.body.code` soit reporté sur
+le paramètre d'URL `error` et que `errorCallbackURL` soit honoré. Ce maillon est
+garanti par le chemin de code de `better-auth@1.6.23` épinglé
+(`api/routes/callback.mjs:154` → `oauth2/errors.mjs:12`), vérifié par lecture de la
+source, et *contract-testé* de nos deux côtés (le `code` sur l'`APIError`, la lecture
+du `error`). C'est le seul endroit où la feature pourrait régresser en silence :
+**à re-vérifier lors de toute montée de version de Better Auth.**
+
 ## Ce qu'on ne touche pas
 
 - **Le domaine, `packages/db`, les invariants SQL, le canari du solde.** Aucune
