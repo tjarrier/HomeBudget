@@ -35,6 +35,7 @@ export default async function Login({
         {message ? (
           <p
             role="alert"
+            data-testid="message-connexion"
             className="mt-6 rounded-lg border border-subtle bg-muted px-4 py-3 text-left text-sm leading-relaxed text-body"
           >
             {message}

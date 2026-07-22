@@ -11,7 +11,10 @@ test("l'ecran de connexion nu identifie l'app sans afficher d'erreur", async ({ 
   await page.goto('/login')
   await expect(page.getByRole('heading', { name: 'HomeBudget' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Se connecter avec Google/ })).toBeVisible()
-  await expect(page.getByRole('alert')).toHaveCount(0)
+  // On cible l'encart par son testid, pas par role="alert" : Next injecte son
+  // propre annonceur de route (#__next-route-announcer__, role="alert", vide),
+  // qui ferait échouer un getByRole('alert') generique.
+  await expect(page.getByTestId('message-connexion')).toHaveCount(0)
 })
 
 test('une adresse refusee recoit un message comprehensible, pas une erreur brute', async ({
@@ -21,7 +24,7 @@ test('une adresse refusee recoit un message comprehensible, pas une erreur brute
   // OAuth redirige vers /login?error=acces_refuse. Pas besoin de credential
   // Google — l'ecran rend l'encart a partir du seul parametre d'URL.
   await page.goto('/login?error=acces_refuse')
-  await expect(page.getByRole('alert')).toContainText(/n'est pas autorisée/i)
+  await expect(page.getByTestId('message-connexion')).toContainText(/n'est pas autorisée/i)
 })
 
 test.describe('parcours authentifies', () => {
