@@ -1,30 +1,49 @@
-'use client'
+import { BoutonGoogle } from './bouton-google'
+import { messageConnexion } from './messages'
 
-import { Button } from '@/components/ui/button'
-import { signIn } from '@/lib/auth-client'
+/**
+ * Le premier ecran, et le seul accessible sans session. Server Component : il
+ * lit `searchParams.error` (un code, jamais `error_description`) pour afficher
+ * un refus comprehensible plutot qu'une erreur brute. Le groupe `(auth)` est
+ * hors de la garde `exigerSession()` — cet ecran DOIT s'ouvrir sans session.
+ */
+export default async function Login({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string | string[] }>
+}) {
+  const { error } = await searchParams
+  const code = Array.isArray(error) ? error[0] : error
+  const message = messageConnexion(code)
 
-export default function Login() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">
-      <div className="w-full max-w-100 rounded-xl border border-subtle bg-surface px-8 py-9 text-center shadow-sm">
+      <div className="w-full max-w-100 rounded-xl border border-subtle bg-surface px-8 py-10 text-center shadow-sm">
         <span
           aria-hidden="true"
-          className="mx-auto mb-4 flex size-11 items-center justify-center rounded-xl bg-emphasis text-[1.0625rem] font-semibold tracking-[-0.02em] text-on-emphasis"
+          className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl bg-emphasis text-lg font-semibold tracking-[-0.02em] text-on-emphasis"
         >
           HB
         </span>
-        <h1 className="text-[1.375rem] font-semibold tracking-[-0.01em]">HomeBudget</h1>
-        <p className="mt-2.5 mb-6 text-sm leading-relaxed text-body">
-          Budget partagé de Thomas et Liz. L’accès est limité à deux comptes Google autorisés.
+        <h1 className="text-2xl font-semibold tracking-[-0.02em]">HomeBudget</h1>
+        <p className="mt-3 text-sm leading-relaxed text-body">
+          Le budget partagé de Thomas et Liz.
+          <br />
+          L’historique ne se recalcule jamais.
         </p>
 
-        <Button
-          type="button"
-          className="w-full"
-          onClick={() => signIn.social({ provider: 'google', callbackURL: '/' })}
-        >
-          Se connecter avec Google
-        </Button>
+        {message ? (
+          <p
+            role="alert"
+            className="mt-6 rounded-lg border border-subtle bg-muted px-4 py-3 text-left text-sm leading-relaxed text-body"
+          >
+            {message}
+          </p>
+        ) : null}
+
+        <div className="mt-7">
+          <BoutonGoogle />
+        </div>
 
         <p className="mt-5 inline-flex items-center gap-2 text-xs text-faint">
           <svg
