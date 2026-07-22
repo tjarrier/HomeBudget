@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CODE_COMPTE_INCOMPLET } from '../lib/codes-connexion.js'
 
 // `exigerSession` appelle `headers()` (next/headers) et `redirect()`
 // (next/navigation), tous deux inutilisables hors d'une vraie requete Next.
@@ -46,7 +47,7 @@ describe('exigerSession', () => {
     ['null', null],
     ['une chaine invalide', 'personne-inconnue'],
   ])(
-    'redirige vers /login?erreur=compte-incomplet quand `personne` est %s',
+    'redirige vers /login?error=compte_incomplet quand `personne` est %s',
     async (_cas, personne) => {
       // Un compte sans `personne` valide n'aurait pas du exister : le hook
       // d'allowlist la pose a la creation (voir allowlist.test.ts). Mais la
@@ -58,8 +59,10 @@ describe('exigerSession', () => {
       })
       const { exigerSession } = await import('../lib/session.js')
 
-      await expect(exigerSession()).rejects.toThrow('REDIRECT:/login?erreur=compte-incomplet')
-      expect(redirectMock).toHaveBeenCalledWith('/login?erreur=compte-incomplet')
+      await expect(exigerSession()).rejects.toThrow(
+        `REDIRECT:/login?error=${CODE_COMPTE_INCOMPLET}`,
+      )
+      expect(redirectMock).toHaveBeenCalledWith(`/login?error=${CODE_COMPTE_INCOMPLET}`)
       expect(redirectMock).toHaveBeenCalledTimes(1)
     },
   )

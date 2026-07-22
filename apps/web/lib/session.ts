@@ -2,6 +2,7 @@ import type { Personne } from '@homebudget/domain'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { auth } from './auth.js'
+import { CODE_COMPTE_INCOMPLET } from './codes-connexion.js'
 
 export interface SessionActive {
   userId: string
@@ -22,7 +23,7 @@ export async function exigerSession(): Promise<SessionActive> {
   if (personne !== 'thomas' && personne !== 'liz') {
     // Un compte sans personne n'aurait pas du exister : le hook d'allowlist la
     // pose a la creation. S'il y en a un, il ne passe pas.
-    redirect('/login?erreur=compte-incomplet')
+    redirect(`/login?error=${CODE_COMPTE_INCOMPLET}`)
   }
 
   return { userId: s.user.id, personne, nom: s.user.name }
