@@ -1,3 +1,9 @@
+# Nom de projet fixe : sans lui, chaque worktree (dossier different) devient un
+# projet Compose distinct qui se dispute le `container_name` global homebudget-db
+# et se heurte a « container name already in use ». Fige, ils partagent tous le
+# meme conteneur et le meme volume.
+name: homebudget
+
 services:
   postgres:
     image: postgres:17-alpine
