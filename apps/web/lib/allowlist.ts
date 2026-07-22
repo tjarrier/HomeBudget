@@ -1,5 +1,6 @@
 import type { Personne } from '@homebudget/domain'
 import { APIError } from 'better-auth/api'
+import { CODE_REFUS } from './codes-connexion.js'
 
 export const MESSAGE_REFUS =
   "Cette adresse n'est pas autorisee. HomeBudget est un budget prive a deux personnes."
@@ -57,7 +58,10 @@ export async function avantCreationUtilisateur(user: {
   try {
     personne = resoudrePersonne(user.email)
   } catch {
-    throw new APIError('FORBIDDEN', { message: MESSAGE_REFUS })
+    // `code` n'est pas cosmetique : c'est lui qui fait passer Better Auth par
+    // `redirectOnError` (respectant `errorCallbackURL`) au lieu de propager un
+    // 403 brut. Sa valeur est le contrat lu par `messages.ts` cote ecran.
+    throw new APIError('FORBIDDEN', { message: MESSAGE_REFUS, code: CODE_REFUS })
   }
   return { data: { ...user, personne } }
 }

@@ -1,5 +1,7 @@
+import { APIError } from 'better-auth/api'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { avantCreationUtilisateur, resoudrePersonne } from '../lib/allowlist.js'
+import { CODE_REFUS } from '../lib/codes-connexion.js'
 
 const ENV_INITIAL = { ...process.env }
 
@@ -61,6 +63,19 @@ describe('avantCreationUtilisateur — le hook Better Auth', () => {
   it('rejette la creation pour une troisieme adresse', async () => {
     await expect(avantCreationUtilisateur({ email: 'intrus@exemple.fr' })).rejects.toThrow(
       /pas autorisee/i,
+    )
+  })
+
+  it("porte le code qui fait rediriger Better Auth au lieu d'un 403 brut", async () => {
+    // Sans `code` dans le corps, le callback OAuth (`callback.mjs:154`) saute
+    // sa redirection propre (`if (isAPIError(e) && e.body?.code)`) et propage
+    // un 403 nu : la personne refusee voit une erreur brute, jamais l'ecran.
+    // Ce test verrouille le contrat qui l'en empeche.
+    await expect(avantCreationUtilisateur({ email: 'intrus@exemple.fr' })).rejects.toMatchObject({
+      body: { code: CODE_REFUS },
+    })
+    await expect(avantCreationUtilisateur({ email: 'intrus@exemple.fr' })).rejects.toBeInstanceOf(
+      APIError,
     )
   })
 })
