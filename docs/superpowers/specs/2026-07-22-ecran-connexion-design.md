@@ -42,7 +42,8 @@ Trois crochets, tous côté application, aucun côté domaine ni base :
 
 1. **`lib/allowlist.ts`** — on ajoute un `code` au corps de l'`APIError` :
    `throw new APIError('FORBIDDEN', { message: MESSAGE_REFUS, code: CODE_REFUS })`,
-   avec `CODE_REFUS = 'acces_refuse'` exporté du module. C'est ce `code` qui fait
+   avec `CODE_REFUS = 'acces_refuse'` importé de `lib/codes-connexion.ts` (la
+   source unique du code, voir plus bas). C'est ce `code` qui fait
    passer Better Auth par `redirectOnError` (`callback.mjs:154`) **au lieu** de
    propager un 403 brut. La valeur est en français, distincte du `access_denied`
    standard qu'OAuth renvoie quand l'utilisateur annule côté Google : deux causes,
@@ -84,8 +85,9 @@ messageConnexion(code: string | undefined): string | null
 | autre valeur non vide | « La connexion n'a pas abouti. Réessaie. » |
 | `undefined` / vide | `null` (aucun encart) |
 
-`CODE_REFUS` est importé depuis `lib/allowlist.ts` (couche basse) : une seule
-source pour le code du refus, côté jet **et** côté lecture. Le texte affiché est
+`CODE_REFUS` est importé depuis `lib/codes-connexion.ts` (le module de contrat) :
+une seule source pour le code du refus, côté jet (`allowlist.ts`, `session.ts`)
+**et** côté lecture (`messages.ts`). Le texte affiché est
 volontairement **distinct** de `MESSAGE_REFUS` (qui, lui, reste en ASCII pour le
 log et les consommateurs API) : la copie d'écran porte ses accents, comme tout le
 reste de l'UI.
