@@ -7,6 +7,23 @@ test('un visiteur sans session est renvoye vers /login', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Se connecter avec Google/ })).toBeVisible()
 })
 
+test("l'ecran de connexion nu identifie l'app sans afficher d'erreur", async ({ page }) => {
+  await page.goto('/login')
+  await expect(page.getByRole('heading', { name: 'HomeBudget' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Se connecter avec Google/ })).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
+test('une adresse refusee recoit un message comprehensible, pas une erreur brute', async ({
+  page,
+}) => {
+  // On simule le retour de Better Auth apres un refus d'allowlist : le callback
+  // OAuth redirige vers /login?error=acces_refuse. Pas besoin de credential
+  // Google — l'ecran rend l'encart a partir du seul parametre d'URL.
+  await page.goto('/login?error=acces_refuse')
+  await expect(page.getByRole('alert')).toContainText(/n'est pas autorisée/i)
+})
+
 test.describe('parcours authentifies', () => {
   test.beforeEach(async ({ context }) => {
     const valeur = await ouvrirSession('thomas')
