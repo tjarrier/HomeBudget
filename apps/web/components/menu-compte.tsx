@@ -50,14 +50,17 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
     <>
       <button
         type="button"
+        aria-haspopup="dialog"
         onClick={() => feuille.current?.showModal()}
         className={[
           'flex items-center rounded-lg transition-colors',
           'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none',
           // Barre basse : la quatrieme cellule, au meme gabarit que les trois liens.
           'max-md:min-h-11 max-md:w-1/4 max-md:flex-col max-md:justify-center max-md:gap-0.5 max-md:py-1.5',
-          // Rail : l'encart de pied, pousse en bas par mt-auto.
-          'md:mt-auto md:w-full md:gap-2.5 md:border md:border-subtle md:p-2.5 md:text-left',
+          // Rail : l'encart de pied, pousse en bas par mt-auto. 52px de fait
+          // (avatar 30px + p-2.5 des deux cotes), pas par contrainte : md:min-h-11
+          // le rend explicite plutot que fortuit.
+          'md:mt-auto md:min-h-11 md:w-full md:gap-2.5 md:border md:border-subtle md:p-2.5 md:text-left',
           'text-muted-foreground hover:bg-muted/60',
         ].join(' ')}
       >
@@ -80,7 +83,7 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
         </svg>
       </button>
 
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: le <dialog> natif ferme deja au clavier par Escape ; ce handler n'ajoute que le clic sur le voile. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: voir le commentaire ci-dessous. */}
       <dialog
         ref={feuille}
         aria-label="Compte"
