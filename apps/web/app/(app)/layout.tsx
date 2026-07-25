@@ -30,7 +30,12 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
         <Marque />
       </header>
 
-      <aside className="flex shrink-0 border-subtle bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40 max-md:items-stretch max-md:border-t max-md:px-2 max-md:pb-[env(safe-area-inset-bottom)] md:sticky md:top-0 md:h-screen md:w-62 md:flex-col md:border-r md:p-4">
+      {/* md:pl et le md:pr plus bas sur la colonne de contenu sont la
+          contrepartie de viewport-fit=cover (app/layout.tsx) : il etend le
+          document sous TOUTES les encoches, pas seulement le bas. En paysage
+          sur un iPhone a encoche (844px de large, le point d'arret md:), le
+          rail se retrouverait sinon partiellement sous l'encoche gauche. */}
+      <aside className="flex shrink-0 border-subtle bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40 max-md:items-stretch max-md:border-t max-md:px-2 max-md:pb-[env(safe-area-inset-bottom)] md:sticky md:top-0 md:h-screen md:w-62 md:flex-col md:border-r md:p-4 md:pl-[env(safe-area-inset-left)]">
         <div className="max-md:hidden md:px-2 md:pt-1 md:pb-5">
           <Marque />
         </div>
@@ -39,7 +44,8 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
         <MenuCompte personne={session.personne} nom={session.nom} />
       </aside>
 
-      <div className="min-w-0 flex-1">
+      {/* pr : meme contrepartie que le pl du rail, cote droit. */}
+      <div className="min-w-0 flex-1 md:pr-[env(safe-area-inset-right)]">
         {/* 5rem = la barre basse (~56px) plus une respiration : sans cette
             reserve, la derniere ligne de depense se cache dessous. `env()` y
             ajoute l'indicateur d'accueil des iPhone — nul partout ailleurs. */}
