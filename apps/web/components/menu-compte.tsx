@@ -27,7 +27,6 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
   const [echec, setEchec] = useState(false)
 
   async function seDeconnecter() {
-    setEchec(false)
     const { error } = await signOut()
     if (error) {
       // On reste sur place. Naviguer vers /login pendant que la session
@@ -51,7 +50,15 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
       <button
         type="button"
         aria-haspopup="dialog"
-        onClick={() => feuille.current?.showModal()}
+        onClick={() => {
+          // A l'ouverture, pas a la fermeture : c'est le seul endroit qui
+          // couvre les deux sorties de la feuille precedente (« Annuler » et
+          // Escape, qui ne passe par aucun handler de bouton). Sans ca, un
+          // message d'echec reste arme apres une annulation et reapparait a
+          // la prochaine ouverture, alors qu'aucune tentative n'a eu lieu.
+          setEchec(false)
+          feuille.current?.showModal()
+        }}
         className={[
           'flex items-center rounded-lg transition-colors',
           'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none',
