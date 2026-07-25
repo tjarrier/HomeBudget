@@ -26,6 +26,11 @@ export default defineConfig({
     // le refaire ici ferait payer deux builds de production a chaque passage.
     command: `pnpm start --port ${PORT}`,
     url: `${ORIGINE}/login`,
+    // Better Auth refuse toute requete dont l'origine ne correspond pas a sa
+    // baseURL. Sans cette ligne, servir les parcours sur un autre port que 3000
+    // fait echouer signOut() en silence. Next n'ecrase jamais une variable deja
+    // presente dans process.env : celle-ci gagne donc sur `.env.local`.
+    env: { BETTER_AUTH_URL: ORIGINE },
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

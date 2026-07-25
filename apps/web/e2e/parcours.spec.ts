@@ -136,6 +136,16 @@ test.describe('parcours authentifies', () => {
       await page.getByRole('button', { name: 'Compte' }).click()
       await page.getByRole('button', { name: 'Se déconnecter' }).click()
       await expect(page).toHaveURL(/\/login/)
+
+      // La redirection ci-dessus prouve seulement qu'un clic a declenche une
+      // navigation : le client Better Auth ne leve pas d'exception si signOut()
+      // echoue cote serveur, et router.replace('/login') s'execute quand meme.
+      // La seule preuve que le cookie de session a reellement ete invalide est
+      // que le middleware, qui ne verifie que sa presence, nous renvoie encore
+      // vers /login sur un acces suivant. Ne pas retirer cette assertion en la
+      // croyant redondante avec celle du dessus.
+      await page.goto('/')
+      await expect(page).toHaveURL(/\/login/)
     })
   })
 })
