@@ -6,10 +6,15 @@ import type { ReactNode } from 'react'
 
 import { cn } from '@/lib/utils'
 
-const LIENS: { href: string; libelle: string; icone: ReactNode }[] = [
+// `libelleCourt` n'est pas une abreviation de confort : c'est ce qui rend la
+// barre basse lisible. Une barre de trois icones muettes est une devinette, et
+// « Tableau de bord » ne tient pas dans une cellule de 90px (la largeur plancher
+// du projet, 360px, divisee par les quatre cellules).
+const LIENS: { href: string; libelle: string; libelleCourt: string; icone: ReactNode }[] = [
   {
     href: '/',
     libelle: 'Tableau de bord',
+    libelleCourt: 'Accueil',
     icone: (
       <>
         <rect width="7" height="9" x="3" y="3" rx="1" />
@@ -22,6 +27,7 @@ const LIENS: { href: string; libelle: string; icone: ReactNode }[] = [
   {
     href: '/depenses',
     libelle: 'Dépenses',
+    libelleCourt: 'Dépenses',
     icone: (
       <>
         <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
@@ -33,6 +39,7 @@ const LIENS: { href: string; libelle: string; icone: ReactNode }[] = [
   {
     href: '/config',
     libelle: 'Configuration',
+    libelleCourt: 'Config',
     icone: (
       <>
         <line x1="21" x2="14" y1="4" y2="4" />
@@ -50,22 +57,26 @@ const LIENS: { href: string; libelle: string; icone: ReactNode }[] = [
 ]
 
 /**
- * La navigation principale.
+ * La navigation principale : barre basse sous 768px, rail lateral au-dessus.
  *
  * Cliente pour une seule raison : `usePathname()`, qui designe le lien actif.
- * L'etat actif est porte par le fond ET par `aria-current`, jamais par la
- * couleur seule — sous 880px les libelles disparaissent et il ne reste que les
- * icones, ou un contraste de fond ne suffirait pas a l'annoncer.
+ * L'etat actif est porte par le fond ET par `aria-current`, jamais par le
+ * contraste seul.
+ *
+ * Les deux libelles sont masques par `hidden` / `md:hidden` et non par
+ * `sr-only` : `sr-only` les laisserait TOUS LES DEUX dans l'arbre
+ * d'accessibilite, et le nom du lien deviendrait « Tableau de bord Accueil ».
+ * Ici, un seul est rendu a la fois, et il correspond toujours au texte visible.
  */
-export function NavLaterale() {
+export function NavPrincipale() {
   const chemin = usePathname()
 
   return (
     <nav
       aria-label="Navigation principale"
-      className="mt-1 flex gap-0.5 max-md:overflow-x-auto md:flex-col"
+      className="flex max-md:flex-1 max-md:items-stretch md:mt-1 md:flex-col md:gap-0.5"
     >
-      {LIENS.map(({ href, libelle, icone }) => {
+      {LIENS.map(({ href, libelle, libelleCourt, icone }) => {
         const actif = chemin === href
         return (
           <Link
@@ -73,8 +84,13 @@ export function NavLaterale() {
             href={href}
             aria-current={actif ? 'page' : undefined}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+              'flex items-center rounded-lg transition-colors',
               'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none',
+              // Barre basse : une cellule par lien, icone au-dessus du libelle,
+              // 44px de haut au minimum — le plancher tactile du projet.
+              'max-md:min-h-11 max-md:flex-1 max-md:flex-col max-md:justify-center max-md:gap-0.5 max-md:py-1.5',
+              // Rail : une rangee icone + libelle.
+              'md:gap-3 md:px-2.5 md:py-2 md:text-sm md:font-medium md:whitespace-nowrap',
               actif ? 'bg-muted text-strong' : 'text-muted-foreground hover:bg-muted/60',
             )}
           >
@@ -90,7 +106,8 @@ export function NavLaterale() {
             >
               {icone}
             </svg>
-            <span className="max-md:sr-only">{libelle}</span>
+            <span className="hidden md:inline">{libelle}</span>
+            <span className="text-[0.625rem] font-medium md:hidden">{libelleCourt}</span>
           </Link>
         )
       })}
