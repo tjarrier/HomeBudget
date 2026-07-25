@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import type { ReactNode } from 'react'
 import './globals.css'
@@ -16,6 +16,17 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = { title: 'HomeBudget' }
+
+// `viewport-fit=cover` etend le document sous l'indicateur d'accueil des
+// iPhone. Sans lui, env(safe-area-inset-bottom) vaut 0 et la barre de
+// navigation basse passerait dessous. Exporter cet objet REMPLACE les valeurs
+// par defaut de Next : width et initialScale sont redeclares ici, sans quoi la
+// page se rendrait a la largeur de bureau sur telephone.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

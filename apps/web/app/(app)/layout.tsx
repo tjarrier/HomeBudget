@@ -6,20 +6,32 @@ import { NavPrincipale } from '@/components/nav-principale'
 import { exigerSession } from '@/lib/session'
 
 /**
- * La coque de l'application : une barre laterale fixe de 248px et une colonne
- * de contenu centree a 1080px.
+ * La coque de l'application.
  *
- * Sous 768px, la barre bascule en bandeau horizontal en tete — meme balisage,
- * bascule purement CSS (les libelles passent en `sr-only`, il ne reste que les
- * icones). Pas de detection de viewport en JS, pas de second rendu.
+ * Au-dessus de 768px : un rail lateral fixe de 248px et une colonne de contenu
+ * centree a 1080px.
+ *
+ * En dessous : la marque monte dans un entete, la navigation descend dans une
+ * barre `fixed bottom-0` a quatre cellules — atteignable au pouce d'une main qui
+ * tient l'appareil. Ce sont deux REGIONS distinctes de l'ecran, ce qu'un unique
+ * <aside> pivotant par CSS ne savait plus couvrir : d'ou <Marque /> rendue deux
+ * fois, chacune masquee a la taille de l'autre.
+ *
+ * L'<aside> reste AVANT <main> dans le DOM alors qu'il s'affiche en bas :
+ * l'ordre de lecture au lecteur d'ecran (marque, navigation, contenu) prime sur
+ * la coincidence avec l'ordre visuel.
  */
 export default async function LayoutApp({ children }: { children: ReactNode }) {
   const session = await exigerSession()
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <aside className="flex shrink-0 flex-col border-subtle bg-surface max-md:items-center max-md:gap-3 max-md:border-b max-md:px-4 max-md:py-3 md:sticky md:top-0 md:h-screen md:w-62 md:border-r md:p-4 max-md:flex-row">
-        <div className="md:px-2 md:pt-1 md:pb-5">
+      <header className="flex items-center border-b border-subtle bg-surface px-5 py-3 md:hidden">
+        <Marque />
+      </header>
+
+      <aside className="flex shrink-0 border-subtle bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40 max-md:items-stretch max-md:border-t max-md:px-2 max-md:pb-[env(safe-area-inset-bottom)] md:sticky md:top-0 md:h-screen md:w-62 md:flex-col md:border-r md:p-4">
+        <div className="max-md:hidden md:px-2 md:pt-1 md:pb-5">
           <Marque />
         </div>
 
@@ -28,7 +40,12 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <main className="mx-auto max-w-[1080px] px-5 pt-6 pb-14 md:px-10 md:pt-7">{children}</main>
+        {/* 5rem = la barre basse (~56px) plus une respiration : sans cette
+            reserve, la derniere ligne de depense se cache dessous. `env()` y
+            ajoute l'indicateur d'accueil des iPhone — nul partout ailleurs. */}
+        <main className="mx-auto max-w-[1080px] px-5 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:px-10 md:pt-7 md:pb-14">
+          {children}
+        </main>
       </div>
     </div>
   )
