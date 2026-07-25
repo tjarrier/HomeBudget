@@ -77,11 +77,15 @@ apporte gratuitement le piège de focus, `Escape`, l'inertisation de
 l'arrière-plan et `::backdrop`. Contenu : avatar + nom, un `Button` pleine largeur
 « Se déconnecter », un « Annuler ».
 
-Le corps de la déconnexion est repris **tel quel** de `PiedProfil`, commentaire
-compris : `await signOut()` puis `router.refresh()`. La raison n'a pas changé — la
-session vit dans un cookie lu côté serveur, une navigation cliente afficherait un
-écran encore rendu avec l'ancienne, et c'est le middleware qui renvoie vers
-`/login`.
+Le corps de la déconnexion reprend le raisonnement de `PiedProfil` en le rendant
+déterministe : `await signOut()`, puis `router.replace('/login')` **et**
+`router.refresh()`. La prémisse n'a pas changé — la session vit dans un cookie lu
+côté serveur, rester sur place afficherait un écran encore rendu avec l'ancienne.
+Mais le `router.refresh()` seul faisait reposer la sortie sur le fait que Next
+suive la redirection émise par le middleware pendant une requête RSC : vrai en
+théorie, jamais testé ici. `replace` nomme la destination et empêche le bouton
+retour de ramener sur la coque authentifiée ; `refresh` purge derrière lui le
+Router Cache, qui garde encore la charge RSC rendue avec la session d'avant.
 
 Effet de bord assumé, et souhaitable : sur desktop, le « Quitter » souligné à
 11 px (cible d'environ 15 px de haut, très sous le plancher de 44 px que
