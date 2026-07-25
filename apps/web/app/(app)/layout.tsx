@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 
 import { Marque } from '@/components/marque'
+import { MenuCompte } from '@/components/menu-compte'
 import { NavPrincipale } from '@/components/nav-principale'
-import { PiedProfil } from '@/components/pied-profil'
 import { exigerSession } from '@/lib/session'
 
 /**
@@ -24,7 +24,7 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
         </div>
 
         <NavPrincipale />
-        <PiedProfil personne={session.personne} nom={session.nom} />
+        <MenuCompte personne={session.personne} nom={session.nom} />
       </aside>
 
       <div className="min-w-0 flex-1">
