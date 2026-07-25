@@ -114,4 +114,28 @@ test.describe('parcours authentifies', () => {
     await page.goto('/depenses')
     expect(await page.getByTestId('liste-depenses').textContent()).toBe(partsAvant)
   })
+
+  // Le viewport par defaut de Chromium (1280x720) affiche le rail lateral : les
+  // deux defauts de l'issue #13 n'y existent tout simplement pas. On descend a
+  // la taille d'un telephone courant pour les rendre observables.
+  test.describe('sur un telephone', () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+
+    test('la navigation est dans la moitie basse de l ecran', async ({ page }) => {
+      await page.goto('/')
+      const barre = page.getByRole('navigation', { name: 'Navigation principale' })
+      await expect(barre).toBeVisible()
+      const boite = await barre.boundingBox()
+      // « Au pouce » se mesure. 422 = la moitie des 844px de haut du viewport :
+      // au-dessus, la barre est hors d'atteinte d'une main qui tient l'appareil.
+      expect(boite?.y ?? 0).toBeGreaterThan(422)
+    })
+
+    test('on peut se deconnecter depuis un telephone', async ({ page }) => {
+      await page.goto('/')
+      await page.getByRole('button', { name: 'Compte' }).click()
+      await page.getByRole('button', { name: 'Se déconnecter' }).click()
+      await expect(page).toHaveURL(/\/login/)
+    })
+  })
 })
