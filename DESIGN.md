@@ -62,6 +62,7 @@ sémantiques** par-dessus. Le markup n'utilise que les alias.
 | `bg-primary` | `--primary` | slate-900 | bouton plein |
 | `ring-ring` | `--ring` | slate-900 | anneau de focus |
 | `bg-muted` | `--muted` | slate-100 | fond atténué, état actif de nav |
+| `backdrop:bg-overlay` | `--overlay` | slate-900 à 45 % | le voile du `<dialog>` de compte. **Le seul voile du produit.** |
 | `bg-positive-surface` / `text-positive` | emerald-50 / emerald-900 | | réassurance : transfert, version en cours |
 | `text-destructive` | `--destructive` | red-700 | **erreurs de formulaire uniquement** |
 
@@ -133,10 +134,22 @@ supprimés ; le conteneur est `Carte`, et les listes sont des `<ul>`.
   nom suit déjà en clair, plutôt que de faire annoncer « Thomas Thomas ».
 - **`BadgeType` / `BadgeVersion`** — étiquettes. Seul `transfert` et « En cours »
   portent l'emerald.
-- **`NavLaterale`** — cliente pour une seule raison : `usePathname()`. L'état actif est
-  porté par le fond **et** par `aria-current` — sous 880px les libellés disparaissent,
-  et un contraste de fond seul n'annoncerait rien.
-- **`PiedProfil`** — qui est connecté, et par où sortir.
+- **`Marque`** — le monogramme et le nom du produit. Rendue **deux fois** dans la coque
+  (entête sous 768px, tête de rail au-dessus), jamais deux fois à l'écran : c'est du
+  balisage statique, il n'y a rien à désynchroniser.
+- **`NavPrincipale`** — cliente pour une seule raison : `usePathname()`. L'état actif est
+  porté par le fond **et** par `aria-current`. Chaque entrée a un `libelleCourt`
+  (`Accueil`, `Dépenses`, `Config`) affiché sous l'icône dans la barre basse : trois
+  icônes muettes seraient une devinette. Les deux libellés se masquent par `hidden` /
+  `md:hidden`, jamais par `sr-only` — `sr-only` les laisserait tous les deux dans l'arbre
+  d'accessibilité, et le lien s'appellerait « Tableau de bord Accueil ».
+- **`MenuCompte`** — qui est connecté, et par où sortir. **Un** déclencheur et **une**
+  feuille, deux habillages : quatrième cellule de la barre basse sous 768px, pied de rail
+  au-dessus. Le dédoubler dédoublerait le chemin de déconnexion — c'est précisément ce qui
+  avait échoué avant l'issue #13 : le bouton « Quitter » existait, dans un conteneur
+  `max-md:sr-only` que personne ne pouvait toucher. La feuille est un `<dialog>` **natif**
+  ouvert par `showModal()`, pour la même raison que le `<select>` est natif : piège de
+  focus, `Escape`, inertisation de l'arrière-plan et `::backdrop`, sans une ligne de JS.
 
 ## Le traitement des montants
 
@@ -177,6 +190,13 @@ valeur **éditable** de champ de saisie, pas de l'affichage.
 - Aucune information portée par la couleur seule : `aria-current` sur la nav,
   `aria-label` sur les avatars, libellé en clair sur chaque badge.
 - **360px** est la largeur plancher testée (issue C2).
+- **La navigation est sous le pouce.** Sous 768px, l'`<aside>` devient une barre
+  `fixed bottom-0` de quatre cellules d'au moins 44px, `main` réserve la hauteur
+  correspondante, et `app/layout.tsx` déclare `viewport-fit=cover` pour que
+  `env(safe-area-inset-bottom)` cesse de valoir `0` sur iOS. L'`<aside>` reste **avant**
+  `<main>` dans le DOM : l'ordre de lecture prime sur l'ordre visuel.
+  `e2e/parcours.spec.ts` mesure les deux faits en viewport 390 × 844 — la barre est dans
+  la moitié basse, et on peut s'y déconnecter.
 
 ## Hors périmètre
 
