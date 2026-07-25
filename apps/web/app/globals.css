@@ -34,6 +34,7 @@
   --color-subtle: var(--border-subtle);
   --color-positive: var(--positive-text);
   --color-positive-surface: var(--positive-surface);
+  --color-overlay: var(--overlay);
 
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -81,6 +82,9 @@
   --background: var(--surface-card);
   --foreground: var(--text-strong);
   --muted: var(--slate-100);
+  /* Le voile du <dialog> de deconnexion. L'encre du systeme a 45% : il n'y a
+     pas de noir dans le produit, pas meme derriere une feuille modale. */
+  --overlay: color-mix(in oklab, var(--slate-900) 45%, transparent);
   --border: var(--border-subtle);
   /* LIMITE d'un controle de formulaire : elle doit atteindre 3:1 sur le fond
      blanc (WCAG 1.4.11). --slate-300 (#cbd5e1) ne donne que ~1,5:1 : bien trop
