@@ -8,8 +8,9 @@ import { cn } from '@/lib/utils'
 
 // `libelleCourt` n'est pas une abreviation de confort : c'est ce qui rend la
 // barre basse lisible. Une barre de trois icones muettes est une devinette, et
-// « Tableau de bord » ne tient pas dans une cellule de 90px (la largeur plancher
-// du projet, 360px, divisee par les quatre cellules).
+// « Tableau de bord » ne tient pas dans une cellule de 86px (la largeur plancher
+// du projet, 360px, moins les 16px de max-md:px-2 de l'aside, divisee par les
+// quatre cellules).
 const LIENS: { href: string; libelle: string; libelleCourt: string; icone: ReactNode }[] = [
   {
     href: '/',
