@@ -47,7 +47,7 @@ test.describe('parcours authentifies', () => {
     await page.goto('/')
     // Si cette assertion echoue avec une URL /login, le cookie est mal forme :
     // verifier BETTER_AUTH_SECRET et la signature dans e2e/session.ts.
-    await expect(page).toHaveURL('http://localhost:3000/')
+    await expect(page).toHaveURL('/')
     // LE CANARI, jusque dans l'UI. Le bandeau enchasse le montant AU MILIEU de
     // la phrase (« Liz doit 1 145,80 € à Thomas ») : le sens se verifie donc par
     // motif, la valeur reste epinglee au nœud <data>. Le solde reste 114 580.
