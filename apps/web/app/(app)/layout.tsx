@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 
+import { Marque } from '@/components/marque'
 import { NavLaterale } from '@/components/nav-laterale'
 import { PiedProfil } from '@/components/pied-profil'
 import { exigerSession } from '@/lib/session'
@@ -18,17 +19,8 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="flex shrink-0 flex-col border-subtle bg-surface max-md:items-center max-md:gap-3 max-md:border-b max-md:px-4 max-md:py-3 md:sticky md:top-0 md:h-screen md:w-62 md:border-r md:p-4 max-md:flex-row">
-        <div className="flex items-center gap-2.5 md:px-2 md:pt-1 md:pb-5">
-          <span
-            aria-hidden="true"
-            className="flex size-[30px] shrink-0 items-center justify-center rounded-lg bg-emphasis text-[0.8125rem] font-semibold tracking-[-0.02em] text-on-emphasis"
-          >
-            HB
-          </span>
-          <div>
-            <div className="text-base font-semibold tracking-[-0.01em]">HomeBudget</div>
-            <div className="text-[0.6875rem] text-faint max-md:sr-only">Thomas &amp; Liz</div>
-          </div>
+        <div className="md:px-2 md:pt-1 md:pb-5">
+          <Marque />
         </div>
 
         <NavLaterale />
