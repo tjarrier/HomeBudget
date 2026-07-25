@@ -121,14 +121,17 @@ test.describe('parcours authentifies', () => {
   test.describe('sur un telephone', () => {
     test.use({ viewport: { width: 390, height: 844 } })
 
-    test('la navigation est dans la moitie basse de l ecran', async ({ page }) => {
+    test('la navigation est ancree au bord inferieur de l ecran', async ({ page }) => {
       await page.goto('/')
       const barre = page.getByRole('navigation', { name: 'Navigation principale' })
       await expect(barre).toBeVisible()
       const boite = await barre.boundingBox()
-      // « Au pouce » se mesure. 422 = la moitie des 844px de haut du viewport :
-      // au-dessus, la barre est hors d'atteinte d'une main qui tient l'appareil.
-      expect(boite?.y ?? 0).toBeGreaterThan(422)
+      // Le fait a verrouiller n'est pas « dans la moitie basse » mais « ancree
+      // au bord inferieur » : le bas de la barre doit atteindre le bas du
+      // viewport (844px), a 8px pres. Un seuil de simple moitie passerait
+      // encore vert si la barre cessait d'etre fixed et se retrouvait poussee
+      // en bas d'une page longue.
+      expect((boite?.y ?? 0) + (boite?.height ?? 0)).toBeGreaterThan(844 - 8)
     })
 
     test('on peut se deconnecter depuis un telephone', async ({ page }) => {
