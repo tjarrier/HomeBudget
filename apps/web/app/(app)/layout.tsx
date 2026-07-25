@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 import { Marque } from '@/components/marque'
-import { NavLaterale } from '@/components/nav-laterale'
+import { NavPrincipale } from '@/components/nav-principale'
 import { PiedProfil } from '@/components/pied-profil'
 import { exigerSession } from '@/lib/session'
 
@@ -23,7 +23,7 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
           <Marque />
         </div>
 
-        <NavLaterale />
+        <NavPrincipale />
         <PiedProfil personne={session.personne} nom={session.nom} />
       </aside>
 
