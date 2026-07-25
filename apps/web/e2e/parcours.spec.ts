@@ -134,6 +134,32 @@ test.describe('parcours authentifies', () => {
       expect((boite?.y ?? 0) + (boite?.height ?? 0)).toBeGreaterThan(844 - 8)
     })
 
+    test('un signOut qui echoue ne fait pas croire a la sortie', async ({ page }) => {
+      await page.goto('/')
+      await page.route('**/api/auth/sign-out', (route) =>
+        route.fulfill({ status: 500, body: '{}' }),
+      )
+      await page.getByRole('button', { name: 'Compte' }).click()
+      await page.getByRole('button', { name: 'Se déconnecter' }).click()
+
+      // On RESTE sur place, et on le dit. Naviguer vers /login pendant que la
+      // session survit ferait croire a l'utilisateur qu'il est sorti. On cible
+      // le message par son texte plutot que par role('alert') : Next pose son
+      // propre annonceur de route (#__next-route-announcer__, role="alert",
+      // vide) des le premier goto(), ce qui rendrait le role seul ambigu.
+      const message = page.getByText('La déconnexion a échoué. Vérifie ta connexion et réessaie.')
+      await expect(message).toBeVisible()
+      await expect(page).toHaveURL('/')
+
+      // Verrouille le bug voisin : le message ne doit pas survivre a une
+      // fermeture par « Annuler ». Sans remise a zero a la reouverture (et non
+      // a la fermeture, qui ne couvre pas la sortie par Escape), il resterait
+      // arme et s'afficherait ici alors qu'aucune nouvelle tentative n'a eu lieu.
+      await page.getByRole('button', { name: 'Annuler' }).click()
+      await page.getByRole('button', { name: 'Compte' }).click()
+      await expect(message).not.toBeVisible()
+    })
+
     test('on peut se deconnecter depuis un telephone', async ({ page }) => {
       await page.goto('/')
       await page.getByRole('button', { name: 'Compte' }).click()
