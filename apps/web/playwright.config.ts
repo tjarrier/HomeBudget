@@ -29,7 +29,11 @@ export default defineConfig({
     // Better Auth refuse toute requete dont l'origine ne correspond pas a sa
     // baseURL. Sans cette ligne, servir les parcours sur un autre port que 3000
     // fait echouer signOut() en silence. Next n'ecrase jamais une variable deja
-    // presente dans process.env : celle-ci gagne donc sur `.env.local`.
+    // presente dans process.env : celle-ci gagne donc sur `.env.local`. Mais
+    // reuseExistingServer juste en dessous peut reutiliser un serveur deja
+    // lance (un `task dev` sur le meme port) : cet env n'est alors jamais
+    // applique, et le test de deconnexion echoue pour une raison sans rapport
+    // avec le code teste.
     env: { BETTER_AUTH_URL: ORIGINE },
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

@@ -46,9 +46,10 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
 
       {/* pr : meme contrepartie que le pl du rail, cote droit. */}
       <div className="min-w-0 flex-1 md:pr-[env(safe-area-inset-right)]">
-        {/* 5rem = la barre basse (~56px) plus une respiration : sans cette
-            reserve, la derniere ligne de depense se cache dessous. `env()` y
-            ajoute l'indicateur d'accueil des iPhone — nul partout ailleurs. */}
+        {/* 5rem = la barre basse (60px, 59 de contenu + 1 de filet) plus une
+            respiration : sans cette reserve, la derniere ligne de depense se
+            cache dessous. `env()` y ajoute l'indicateur d'accueil des
+            iPhone — nul partout ailleurs. */}
         <main className="mx-auto max-w-[1080px] px-5 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:px-10 md:pt-7 md:pb-14">
           {children}
         </main>
