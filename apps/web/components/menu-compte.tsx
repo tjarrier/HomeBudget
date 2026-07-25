@@ -2,7 +2,7 @@
 
 import type { Personne } from '@homebudget/domain'
 import { useRouter } from 'next/navigation'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 import { Avatar } from '@/components/avatar'
 import { Button } from '@/components/ui/button'
@@ -24,10 +24,19 @@ import { signOut } from '@/lib/auth-client'
 export function MenuCompte({ personne, nom }: { personne: Personne; nom: string }) {
   const feuille = useRef<HTMLDialogElement>(null)
   const router = useRouter()
+  const [echec, setEchec] = useState(false)
 
   async function seDeconnecter() {
+    setEchec(false)
+    const { error } = await signOut()
+    if (error) {
+      // On reste sur place. Naviguer vers /login pendant que la session
+      // survit ferait croire a l'utilisateur qu'il est sorti — c'est le
+      // mensonge que cette branche existe pour supprimer.
+      setEchec(true)
+      return
+    }
     feuille.current?.close()
-    await signOut()
     // La session vit dans un cookie lu cote serveur : rester sur place
     // afficherait un ecran encore rendu avec l'ancienne. `replace` plutot que
     // `push` pour que le bouton retour ne ramene pas sur la coque authentifiee,
@@ -98,6 +107,11 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
               <div className="text-[0.6875rem] text-faint">Connecté</div>
             </div>
           </div>
+          {echec && (
+            <p role="alert" className="text-[0.8125rem] text-destructive">
+              La déconnexion a échoué. Vérifie ta connexion et réessaie.
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             <Button onClick={seDeconnecter}>Se déconnecter</Button>
             <Button variant="discret" onClick={() => feuille.current?.close()}>

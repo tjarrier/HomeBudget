@@ -64,7 +64,7 @@ sémantiques** par-dessus. Le markup n'utilise que les alias.
 | `bg-muted` | `--muted` | slate-100 | fond atténué, état actif de nav |
 | `backdrop:bg-overlay` | `--overlay` | slate-900 à 45 % | le voile du `<dialog>` de compte. **Le seul voile du produit.** |
 | `bg-positive-surface` / `text-positive` | emerald-50 / emerald-900 | | réassurance : transfert, version en cours |
-| `text-destructive` | `--destructive` | red-700 | **erreurs de formulaire uniquement** |
+| `text-destructive` | `--destructive` | red-700 | **erreurs de formulaire et d'action échouée** |
 
 **Filet ≠ limite, et l'écart est un arbitrage d'accessibilité.** Un filet entre deux
 surfaces doit rester léger (slate-200). La limite d'un contrôle doit atteindre 3:1 sur
