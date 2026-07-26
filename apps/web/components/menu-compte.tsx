@@ -122,7 +122,10 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
               La déconnexion a échoué. Vérifie ta connexion et réessaie.
             </p>
           )}
-          <div className="flex flex-col gap-2">
+          {/* `gap-3` : la seule paire d'actions adjacentes du produit, et la
+              seule ou un appui de travers change de sens. 8px separaient deux
+              cibles de 44px — sous le pouce, c'est la largeur d'une erreur. */}
+          <div className="flex flex-col gap-3">
             <Button onClick={seDeconnecter}>Se déconnecter</Button>
             <Button variant="discret" onClick={() => feuille.current?.close()}>
               Annuler

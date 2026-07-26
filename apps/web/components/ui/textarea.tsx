@@ -11,14 +11,17 @@ import { cn } from '@/lib/utils'
  * ne se propageait donc pas ici. Les deux composants partagent desormais la
  * meme liste de classes, ligne pour ligne.
  *
- * Pas de hauteur fixe : c'est `rows` qui la donne, au cas par cas.
+ * Pas de hauteur fixe : c'est `rows` qui la donne, au cas par cas. `min-h-11`
+ * n'est donc jamais atteint aux `rows={4}` d'aujourd'hui — il est la pour le
+ * jour ou un `rows={1}` passerait ce controle sous le plancher tactile de 44px
+ * (issue C1), que les trois autres primitives tiennent deja.
  */
 function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
   return (
     <textarea
       data-slot="textarea"
       className={cn(
-        'w-full min-w-0 resize-y rounded-lg border border-input bg-surface px-3 py-2 text-sm transition-[color,box-shadow] outline-none',
+        'min-h-11 w-full min-w-0 resize-y rounded-lg border border-input bg-surface px-3 py-2 text-sm transition-[color,box-shadow] outline-none',
         'placeholder:text-faint',
         'focus-visible:border-strong focus-visible:ring-[3px] focus-visible:ring-ring/50',
         'disabled:pointer-events-none disabled:opacity-50',
