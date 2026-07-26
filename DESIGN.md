@@ -197,6 +197,11 @@ valeur **éditable** de champ de saisie, pas de l'affichage.
   `<main>` dans le DOM : l'ordre de lecture prime sur l'ordre visuel.
   `e2e/parcours.spec.ts` mesure les deux faits en viewport 390 × 844 — la barre est dans
   la moitié basse, et on peut s'y déconnecter.
+- **`viewport-fit=cover` étend le document sous les quatre bords, pas seulement le bas.**
+  Sa contrepartie se paie donc partout : `inset-top` sur l'entête mobile, `inset-left` sur
+  le rail, `inset-right` sur la colonne de contenu, `inset-bottom` sur la barre basse et
+  sur `main`. Toujours en `calc(base + env(…))` — un `pt-[env(…)]` nu écrase l'espacement
+  de base au lieu de s'y ajouter.
 
 ## Hors périmètre
 
