@@ -22,10 +22,26 @@ const TROP_BAS = /\b(?:min-)?h-(?:8|9|10)\b/
 
 const PRIMITIVES = ['button', 'input', 'select', 'textarea'] as const
 
+/**
+ * Le source, prive de ses commentaires — seul le code applique une classe.
+ *
+ * Sans ce depouillage le test ment dans les deux sens, et il ment deja : le
+ * docstring de `textarea.tsx` cite `min-h-11`, donc supprimer la classe du
+ * composant laisserait le test vert. Symetriquement, une note qui raconterait
+ * le passage de `h-10` a `h-11` le ferait echouer sans qu'aucune classe ait
+ * bouge. Ces docstrings racontent l'historique du fichier : ils citeront des
+ * hauteurs.
+ */
 function source(nom: string): string {
-  return readFileSync(
+  const brut = readFileSync(
     fileURLToPath(new URL(`../components/ui/${nom}.tsx`, import.meta.url)),
     'utf-8',
+  )
+  return (
+    brut
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      // `[^:]` laisse passer le `//` d'une URL dans une chaine.
+      .replace(/(^|[^:])\/\/.*$/gm, '$1')
   )
 }
 

@@ -8,8 +8,11 @@ import { cn } from '@/lib/utils'
  * Il existe parce que les trois champs de charges recopiaient a la main le
  * style de `Input` — et avaient deja diverge : ni `disabled:`, ni
  * `aria-invalid:`. Un correctif de contraste sur la limite ou l'anneau de focus
- * ne se propageait donc pas ici. Les deux composants partagent desormais la
- * meme liste de classes, ligne pour ligne.
+ * ne se propageait donc pas ici. Les quatre lignes d'etat — placeholder, focus,
+ * `disabled`, `aria-invalid` — sont desormais celles d'`Input`, a l'identique.
+ * Seule la premiere ligne differe, la ou une zone multiligne ne peut pas se
+ * comporter comme un champ d'une ligne : `resize-y`, `py-2`, et `min-h-11` la
+ * ou `Input` fixe `h-11`.
  *
  * Pas de hauteur fixe : c'est `rows` qui la donne, au cas par cas. `min-h-11`
  * n'est donc jamais atteint aux `rows={4}` d'aujourd'hui — il est la pour le

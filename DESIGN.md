@@ -107,7 +107,9 @@ supprimés ; le conteneur est `Carte`, et les listes sont des `<ul>`.
 - **`Input`** — bordé, fond blanc, rayon 10px, `h-11` = **44px**, le même plancher que
   `Button` (issue C1). Le focus épaissit un anneau de 3px et fonce la limite.
   `aria-invalid` bascule en `--destructive`.
-- **`Textarea`** — la même liste de classes que `Input`, ligne pour ligne. Il existe
+- **`Textarea`** — les quatre lignes d'état d'`Input` à l'identique (placeholder, focus,
+  `disabled`, `aria-invalid`) ; seule la première diffère, comme doit le faire une zone
+  multiligne : `resize-y`, `py-2`, et `min-h-11` là où `Input` fixe `h-11`. Il existe
   précisément parce que les champs de charges recopiaient ce style à la main et avaient
   déjà divergé (ni `disabled:`, ni `aria-invalid:`). Sa hauteur vient de `rows` ; le
   `min-h-11` n'est jamais atteint aux `rows={4}` d'aujourd'hui et existe pour le jour où
