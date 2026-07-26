@@ -129,7 +129,14 @@ export default async function TableauDeBord() {
           aside={
             <Link
               href="/depenses"
-              className="font-medium hover:text-body focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              // Le seul controle de l'app qui ne soit ni un bouton ni un champ,
+              // et le seul dont la cible se lisait dans la taille du texte :
+              // 63x15px, intouchable au pouce. `min-h-11` la porte au plancher
+              // du projet ; `-my-3` empeche ces 44px de repousser le titre de
+              // la carte — la zone touchable grandit, la mise en page ne bouge
+              // pas. `px-2 -mr-2` fait la meme chose en largeur, sans decaler
+              // le texte du bord droit.
+              className="-my-3 -mr-2 inline-flex min-h-11 items-center px-2 font-medium hover:text-body focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               Voir tout →
             </Link>

@@ -104,12 +104,16 @@ supprimés ; le conteneur est `Carte`, et les listes sont des `<ul>`.
   (bordé sur blanc). `min-h-11` = **44px dans les deux cas** : la cible tactile est
   réglée ici, à la source, pas écran par écran. La maquette dessine 42px ; on ne
   descend pas sous le plancher pour 2px.
-- **`Input`** — bordé, fond blanc, rayon 10px, `h-10`. Le focus épaissit un anneau de
-  3px et fonce la limite. `aria-invalid` bascule en `--destructive`.
+- **`Input`** — bordé, fond blanc, rayon 10px, `h-11` = **44px**, le même plancher que
+  `Button` (issue C1). Le focus épaissit un anneau de 3px et fonce la limite.
+  `aria-invalid` bascule en `--destructive`.
 - **`Textarea`** — la même liste de classes que `Input`, ligne pour ligne. Il existe
   précisément parce que les champs de charges recopiaient ce style à la main et avaient
-  déjà divergé (ni `disabled:`, ni `aria-invalid:`).
-- **`Select`** — un `<select>` **natif**, volontairement : il porte gratuitement le
+  déjà divergé (ni `disabled:`, ni `aria-invalid:`). Sa hauteur vient de `rows` ; le
+  `min-h-11` n'est jamais atteint aux `rows={4}` d'aujourd'hui et existe pour le jour où
+  un `rows={1}` le ferait passer sous le plancher.
+- **`Select`** — `h-11` lui aussi : un `<select>` se touche exactement comme un champ.
+  C'est un `<select>` **natif**, volontairement : il porte gratuitement le
   clavier, l'ARIA, `disabled`, et ouvre le sélecteur du système sur mobile. Le popup JS
   de Base UI ne fait rien de tout ça. La flèche native est retirée par `appearance-none`
   et remplacée par un chevron SVG posé dans `globals.css` — **sa couleur est un hex
@@ -183,7 +187,22 @@ valeur **éditable** de champ de saisie, pas de l'affichage.
 
 ## Accessibilité — les planchers tenus à la source
 
-- **44px** de hauteur minimale sur `Button`.
+- **44px** de côté minimum sur **tout** ce qui se touche (issue C1), et le plancher est
+  tenu **à la source** : `min-h-11` sur `Button` et `Textarea`, `h-11` sur `Input` et
+  `Select`, `max-md:min-h-11` sur les quatre cellules de la barre basse. Un écran n'a
+  donc rien à régler. La seule exception est le lien « Voir tout → » du tableau de bord,
+  qui n'est ni un bouton ni un champ : sa cible se lisait dans sa taille de texte
+  (63 × 15px). Elle est étendue par `min-h-11` **et** des marges négatives — la zone
+  touchable grandit, la mise en page ne bouge pas.
+- **12px au moins entre deux actions adjacentes.** Une seule paire existe dans le
+  produit — « Se déconnecter » / « Annuler » dans la feuille de compte —, et c'est la
+  seule où un appui de travers change de sens.
+- Ces deux faits sont mesurés sur le **rendu**, pas grepés dans le markup :
+  `e2e/cibles-tactiles.spec.ts` parcourt chaque écran en 360 × 740 et refuse tout
+  `a, button, input, select, textarea` visible sous 44px — un contrôle ajouté demain y
+  entre sans qu'on ait à l'inscrire nulle part. `test/cibles-tactiles.test.ts` ne
+  verrouille que les quatre primitives, mais sans Docker ni navigateur, dans
+  `task verif`.
 - **3:1** pour la limite d'un contrôle (`--input`) et pour l'anneau de focus (`--ring`),
   d'où l'encre pleine plutôt qu'un gris clair.
 - Le focus visible n'est **jamais** supprimé : `focus-visible:ring-[3px]` avec décalage.
@@ -195,8 +214,8 @@ valeur **éditable** de champ de saisie, pas de l'affichage.
   correspondante, et `app/layout.tsx` déclare `viewport-fit=cover` pour que
   `env(safe-area-inset-bottom)` cesse de valoir `0` sur iOS. L'`<aside>` reste **avant**
   `<main>` dans le DOM : l'ordre de lecture prime sur l'ordre visuel.
-  `e2e/parcours.spec.ts` mesure les deux faits en viewport 390 × 844 — la barre est dans
-  la moitié basse, et on peut s'y déconnecter.
+  `e2e/parcours.spec.ts` mesure les deux faits en viewport 390 × 844 — le bas de la
+  barre atteint le bas du viewport, et on peut s'y déconnecter.
 - **`viewport-fit=cover` étend le document sous les quatre bords, pas seulement le bas.**
   Sa contrepartie se paie donc partout : `inset-top` sur l'entête mobile, `inset-left` sur
   le rail, `inset-right` sur la colonne de contenu, `inset-bottom` sur la barre basse et

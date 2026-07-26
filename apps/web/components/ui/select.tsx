@@ -15,6 +15,10 @@ import { cn } from '@/lib/utils'
  * Le natif porte gratuitement le clavier, l'ARIA et l'etat disabled : c'est la
  * raison meme pour laquelle la spec garde les controles.
  *
+ * `h-11` (44px) : le meme plancher tactile que `Button` et `Input` (issue C1).
+ * Un `<select>` natif se touche exactement comme un champ ; il n'a aucune
+ * raison d'etre plus bas qu'eux.
+ *
  * `appearance-none` retire la fleche du systeme ; le chevron qui la remplace
  * est pose par une regle CSS ciblant `[data-slot="select"]` dans
  * `app/globals.css` (un `background-image` colore au token, pas un litteral).
@@ -25,7 +29,7 @@ function Select({ className, ...props }: React.ComponentProps<'select'>) {
     <select
       data-slot="select"
       className={cn(
-        'h-10 w-full min-w-0 appearance-none rounded-lg border border-input bg-surface pr-9 pl-3 text-sm transition-[color,box-shadow] outline-none',
+        'h-11 w-full min-w-0 appearance-none rounded-lg border border-input bg-surface pr-9 pl-3 text-sm transition-[color,box-shadow] outline-none',
         'focus-visible:border-strong focus-visible:ring-[3px] focus-visible:ring-ring/50',
         'disabled:pointer-events-none disabled:opacity-50',
         className,
