@@ -26,7 +26,13 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <header className="flex items-center border-b border-subtle bg-surface px-5 py-3 md:hidden">
+      {/* pt : la contrepartie haute de viewport-fit=cover. En navigation Safari
+          l'inset vaut 0 et le py-3 s'applique seul ; ecran d'accueil ou
+          plein ecran, la marque passerait sinon sous la barre d'etat. Le
+          calc() est obligatoire : un pt-[env(...)] nu ECRASERAIT le py-3, et
+          l'entete se collerait au filet du haut sur tous les autres
+          appareils. */}
+      <header className="flex items-center border-b border-subtle bg-surface px-5 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:hidden">
         <Marque />
       </header>
 
