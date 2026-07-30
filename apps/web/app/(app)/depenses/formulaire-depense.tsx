@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { formaterDate } from '@/lib/format'
-import { type Personne, type TypeDepense, modeParDefaut } from '@homebudget/domain'
+import { type Personne, type TypeDepense, dateMaxDepense, modeParDefaut } from '@homebudget/domain'
 import { useActionState, useEffect, useState } from 'react'
 
 // `toISOString()` daterait en UTC : saisi a 23 h a Paris, le champ proposerait
@@ -199,6 +199,14 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
                 name="date"
                 type="date"
                 required
+                // Le selecteur natif grise l'au-dela, et le navigateur refuse la
+                // soumission sans aller-retour serveur. Ce n'est qu'un confort :
+                // le serveur reste la seule autorite (`verifierDatePlausible`,
+                // appelee par `calculerPartsPourSaisie`). La regle n'est pas
+                // dupliquee — c'est la MEME fonction du domaine des deux cotes,
+                // seule la lecture de l'horloge differe, sans effet sur une
+                // fenetre d'un an.
+                max={dateMaxDepense(AUJOURDHUI())}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
