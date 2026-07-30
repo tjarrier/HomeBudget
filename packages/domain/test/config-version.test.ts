@@ -100,6 +100,12 @@ describe('versionEnVigueurLe', () => {
   })
 
   it('trouve la version courante (dateFin null) pour une date lointaine', () => {
+    // Ce comportement est VOULU et ne doit pas etre « corrige » : une version
+    // ouverte couvre tout ce qui suit sa dateDebut (migration 0004, ligne 39).
+    // Ce n'est donc pas ici que 2030-01-01 est refuse — c'est
+    // `verifierDatePlausible` (horizon-saisie.ts) qui tient la borne HAUTE, et
+    // `calculerPartsPourSaisie` qui appelle les deux. Cette fonction-ci tient
+    // la borne BASSE, et elle seule (voir le test juste en dessous).
     expect(versionEnVigueurLe(versions, '2030-01-01').id).toBe('v2')
   })
 
