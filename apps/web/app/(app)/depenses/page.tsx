@@ -17,7 +17,11 @@ export default async function Depenses() {
     <>
       <EntetePage titre="Dépenses" sousTitre="Chaque part est figée à la saisie" />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      {/* `grid-cols-1` borne la colonne a `minmax(0,1fr)`. Sans elle, la colonne
+          implicite vaut `auto` et se cale sur le max-content : les montants
+          insecables de l'historique poussaient la page a 386px de large sur un
+          ecran de 360 (issue C2). */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Carte
           titre="Historique"
           aside={`${depenses.length} ${depenses.length > 1 ? 'dépenses' : 'dépense'}`}

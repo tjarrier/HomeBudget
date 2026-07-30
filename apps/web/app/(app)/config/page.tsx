@@ -28,7 +28,11 @@ export default async function Config() {
     <>
       <EntetePage titre="Configuration" sousTitre="Historique append-only des règles" />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      {/* `grid-cols-1` : meme borne que sur les deux autres ecrans. Cette grille
+          ne debordait pas encore — son contenu est plus etroit — mais elle porte
+          le meme defaut, et c'est la longueur d'un libelle de version qui decide
+          si elle craque. Voir issue C2. */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section>
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <h2 className="text-[0.9375rem] font-semibold">Historique de la configuration</h2>
@@ -65,7 +69,7 @@ export default async function Config() {
                       {v.dateFin ? formaterDate(v.dateFin) : "aujourd'hui"}
                     </p>
 
-                    <dl className="mt-3 grid gap-x-5 gap-y-1.5 text-xs sm:grid-cols-2">
+                    <dl className="mt-3 grid grid-cols-1 gap-x-5 gap-y-1.5 text-xs sm:grid-cols-2">
                       <Poste libelle="Salaire Thomas" valeur={v.salaireNetThomas} />
                       <Poste libelle="Salaire Liz" valeur={v.salaireNetLiz} />
                       <Poste libelle="Charges communes" valeur={totalChargesCommunes(v)} />
