@@ -143,6 +143,56 @@ describe('ajouterDepense — I2, snapshot on write', () => {
     ).rejects.toThrow(/Aucune version de config ne couvre/i)
   })
 
+  /**
+   * La borne HAUTE de la fenetre plausible (issue #29). Elle ne peut pas etre
+   * ecrite en dur : le test doit rester vrai dans deux ans. On la construit
+   * relativement a l'horloge — le 15 janvier de l'annee N+2 est toujours
+   * au-dela d'un an apres aujourd'hui, quel que soit le jour de l'annee.
+   */
+  function dansDeuxAns(): string {
+    return `${new Date().getUTCFullYear() + 2}-01-15`
+  }
+
+  it('refuse une depense datee a plus d un an, avant toute ecriture', async () => {
+    await deuxVersions()
+
+    await expect(
+      ajouterDepense({
+        date: dansDeuxAns(),
+        description: 'Coquille d annee',
+        montant: 5000,
+        payePar: 'thomas',
+        type: 'courante',
+        mode: 'moitie',
+      }),
+    ).rejects.toThrow(/trop lointaine/i)
+
+    // « Avant d'atteindre la base » : la garde n'a pas de valeur si la ligne est
+    // ecrite puis l'erreur levee. La version courante etant ouverte, rien
+    // d'autre n'aurait refuse cette date.
+    const restantes = await listerDepenses()
+    expect(restantes).toEqual([])
+  })
+
+  it('laisse passer une depense datee dans les mois a venir', async () => {
+    // Le pendant du test precedent : interdire la sur-correction. Une depense
+    // legitimement postdatee (prelevement annonce) doit toujours s ecrire.
+    await deuxVersions()
+    const dansUnMois = new Date()
+    dansUnMois.setUTCDate(dansUnMois.getUTCDate() + 30)
+
+    const d = await ajouterDepense({
+      date: dansUnMois.toISOString().slice(0, 10),
+      description: 'Prelevement annonce',
+      montant: 5000,
+      payePar: 'thomas',
+      type: 'courante',
+      mode: 'moitie',
+    })
+
+    expect(d.parts.thomas + d.parts.liz).toBe(d.montant)
+  })
+
   it('donne au payeur une part nulle sur un transfert — la dette du payeur BAISSE', async () => {
     // Le piege qui coute de l'argent : `transfert` n'est PAS « 100 % au payeur ».
     // Liz verse 400 € : part_liz = 0, part_thomas = 400, solde_liz = +400.
