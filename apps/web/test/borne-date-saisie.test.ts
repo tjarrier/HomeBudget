@@ -26,15 +26,22 @@ function source(): string {
   )
   // Sans depouiller les commentaires, une note qui citerait `dateMaxDepense`
   // suffirait a rendre le test vert alors que le composant ne l'appelle pas.
-  return brut
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
-    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+  // Un commentaire JSX `{/* ... */}` est deja couvert par ce premier replace :
+  // il consomme le `/* ... */` interieur et ne laisse que des accolades
+  // orphelines `{}`, sans qu'un second passage soit necessaire.
+  return brut.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 }
 
 describe('le champ date du formulaire de depense porte la borne haute', () => {
   it('importe dateMaxDepense du domaine', () => {
-    expect(source()).toMatch(/dateMaxDepense/)
+    // Sur la seule presence de la chaine `dateMaxDepense`, une fonction
+    // LOCALE de meme nom rendrait ce test vert tout en cassant la propriete
+    // que le docstring du fichier revendique : la borne doit venir de la
+    // MEME fonction du domaine que le serveur, pas d'une copie locale.
+    // L'assertion porte donc sur l'IMPORT lui-meme, depuis '@homebudget/domain'.
+    expect(source()).toMatch(
+      /import\s*\{[^}]*\bdateMaxDepense\b[^}]*\}\s*from\s*'@homebudget\/domain'/,
+    )
   })
 
   it('pose un attribut max sur l input de type date, et sur lui seul', () => {
