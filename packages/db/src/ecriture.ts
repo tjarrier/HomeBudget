@@ -9,6 +9,7 @@ import {
   type VersionConfig,
   calculerParts,
   ratioThomas,
+  verifierDatePlausible,
   versionEnVigueurLe,
 } from '@homebudget/domain'
 import { eq, sql } from 'drizzle-orm'
@@ -37,6 +38,22 @@ export interface PartsCalculees {
 }
 
 /**
+ * Aujourd'hui, en date ISO, d'apres l'horloge du SERVEUR.
+ *
+ * Volontairement NON exporte : `index.ts` fait `export *`, et la facade de
+ * `packages/db` est une liste blanche verrouillee par
+ * `apps/web/test/architecture.test.ts`. Rien a y ajouter pour cette regle.
+ *
+ * Lit l'horloge, donc impur — d'ou sa place ici et non dans le domaine, qui
+ * recoit toujours `aujourdhui` en parametre. Le serveur peut tourner en UTC
+ * pendant qu'on saisit a Paris : sur une fenetre d'un AN, un decalage de
+ * quelques heures est sans consequence.
+ */
+function aujourdhuiIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/**
  * Le coeur de I2, extrait pour etre partage par l'ECRITURE et l'APERCU.
  * Meme code des deux cotes : un apercu qui divergerait de l'ecriture serait un
  * mensonge affiche a l'utilisateur.
@@ -47,7 +64,15 @@ export interface PartsCalculees {
 export function calculerPartsPourSaisie(
   saisie: SaisieDepense,
   versions: VersionConfig[],
+  aujourdhui: string = aujourdhuiIso(),
 ): PartsCalculees {
+  // Les DEUX bornes de la fenetre plausible, cote a cote :
+  // - haute : plus d'un an dans l'avenir, c'est une coquille d'annee (#29) ;
+  // - basse : anterieure a toute version, aucune regle n'est applicable.
+  // Ancre ICI et non dans `normaliser()` cote web, parce que `ajouterDepense`
+  // est joignable sans passer par le formulaire (tests, seed, futur import) :
+  // c'est la facade elle-meme qu'il faut proteger.
+  verifierDatePlausible(saisie.date, aujourdhui)
   const version = versionEnVigueurLe(versions, saisie.date)
   // `exactOptionalPropertyTypes` : on ne pose la cle que si elle a une valeur.
   const parts = calculerParts({
