@@ -82,6 +82,77 @@ test.describe('parcours authentifies', () => {
     await expect(page.getByTestId('phrase-synthese').locator('data')).toHaveText('1 120,80 €')
   })
 
+  test.describe('borne haute de la date de depense (issue #29)', () => {
+    // Calculee INDEPENDAMMENT de `dateMaxDepense` (le domaine) : ce test doit
+    // rester capable de detecter une divergence entre les deux, pas la
+    // confirmer par construction en important la meme fonction.
+    function dansUnAn(iso: string): string {
+      const [a, m, j] = iso.split('-').map(Number) as [number, number, number]
+      const max = new Date(Date.UTC(a + 1, m - 1, j))
+      if (max.getUTCMonth() !== m - 1) max.setUTCDate(0)
+      return max.toISOString().slice(0, 10)
+    }
+
+    test('le champ date porte un max a un an, et le serveur refuse une date au-dela', async ({
+      page,
+    }) => {
+      await page.goto('/depenses')
+      await page.getByRole('button', { name: 'Modifier' }).click()
+
+      const champDate = page.locator('input[name="date"]')
+      const aujourdhui = new Date().toISOString().slice(0, 10)
+      await expect(champDate).toHaveAttribute('max', dansUnAn(aujourdhui))
+
+      // Date aberrante (le piege reel du Sheet d'origine : 2029-09-29 pour une
+      // depense de 2025-09-29). Le selecteur natif la marque hors borne.
+      await champDate.fill('2029-09-29')
+      const rangeOverflow = await champDate.evaluate(
+        (input: HTMLInputElement) => input.validity.rangeOverflow,
+      )
+      expect(rangeOverflow).toBe(true)
+
+      await page.fill('input[name="montant"]', '50,00')
+      await page.fill('input[name="description"]', 'Coquille d annee')
+
+      const messageErreur = page.getByTestId('message-erreur-apercu')
+      await expect(messageErreur).toContainText('trop lointaine')
+      await expect(messageErreur).toContainText('figées définitivement')
+      await expect(page.getByTestId('apercu-parts')).toHaveCount(0)
+    })
+
+    test('une date a +30 jours reste acceptee, aucune ecriture', async ({ page }) => {
+      await page.goto('/depenses')
+      await page.getByRole('button', { name: 'Modifier' }).click()
+
+      const dansUnMois = new Date()
+      dansUnMois.setUTCDate(dansUnMois.getUTCDate() + 30)
+
+      await page.fill('input[name="date"]', dansUnMois.toISOString().slice(0, 10))
+      await page.fill('input[name="montant"]', '50,00')
+      await page.fill('input[name="description"]', 'Prelevement annonce')
+
+      // Le pendant : previsualise, jamais soumis — la depense ne doit pas
+      // s'ecrire, sous peine de casser le canari des tests suivants.
+      await expect(page.getByTestId('apercu-parts')).toBeVisible()
+      await expect(page.getByTestId('message-erreur-apercu')).toHaveCount(0)
+    })
+
+    test('replier() ne masque pas un champ date hors borne (sinon soumission bloquee sans message)', async ({
+      page,
+    }) => {
+      await page.goto('/depenses')
+      await page.getByRole('button', { name: 'Modifier' }).click()
+
+      await page.fill('input[name="date"]', '2029-09-29')
+      await page.getByRole('button', { name: 'Replier' }).click()
+
+      // Un champ `hidden` mais invalide (rangeOverflow) rendrait le bouton
+      // "Ajouter la depense" inerte : le navigateur refuse la soumission sans
+      // rien afficher, faute de pouvoir focaliser un champ masque.
+      await expect(page.getByLabel('Date')).toBeVisible()
+    })
+  })
+
   test('creer une version ne change aucune depense passee', async ({ page }) => {
     await page.goto('/')
     const soldeAvant = await page.getByTestId('phrase-synthese').textContent()
