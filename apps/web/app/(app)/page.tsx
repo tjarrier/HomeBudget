@@ -104,7 +104,13 @@ export default async function TableauDeBord() {
         />
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      {/* `grid-cols-1` n'est PAS decoratif : sans template explicite, la colonne
+          implicite d'une grille vaut `auto`, donc au moins le max-content de ses
+          items — une carte pleine de montants insecables pousse alors la grille
+          au-dela de l'ecran. `grid-cols-1` vaut `minmax(0,1fr)` : la colonne est
+          bornee par la place disponible, et le contenu retrecit. C'est la cause
+          unique de l'issue C2. */}
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Carte titre="Répartition" aside="Payé vs dû">
           <div className="flex flex-col gap-5">
             <BilanPersonne
