@@ -72,8 +72,16 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
   // un champ `required` masque bloquer la soumission sans focus possible. On
   // retablit le defaut avant de replier — c'est justement la valeur que le
   // resume annonce (« Aujourd'hui »).
+  //
+  // Meme famille de piege pour une date HORS BORNE (issue #29) : `hidden` ne
+  // rend pas un champ valide, seulement invisible et infocalisable. Une date
+  // saisie au clavier au-dela de l'horizon survivrait au repli, et le
+  // navigateur refuserait alors la soumission sans rien afficher — bouton
+  // "Ajouter la depense" apparemment inerte. On refuse donc de replier tant
+  // que la date depasse la borne, pour que l'erreur reste visible et focalisable.
   function replier() {
     if (!date) setDate(AUJOURDHUI())
+    if (date > dateMaxDepense(AUJOURDHUI())) return
     setDetailsOuverts(false)
   }
 
