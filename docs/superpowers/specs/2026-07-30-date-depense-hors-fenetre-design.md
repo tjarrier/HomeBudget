@@ -220,11 +220,20 @@ Aucun type de retour nouveau, aucun canal d'« avertissement » parallèle.
   borne basse.
 - Une date ISO malformée ou impossible (`'2026-02-30'`, `'2026-7-1'`) jette.
 
-**Domaine — borne basse, régression (`config-version.test.ts`)**
+**Domaine — borne basse : déjà verrouillée, rien à ajouter**
 
-- Une date antérieure à la première version jette toujours le message de
-  `versionEnVigueurLe`. Ce test n'existait pas ; il verrouille la moitié de la
-  fenêtre qu'on ne réécrit pas.
+Vérification faite : `config-version.test.ts:106` (« refuse une date anterieure à
+toute version ») et `facade.integration.test.ts:132` (« refuse une depense a une
+date qu aucune version ne couvre ») tiennent déjà la borne basse, en unitaire et en
+intégration. Aucun test à écrire.
+
+En revanche, `config-version.test.ts:102` — « trouve la version courante (dateFin
+null) pour une date lointaine », qui vérifie que `2030-01-01` résout vers `v2` —
+devient trompeur : il décrit exactement le trou de l'issue. Le comportement est
+correct et doit rester (`versionEnVigueurLe` n'a pas d'opinion sur l'horizon), mais
+le test reçoit un commentaire qui renvoie à `verifierDatePlausible` et dit qui tient
+quelle borne. Sans quoi le prochain lecteur croira que le trou est encore ouvert, ou
+« corrigera » ce test.
 
 **Intégration — `packages/db/test/facade.integration.test.ts`**
 
