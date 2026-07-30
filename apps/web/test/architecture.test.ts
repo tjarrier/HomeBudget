@@ -203,6 +203,26 @@ describe("apps/web n'importe de packages/db que sa facade", () => {
   })
 })
 
+describe('chaque Server Action exige une session', () => {
+  it('appelle exigerSession() avant tout traitement', () => {
+    // Une Server Action est un endpoint HTTP joignable sans charger la page.
+    // `exigerSession()` en premiere ligne est la garde reelle — le layout et
+    // le middleware ne suffisent pas. Ce test verrouille la regle pour toute
+    // action AJOUTEE PLUS TARD, qui autrement se croirait protegee par la page.
+    const actions = fichiersTs('actions').filter((f) => !/\bresultat\.ts$/.test(f))
+
+    // Si le glob ne trouve plus rien (dossier renomme), le test doit crier
+    // plutot que de passer sur une liste vide.
+    expect(actions.length).toBeGreaterThan(0)
+
+    const sansGarde = actions
+      .filter((f) => !/\bexigerSession\s*\(/.test(readFileSync(f, 'utf-8')))
+      .map((f) => f.replace(RACINE, ''))
+
+    expect(sansGarde).toEqual([])
+  })
+})
+
 describe('chaque page du groupe (app) exige une session', () => {
   it('appelle exigerSession(), sans dependre du rendu du layout', () => {
     // Next.js ne garantit PAS de re-rendre un layout a chaque requete d'un
