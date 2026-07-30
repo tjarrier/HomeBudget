@@ -7,6 +7,11 @@ import { assertDateIsoValide } from './config-version.js'
  * datee 2029-09-29 pour 2025-09-29. La frontiere est binaire, volontairement :
  * une depense datee dans l'annee a venir est legitime (un prelevement annonce,
  * une regularisation), au-dela il n'existe pas de cas d'usage.
+ *
+ * Le message de `verifierDatePlausible` ecrit « un an » en toutes lettres,
+ * volontairement non interpole depuis cette constante (le francais lirait
+ * moins bien et imposerait une regle de pluriel inutile pour une valeur qui ne
+ * bouge jamais). Si tu changes `HORIZON_ANNEES`, reecris ce message a la main.
  */
 const HORIZON_ANNEES = 1
 

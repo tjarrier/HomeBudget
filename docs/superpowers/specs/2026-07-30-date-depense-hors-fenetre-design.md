@@ -69,6 +69,11 @@ l'année à venir est légitime, au-delà c'est une coquille. La frontière est 
 - **`import-sheet.ts`.** Sa table de correction transforme déjà explicitement
   `2029-09-29` en `2025-09-29`, et un test le verrouille
   (`packages/db/test/import-sheet.test.ts`). Rien à ajouter.
+  L'invariant que cette issue installe est « ce qui passe par la façade »
+  (`calculerPartsPourSaisie`), pas « ce que contient la table `depense` » :
+  `seed.ts` insère directement en `db.insert`, hors façade et donc hors garde.
+  C'est délibéré — un seed contrôle ses propres dates — mais ça n'est pas une
+  couverture totale, et ça ne doit pas être lu comme telle.
 - **`normaliser()`.** Voir « Le point d'ancrage » : la garde va ailleurs, et ce
   fichier reste inchangé.
 

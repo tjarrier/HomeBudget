@@ -212,8 +212,12 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
                 // le serveur reste la seule autorite (`verifierDatePlausible`,
                 // appelee par `calculerPartsPourSaisie`). La regle n'est pas
                 // dupliquee — c'est la MEME fonction du domaine des deux cotes,
-                // seule la lecture de l'horloge differe, sans effet sur une
-                // fenetre d'un an.
+                // seule la lecture de l'horloge differe : `AUJOURDHUI()` ici en
+                // LOCAL, `aujourdhuiIso()` cote serveur en UTC. Entre 0 h et 2 h
+                // a Paris, la borne du navigateur peut donc valoir un jour de
+                // plus que celle du serveur, qui refusera alors une date que le
+                // selecteur avait laisse choisir. Connu et sans danger dans ce
+                // sens : rien de faux ne s'ecrit, l'apercu explique le refus.
                 max={dateMaxDepense(AUJOURDHUI())}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}

@@ -66,13 +66,16 @@ export function calculerPartsPourSaisie(
   versions: VersionConfig[],
   aujourdhui: string = aujourdhuiIso(),
 ): PartsCalculees {
-  // Les DEUX bornes de la fenetre plausible, cote a cote :
-  // - haute : plus d'un an dans l'avenir, c'est une coquille d'annee (#29) ;
-  // - basse : anterieure a toute version, aucune regle n'est applicable.
-  // Ancre ICI et non dans `normaliser()` cote web, parce que `ajouterDepense`
-  // est joignable sans passer par le formulaire (tests, seed, futur import) :
-  // c'est la facade elle-meme qu'il faut proteger.
+  // Borne HAUTE de la fenetre plausible : plus d'un an dans l'avenir, c'est
+  // une coquille d'annee (#29). Ancree ICI et non dans `normaliser()` cote
+  // web, parce que `ajouterDepense` est joignable sans passer par le
+  // formulaire (tests, seed, futur import) : c'est la facade elle-meme qu'il
+  // faut proteger.
   verifierDatePlausible(saisie.date, aujourdhui)
+  // Borne BASSE de la fenetre plausible : anterieure a toute version, aucune
+  // regle n'est applicable. `versionEnVigueurLe` la tient seule et le dit deja
+  // avec ses mots — `verifierDatePlausible`, juste au-dessus, n'a AUCUNE
+  // opinion sur elle.
   const version = versionEnVigueurLe(versions, saisie.date)
   // `exactOptionalPropertyTypes` : on ne pose la cle que si elle a une valeur.
   const parts = calculerParts({
