@@ -1,7 +1,12 @@
 /**
- * Les seules variables que ce module lit. Volontairement pas `NodeJS.ProcessEnv` :
- * Next.js l'augmente avec un `NODE_ENV` requis, ce qui rend inassignable tout
- * environnement partiel — et donc intestable chaque cas isolement.
+ * Les variables nommees sont celles que ce module lit — le contrat, documente.
+ * Volontairement pas `NodeJS.ProcessEnv` : Next.js l'augmente avec un `NODE_ENV`
+ * requis, ce qui rend inassignable tout environnement partiel, et donc
+ * intestable chaque cas isolement.
+ *
+ * La signature d'index n'est pas du laxisme : sans elle le type n'a que des
+ * proprietes optionnelles, TypeScript le traite en *weak type* et refuse
+ * `process.env` faute de propriete en commun (TS2559).
  */
 type EnvironnementVercel = {
   BETTER_AUTH_URL?: string
@@ -9,6 +14,7 @@ type EnvironnementVercel = {
   VERCEL_URL?: string
   VERCEL_BRANCH_URL?: string
   VERCEL_PROJECT_PRODUCTION_URL?: string
+  [autre: string]: string | undefined
 }
 
 const https = (hote: string) => `https://${hote}`
