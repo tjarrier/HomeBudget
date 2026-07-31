@@ -12,44 +12,37 @@ type EnvironnementVercel = {
   BETTER_AUTH_URL?: string
   VERCEL_ENV?: string
   VERCEL_URL?: string
-  VERCEL_BRANCH_URL?: string
-  VERCEL_PROJECT_PRODUCTION_URL?: string
   [autre: string]: string | undefined
 }
 
-const https = (hote: string) => `https://${hote}`
-
 /**
- * L'origine que Better Auth annonce a Google pour construire son redirect URI.
+ * L'origine que Better Auth annonce a Google. Elle est **posee par
+ * l'environnement**, jamais devinee : Google n'accepte aucun wildcard dans ses
+ * redirect URIs, donc seule une URL stable et pre-enregistree fonctionne.
  *
- * Google n'accepte AUCUN wildcard dans ses "Authorized redirect URIs" : chaque
- * origine doit y etre pre-enregistree a la main. Or l'URL d'un deploiement
- * Vercel (`VERCEL_URL`) est unique par deploiement. La suivre donnerait un
- * `redirect_uri_mismatch` a chaque push. On prend donc `VERCEL_BRANCH_URL`,
- * stable par branche : une seule ligne a enregistrer par branche de preview.
- *
- * `VERCEL_ENV` est teste avant tout le reste parce que
- * `VERCEL_PROJECT_PRODUCTION_URL` est pose sur TOUS les deploiements, preview
- * comprise — et qu'une preview qui annonce le domaine de prod y poserait son
- * cookie de session.
+ * Sur Vercel, l'absence de la variable est une erreur et non un cas a rattraper.
+ * Le repli `localhost` est precisement le piege : cette URI **est** enregistree
+ * chez Google (c'est le dev local), donc le tour OAuth reussirait et renverrait
+ * l'utilisateur sur son propre poste — sans aucune erreur pour le signaler.
  */
 export function origineAuth(env: EnvironnementVercel = process.env): string {
   if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL
-  if (env.VERCEL_ENV === 'production' && env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return https(env.VERCEL_PROJECT_PRODUCTION_URL)
+  if (env.VERCEL_ENV) {
+    throw new Error(
+      'BETTER_AUTH_URL est requise sur Vercel, pour Production comme pour Preview. ' +
+        "Posez-y l'URL de branche stable, la meme que le redirect URI enregistre chez Google.",
+    )
   }
-  if (env.VERCEL_BRANCH_URL) return https(env.VERCEL_BRANCH_URL)
   return 'http://localhost:3000'
 }
 
 /**
  * Les origines depuis lesquelles une requete vers /api/auth/* n'est pas traitee
- * comme un CSRF. L'URL unique du deploiement en fait partie : sans elle, la
- * preview est consultable mais la connexion y echoue en mismatch d'origine.
- * Le tour OAuth, lui, repose l'utilisateur sur l'URL de branche.
+ * comme un CSRF. L'URL unique du deploiement en fait partie parce que c'est
+ * celle que propose le dashboard Vercel : sans elle, la preview ouverte depuis
+ * le dashboard est consultable mais la connexion y echoue en mismatch
+ * d'origine. Le tour OAuth, lui, repose l'utilisateur sur l'URL de branche.
  */
 export function originesDeConfiance(env: EnvironnementVercel = process.env): string[] {
-  return [env.VERCEL_URL, env.VERCEL_BRANCH_URL, env.VERCEL_PROJECT_PRODUCTION_URL]
-    .filter((hote): hote is string => Boolean(hote))
-    .map(https)
+  return env.VERCEL_URL ? [`https://${env.VERCEL_URL}`] : []
 }

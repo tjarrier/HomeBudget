@@ -8,68 +8,62 @@ afterEach(() => {
   vi.resetModules()
 })
 
-/** Un environnement Vercel de preview, tel qu'il arrive reellement au runtime. */
+/**
+ * Un environnement Vercel de preview, tel qu'il arrive reellement au runtime :
+ * une URL de branche stable posee a la main, et l'URL unique du deploiement,
+ * que Vercel genere seul et qui change a chaque push.
+ */
 const PREVIEW = {
   VERCEL_ENV: 'preview',
-  VERCEL_URL: 'homebudget-a1b2c3-thomas.vercel.app',
-  VERCEL_BRANCH_URL: 'homebudget-git-preview-thomas.vercel.app',
-  VERCEL_PROJECT_PRODUCTION_URL: 'budget.exemple.fr',
+  VERCEL_URL: 'home-budget-a1b2c3-tjarriers-projects.vercel.app',
+  BETTER_AUTH_URL: 'https://home-budget-git-preview-tjarriers-projects.vercel.app',
 }
 
 describe('origineAuth', () => {
-  it('prefere une URL explicite — le local et la CI la posent', () => {
-    expect(origineAuth({ ...PREVIEW, BETTER_AUTH_URL: 'http://localhost:3000' })).toBe(
-      'http://localhost:3000',
+  it("prend l'URL posee par l'environnement", () => {
+    expect(origineAuth(PREVIEW)).toBe(
+      'https://home-budget-git-preview-tjarriers-projects.vercel.app',
     )
   })
 
-  it('traite une URL explicite vide comme absente', () => {
-    // C'est ce qui autorise le test de branchement, plus bas, a vider la
-    // variable plutot qu'a la supprimer — `delete` etant refuse par Biome.
-    expect(origineAuth({ ...PREVIEW, BETTER_AUTH_URL: '' })).toBe(
-      'https://homebudget-git-preview-thomas.vercel.app',
-    )
-  })
-
-  it('en production, prend le domaine de production', () => {
-    expect(origineAuth({ ...PREVIEW, VERCEL_ENV: 'production' })).toBe('https://budget.exemple.fr')
-  })
-
-  it("en preview, prend l'URL de BRANCHE et jamais celle du deploiement", () => {
-    // C'est toute la raison d'etre de ce module. Google refuse les wildcards
-    // dans ses redirect URIs : l'origine annoncee doit etre pre-enregistrable,
-    // donc stable. VERCEL_URL change a chaque deploiement — la choisir donne un
-    // `redirect_uri_mismatch` a chaque push, VERCEL_BRANCH_URL ne change pas.
-    const origine = origineAuth(PREVIEW)
-    expect(origine).toBe('https://homebudget-git-preview-thomas.vercel.app')
-    expect(origine).not.toContain('a1b2c3')
-  })
-
-  it("en preview, ignore le domaine de production meme s'il est defini", () => {
-    // VERCEL_PROJECT_PRODUCTION_URL est pose sur TOUS les deploiements, preview
-    // comprise. Le tester avant VERCEL_ENV enverrait les previews poser leur
-    // cookie de session sur le domaine de prod.
-    expect(origineAuth(PREVIEW)).not.toContain('budget.exemple.fr')
+  it("ignore l'URL unique du deploiement, qui change a chaque push", () => {
+    // Google refuse les wildcards : une origine qui change a chaque
+    // deploiement ne peut pas etre pre-enregistree.
+    expect(origineAuth(PREVIEW)).not.toContain('a1b2c3')
   })
 
   it('hors Vercel et sans configuration, retombe sur le port de dev', () => {
     expect(origineAuth({})).toBe('http://localhost:3000')
   })
+
+  it('sur Vercel, refuse de demarrer sans URL plutot que de retomber sur localhost', () => {
+    // Le repli localhost serait le pire des cas : cette URI EST enregistree
+    // chez Google (c'est le dev local), donc le tour OAuth reussirait et
+    // renverrait l'utilisateur sur son propre poste, sans aucune erreur.
+    // Mieux vaut un deploiement qui refuse de servir.
+    expect(() => origineAuth({ VERCEL_ENV: 'preview' })).toThrow(/BETTER_AUTH_URL est requise/i)
+    expect(() => origineAuth({ VERCEL_ENV: 'production' })).toThrow(/BETTER_AUTH_URL est requise/i)
+  })
+
+  it('traite une URL vide comme absente', () => {
+    // Une variable declaree mais vide est une erreur de configuration, pas une
+    // valeur : elle ne doit pas passer le test de presence.
+    expect(() => origineAuth({ VERCEL_ENV: 'preview', BETTER_AUTH_URL: '' })).toThrow(
+      /BETTER_AUTH_URL est requise/i,
+    )
+  })
 })
 
 describe('originesDeConfiance', () => {
-  it("accepte l'URL unique du deploiement, en plus des URLs stables", () => {
-    // Sans elle, ouvrir l'URL unique d'un deploiement puis poster vers
-    // /api/auth/* est rejete en mismatch d'origine : la preview est
-    // consultable mais la connexion y est impossible.
+  it("accepte l'URL unique du deploiement", () => {
+    // C'est celle que propose le dashboard Vercel. Sans elle, la preview
+    // ouverte depuis le dashboard refuse la connexion en mismatch d'origine.
     expect(originesDeConfiance(PREVIEW)).toEqual([
-      'https://homebudget-a1b2c3-thomas.vercel.app',
-      'https://homebudget-git-preview-thomas.vercel.app',
-      'https://budget.exemple.fr',
+      'https://home-budget-a1b2c3-tjarriers-projects.vercel.app',
     ])
   })
 
-  it('ne fabrique aucune origine a partir des variables absentes', () => {
+  it('ne fabrique aucune origine hors Vercel', () => {
     // Un `https://undefined` dans la liste serait une origine de confiance
     // fantome : au mieux inutile, au pire acceptee par un intermediaire.
     expect(originesDeConfiance({})).toEqual([])
@@ -78,20 +72,19 @@ describe('originesDeConfiance', () => {
 })
 
 describe('le branchement sur Better Auth', () => {
-  it("annonce a Google l'URL de branche, et fait confiance au deploiement", async () => {
+  it("annonce l'URL de branche, et fait confiance au deploiement", async () => {
     // Une resolution correcte mais debranchee ne sert a rien : ce test lit la
     // configuration que Better Auth a reellement recue.
-    //
-    // La CI pose BETTER_AUTH_URL : on la vide pour simuler une preview, ou elle
-    // est absente. `origineAuth` traite les deux cas pareil (un test de
-    // `origineAuth` le verrouille), et c'est l'idiome qu'utilise deja
-    // allowlist.test.ts pour signifier "non configure".
-    process.env = { ...process.env, ...PREVIEW, BETTER_AUTH_URL: '' }
+    process.env = { ...process.env, ...PREVIEW }
     vi.resetModules()
 
     const { auth } = await import('../lib/auth.js')
 
-    expect(auth.options.baseURL).toBe('https://homebudget-git-preview-thomas.vercel.app')
-    expect(auth.options.trustedOrigins).toContain('https://homebudget-a1b2c3-thomas.vercel.app')
+    expect(auth.options.baseURL).toBe(
+      'https://home-budget-git-preview-tjarriers-projects.vercel.app',
+    )
+    expect(auth.options.trustedOrigins).toEqual([
+      'https://home-budget-a1b2c3-tjarriers-projects.vercel.app',
+    ])
   })
 })
