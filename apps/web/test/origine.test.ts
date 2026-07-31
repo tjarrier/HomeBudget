@@ -23,6 +23,14 @@ describe('origineAuth', () => {
     )
   })
 
+  it('traite une URL explicite vide comme absente', () => {
+    // C'est ce qui autorise le test de branchement, plus bas, a vider la
+    // variable plutot qu'a la supprimer — `delete` etant refuse par Biome.
+    expect(origineAuth({ ...PREVIEW, BETTER_AUTH_URL: '' })).toBe(
+      'https://homebudget-git-preview-thomas.vercel.app',
+    )
+  })
+
   it('en production, prend le domaine de production', () => {
     expect(origineAuth({ ...PREVIEW, VERCEL_ENV: 'production' })).toBe('https://budget.exemple.fr')
   })
@@ -72,17 +80,13 @@ describe('originesDeConfiance', () => {
 describe('le branchement sur Better Auth', () => {
   it("annonce a Google l'URL de branche, et fait confiance au deploiement", async () => {
     // Une resolution correcte mais debranchee ne sert a rien : ce test lit la
-    // configuration que Better Auth a reellement recue. La CI pose
-    // BETTER_AUTH_URL : il faut donc l'OMETTRE pour simuler une preview.
+    // configuration que Better Auth a reellement recue.
     //
-    // Ni `delete` (interdit par Biome) ni l'affectation d'`undefined` qu'il
-    // propose : process.env coerce toute valeur en chaine, donc
-    // `BETTER_AUTH_URL = undefined` y stocke la chaine "undefined", truthy —
-    // le test passerait alors pour la mauvaise raison.
-    const environnement = Object.entries(process.env).filter(([nom]) => nom !== 'BETTER_AUTH_URL')
-    // Le cast porte sur l'affectation, pas sur le fixture : `process.env` exige
-    // un NODE_ENV que la reconstruction ci-dessus perd de vue, alors qu'il y est.
-    process.env = { ...Object.fromEntries(environnement), ...PREVIEW } as NodeJS.ProcessEnv
+    // La CI pose BETTER_AUTH_URL : on la vide pour simuler une preview, ou elle
+    // est absente. `origineAuth` traite les deux cas pareil (un test de
+    // `origineAuth` le verrouille), et c'est l'idiome qu'utilise deja
+    // allowlist.test.ts pour signifier "non configure".
+    process.env = { ...process.env, ...PREVIEW, BETTER_AUTH_URL: '' }
     vi.resetModules()
 
     const { auth } = await import('../lib/auth.js')
