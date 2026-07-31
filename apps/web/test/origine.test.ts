@@ -14,7 +14,7 @@ const PREVIEW = {
   VERCEL_URL: 'homebudget-a1b2c3-thomas.vercel.app',
   VERCEL_BRANCH_URL: 'homebudget-git-preview-thomas.vercel.app',
   VERCEL_PROJECT_PRODUCTION_URL: 'budget.exemple.fr',
-} as NodeJS.ProcessEnv
+}
 
 describe('origineAuth', () => {
   it('prefere une URL explicite — le local et la CI la posent', () => {
