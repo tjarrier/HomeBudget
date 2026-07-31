@@ -81,7 +81,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           empreinte() {
-            printf '%s' "$1" | sed -e 's|^[a-z+]*://||' -e 's|^[^@]*@||' -e 's|?.*$||' -e 's|:[0-9]*/|/|'
+            printf '%s' "$1" | sed -e 's|^[a-z+]*://||' -e 's|^.*@||' -e 's|?.*$||' -e 's|:[0-9]*/|/|'
           }
           servie=$(grep -m1 '^DATABASE_URL=' .vercel/.env.production.local | cut -d= -f2- | tr -d '"' || true)
           if [ -z "$servie" ]; then

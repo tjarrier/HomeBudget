@@ -782,11 +782,7 @@ gh secret set DATABASE_URL --repo tjarrier/HomeBudget --env Production
 
 Le premier prend l'URL de la base de preview — **distincte de la production**. Le second celle de Supabase.
 
-- [ ] **Step 3 : vérifier que les deux `DATABASE_URL` désignent la même base** *(Thomas)*
-
-Il y a désormais deux sources pour une seule base : le secret d'environment GitHub posé au Step 2, que la migration utilise, et la variable du projet Vercel, que `vercel build` embarque dans l'application. Si elles divergent, la migration s'applique sur une base et le code neuf parle à une autre. Les workflows font maintenant ce contrôle eux-mêmes et font échouer le run si les empreintes (hôte et nom de base, sans les identifiants) diffèrent — ce n'est plus seulement une chose à vérifier une fois, c'est verrouillé à chaque déploiement. Poser les deux valeurs pour qu'elles désignent la même base (ou une paire pooler/connexion directe légitime sur la même base) rend ce contrôle silencieux.
-
-- [ ] **Step 4 : créer la règle de protection sur l'environment `Production`, et la vérifier** *(Thomas)*
+- [ ] **Step 3 : créer la règle de protection sur l'environment `Production`, et la vérifier** *(Thomas)*
 
 Déjà vérifié : les environments `Preview` et `Production` existent sous ces noms exacts dans le dépôt, et leurs `protection_rules` sont actuellement **vides**. Sans règle, GitHub exécute le job `deploy` sans aucune approbation : le premier tag `vX.Y.Z` migrerait la base de production et promouvrait tout seul.
 
@@ -796,9 +792,9 @@ Dans *Settings → Environments → Production*, cocher **Required reviewers** e
 gh api repos/tjarrier/HomeBudget/environments/Production --jq '.protection_rules'
 ```
 
-Expected : une règle de type `required_reviewers`. **Aucun tag `vX.Y.Z` ne doit être poussé tant que cette commande ne la renvoie pas** — c'est la seule chose qui rend la revue humaine du Step 3 du contrat (`CLAUDE.md`, section Déploiement) réelle plutôt qu'un vœu documenté.
+Expected : une règle de type `required_reviewers`. **Aucun tag `vX.Y.Z` ne doit être poussé tant que cette commande ne la renvoie pas** — c'est la seule chose qui rend la revue humaine du contrat (`CLAUDE.md`, section Déploiement) réelle plutôt qu'un vœu documenté.
 
-- [ ] **Step 5 : compléter les variables d'environnement Preview du projet Vercel** *(Thomas)*
+- [ ] **Step 4 : compléter les variables d'environnement Preview du projet Vercel** *(Thomas)*
 
 Dans les réglages Vercel, scope **Preview** :
 
@@ -813,6 +809,12 @@ ALLOWLIST_LIZ=<adresse>
 ```
 
 Sans `BETTER_AUTH_URL`, l'étape « Lire l'origine annoncee a Google » du workflow échoue avec un message explicite : c'est le comportement voulu, pas un bug.
+
+- [ ] **Step 5 : vérifier que les deux `DATABASE_URL` d'un même environment désignent la même base** *(Thomas)*
+
+Il y a désormais deux sources pour une seule base, à l'intérieur de chaque environment : le secret d'environment GitHub posé au Step 2, que la migration utilise, et la variable du projet Vercel posée au Step 4, que `vercel build` embarque dans l'application. Si elles divergent, la migration s'applique sur une base et le code neuf parle à une autre. Les workflows font maintenant ce contrôle eux-mêmes et font échouer le run si les empreintes (hôte et nom de base, sans les identifiants) diffèrent — ce n'est plus seulement une chose à vérifier une fois, c'est verrouillé à chaque déploiement. Poser les deux valeurs pour qu'elles désignent la même base (ou une paire pooler/connexion directe légitime sur la même base) rend ce contrôle silencieux.
+
+Une limite à garder en tête : l'empreinte laisse tomber les identifiants, et une URL de pooler Supabase porte la référence du projet dans son utilisateur (`postgres.<ref>@aws-0-<région>.pooler.supabase.com:6543/postgres`), pas dans son hôte. Deux URLs de pooler appartenant à deux projets Supabase différents produisent donc la même empreinte, et le contrôle passe alors que la migration et l'application visent deux projets distincts. La vérification humaine reste donc nécessaire : coller une URL de pooler de production dans la variable Preview est exactement l'erreur que ce contrôle ne sait pas attraper.
 
 - [ ] **Step 6 : merger, puis déclencher le premier passage à la main**
 
