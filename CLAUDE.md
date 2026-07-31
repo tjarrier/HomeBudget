@@ -116,24 +116,29 @@ que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
 colonne `user.personne`. Sans RLS, **ce hook est la sécurité du projet** ; il est verrouillé
 par `apps/web/test/allowlist.test.ts`, qui ne dépend d'aucun credential Google.
 
-**L'origine annoncée à Google** est résolue par `apps/web/lib/origine.ts`, jamais écrite
-en dur. Google n'accepte **aucun wildcard** dans ses *Authorized redirect URIs* : chaque
-origine doit y être enregistrée à la main. Or l'URL d'un déploiement Vercel (`VERCEL_URL`)
-est unique par déploiement — la suivre donnerait un `redirect_uri_mismatch` à chaque push.
-L'auth s'appuie donc sur `VERCEL_BRANCH_URL`, stable par branche, et `trustedOrigins`
-ajoute l'URL unique du déploiement pour que la connexion ne soit pas refusée en mismatch
-d'origine quand on l'ouvre directement.
+**L'origine annoncée à Google** est `BETTER_AUTH_URL`, posée par l'environnement et jamais
+devinée (`apps/web/lib/origine.ts`). Google n'accepte **aucun wildcard** dans ses
+*Authorized redirect URIs* : l'origine doit correspondre au caractère près à une entrée
+enregistrée à la main dans la console. Elle doit donc être stable, ce qu'aucune URL de
+déploiement Vercel n'est.
 
-Ce qui en découle, et qui casse silencieusement si on l'oublie :
+Sur Vercel, l'absence de la variable **fait échouer le démarrage**, délibérément. Le repli
+`localhost` serait le pire des cas : cette URI *est* enregistrée chez Google, donc le tour
+OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucune erreur.
 
-- **Ne pas définir `BETTER_AUTH_URL` pour l'environnement Preview de Vercel.** Une valeur
-  explicite gagne sur la dérivation : toutes les previews retomberaient sur une origine
-  fixe. En Production, l'expliciter est correct.
-- Un *Authorized redirect URI* par branche de preview, en plus de la production :
-  `https://homebudget-git-<branche>-<team>.vercel.app/api/auth/callback/google`.
+- **Cible Preview : l'URL de BRANCHE**, `home-budget-git-<branche>-tjarriers-projects.vercel.app`,
+  et une branche de preview figée (`preview`) pour n'avoir qu'un seul redirect URI à
+  enregistrer. Surtout pas `-git-main-` : c'est un alias de la **production**, donc les
+  previews atterriraient sur la vraie base après authentification.
+- Ne reconstruis jamais ce hostname à la main : au-delà de 63 caractères avant `.vercel.app`,
+  Vercel tronque, et retire le slug de scope en entier. Lis-le dans le commentaire du bot
+  Vercel sur la PR, ou dans le `redirect_uri` que Google affiche quand il refuse.
 - **`DATABASE_URL` de Preview doit pointer sur une autre base que la production.** Une
   preview branchée sur la prod y crée de vraies dépenses et de vraies versions de config —
   et une version qui porte des dépenses n'est plus supprimable (`0002` et la FK `restrict`).
+- `trustedOrigins` ajoute l'URL unique du déploiement, celle que propose le dashboard
+  Vercel : sans elle, la preview ouverte depuis le dashboard refuse la connexion en
+  mismatch d'origine.
 - `createAuthClient()` reste sans `baseURL` : le client utilise l'origine courante du
   navigateur, donc il fonctionne sur n'importe quel hôte sans configuration.
 
