@@ -122,6 +122,13 @@ describe('deploy-preview.yml', () => {
   it('ne promeut jamais en production', () => {
     expect(preview).not.toContain('--prod')
   })
+
+  it("ne fait echouer le run que si l'alias attendu manque sur main", () => {
+    // Le ruling qui a produit ce comportement : sur une autre ref, l'ecart est
+    // normal (l'hote est `-git-<branche>-`), donc on imprime sans echouer.
+    expect(preview).toContain('if [ "$REF" = "main" ]')
+    expect(preview).toContain('exit 1')
+  })
 })
 
 describe('deploy-production.yml', () => {
@@ -152,5 +159,12 @@ describe('deploy-production.yml', () => {
 
   it('promeut en production', () => {
     expect(production).toContain('vercel deploy --prebuilt --prod')
+  })
+
+  it('ne peut pas etre declenche a la main', () => {
+    // Sinon rien n'empeche de promouvoir un commit de `main` sans version, ce
+    // que la garde d'ancetre ne bloquerait pas : ce n'est pas une garde de
+    // securite, c'est une garde de conception.
+    expect(production).not.toContain('workflow_dispatch')
   })
 })
