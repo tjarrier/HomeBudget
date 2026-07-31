@@ -16,14 +16,12 @@ afterEach(() => {
 const PREVIEW = {
   VERCEL_ENV: 'preview',
   VERCEL_URL: 'home-budget-a1b2c3-tjarriers-projects.vercel.app',
-  BETTER_AUTH_URL: 'https://home-budget-git-preview-tjarriers-projects.vercel.app',
+  BETTER_AUTH_URL: 'https://home-budget-git-main-tjarriers-projects.vercel.app',
 }
 
 describe('origineAuth', () => {
   it("prend l'URL posee par l'environnement", () => {
-    expect(origineAuth(PREVIEW)).toBe(
-      'https://home-budget-git-preview-tjarriers-projects.vercel.app',
-    )
+    expect(origineAuth(PREVIEW)).toBe('https://home-budget-git-main-tjarriers-projects.vercel.app')
   })
 
   it("ignore l'URL unique du deploiement, qui change a chaque push", () => {
@@ -80,9 +78,7 @@ describe('le branchement sur Better Auth', () => {
 
     const { auth } = await import('../lib/auth.js')
 
-    expect(auth.options.baseURL).toBe(
-      'https://home-budget-git-preview-tjarriers-projects.vercel.app',
-    )
+    expect(auth.options.baseURL).toBe('https://home-budget-git-main-tjarriers-projects.vercel.app')
     expect(auth.options.trustedOrigins).toEqual([
       'https://home-budget-a1b2c3-tjarriers-projects.vercel.app',
     ])

@@ -44,6 +44,27 @@ redirection `http://localhost:3000/api/auth/callback/google`) et ses identifiant
 Les tâches qui ont besoin de la base refusent de démarrer si le conteneur ne tourne
 pas, plutôt que d'échouer plus tard sur un timeout de connexion illisible.
 
+## Livrer
+
+Le déploiement est fait par GitHub Actions, jamais à la main, et jamais par Vercel de sa
+propre initiative.
+
+- **Un merge dans `main`** publie une preview sur
+  `home-budget-git-main-tjarriers-projects.vercel.app`, après CI verte. Le résumé du run
+  affiche l'URL et les hôtes attribués.
+- **Un tag de version** publie en production :
+
+  ```sh
+  git tag v0.1.0
+  git push origin v0.1.0
+  ```
+
+  Le workflow refuse le tag s'il ne pointe pas un commit de `main`, rejoue la CI complète,
+  puis attend une approbation sur l'environment `Production` de GitHub. Approuver déclenche
+  la construction, puis la migration de la base, puis la promotion, dans cet ordre.
+
+Une CI rouge bloque les deux.
+
 ## Le canari
 
 Les 33 lignes réelles du Sheet sont rejouées en test, et le solde doit valoir
