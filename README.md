@@ -51,7 +51,8 @@ propre initiative.
 
 - **Un merge dans `main`** publie une preview sur
   `home-budget-git-main-tjarriers-projects.vercel.app`, après CI verte. Le résumé du run
-  affiche l'URL et les hôtes attribués.
+  affiche l'URL et les hôtes attribués. Cet hôte est la cible attendue, à confirmer par le
+  premier run réel (voir `CLAUDE.md` et le repli prévu si l'alias n'est pas attribué).
 - **Un tag de version** publie en production :
 
   ```sh
