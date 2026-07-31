@@ -97,18 +97,31 @@ jobs:
 
       # La verification que l'issue demande de faire pour de vrai, et non de
       # supposer : l'origine annoncee a Google d'un cote, les hotes que Vercel a
-      # reellement attribues au deploiement de l'autre. Ils doivent coincider sur
-      # `home-budget-git-main-...`. On ne filtre que des hostnames, jamais la
-      # sortie brute de `vercel inspect`.
+      # reellement attribues au deploiement de l'autre.
+      #
+      # Sur `main`, l'alias `home-budget-git-main-...` doit etre present dans
+      # les hotes. Si Vercel ne l'attribue pas, le tour OAuth est casse : la
+      # connexion Google renverrait l'utilisateur sur une URL inconnue. Le
+      # deploiement echoue et le message d'erreur explique : il faut redemarrer
+      # avec une autre ref (un dispatch manuel sur une autre branche, ou attendre
+      # le merge suivant si une priorite a laisse main diverger).
+      #
+      # Sur un autre ref (workflow_dispatch), l'alias `-git-<branche>-` ne figure
+      # pas dans les URIs enregistrees chez Google : la divergence est attendue,
+      # documentee, et sans solution automatique. On affiche, sans echec.
+      #
+      # On ne filtre que des hostnames, jamais la sortie brute de `vercel inspect`.
       - name: Resumer
         working-directory: apps/web
+        env:
+          REF: ${{ github.ref_name }}
         run: |
           hotes=$(vercel inspect "$URL" --token="$VERCEL_TOKEN" 2>&1 \
             | grep -o '[a-z0-9.-]*\.vercel\.app' | sort -u || true)
           {
             echo "## Preview publiee"
             echo
-            echo "- Ref deployee : \`${{ github.ref_name }}\`"
+            echo "- Ref deployee : \`$REF\`"
             echo "- URL unique : $URL"
             echo "- Origine annoncee a Google : $ORIGINE"
             echo
@@ -118,3 +131,12 @@ jobs:
             echo "$hotes"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+          # Verification du matching sur `main`.
+          if [ "$REF" = "main" ]; then
+            hostname=$(echo "$ORIGINE" | sed 's|https://||')
+            if ! echo "$hotes" | grep -q "^$hostname$"; then
+              echo "::error::l'alias attendu $hostname n'a pas ete attribue par Vercel. Redemarrer le deploiement avec une autre ref pour diagnostiquer."
+              exit 1
+            fi
+          fi
