@@ -1,9 +1,11 @@
 name: CI
 
+# Sur `main`, la CI est appelee par `deploy-preview.yml`, et sur un tag par
+# `deploy-production.yml` : un seul run, un seul verdict, et il est relie au
+# deploiement qu'il autorise. D'ou l'absence de declencheur `push` ici.
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_call:
 
 jobs:
   qualite:

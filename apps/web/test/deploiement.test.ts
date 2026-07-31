@@ -34,3 +34,20 @@ describe('vercel.json', () => {
     expect(existsSync(join(RACINE_DEPOT, 'apps/web/vercel.json'))).toBe(true)
   })
 })
+
+describe('ci.yml', () => {
+  const ci = lire('.github/workflows/ci.yml')
+
+  it('est appelable par les workflows de deploiement', () => {
+    // Une seule definition de « verifie ». Les deux workflows de deploiement
+    // l'appellent au lieu d'en recopier les etapes.
+    expect(ci).toContain('workflow_call:')
+  })
+
+  it('ne se declenche plus sur push', () => {
+    // Sur `main`, c'est `deploy-preview.yml` qui appelle la CI. Garder le
+    // declencheur `push` ferait tourner deux fois Postgres et Playwright a
+    // chaque merge, pour deux verdicts qu'il faudrait ensuite comparer.
+    expect(ci).not.toMatch(/^\s+push:/m)
+  })
+})
