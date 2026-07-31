@@ -164,6 +164,15 @@ derrière, sans que rien ne le signale.
 Deux workflows, un seul déployeur, et une seule définition de « vérifié » : `ci.yml` est
 appelable (`workflow_call`), les deux l'appellent, aucun ne recopie ses étapes.
 
+**La CI tourne au push, sur toutes les branches sauf `main`** — pousser suffit, PR ouverte
+ou pas, et le run s'affiche dans les checks de la PR puisque c'est le même commit. Sur
+`main`, elle ne se déclenche pas d'elle-même : c'est `deploy-preview.yml` qui l'appelle,
+sinon un merge ferait tourner deux fois Postgres et Playwright pour deux verdicts qu'il
+faudrait comparer. Pas de déclencheur `pull_request` non plus, pour la même raison : il
+rejouerait le même commit. La contrepartie est assumée — la CI vérifie le commit de la
+branche et non sa fusion avec `main`, et une PR ouverte depuis un fork ne serait pas
+vérifiée du tout.
+
 - **Preview au merge** (`deploy-preview.yml`) : push sur `main`, ou déclenchement manuel
   sur une branche. Cible `-git-<ref>-` : l'alias dépend de la branche déployée. Sur `main`,
   c'est `-git-main-` ; sur un autre ref, c'est `-git-<branche>-`, qui n'est pas dans les

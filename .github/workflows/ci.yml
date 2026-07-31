@@ -1,10 +1,20 @@
 name: CI
 
-# Sur `main`, la CI est appelee par `deploy-preview.yml`, et sur un tag par
-# `deploy-production.yml` : un seul run, un seul verdict, et il est relie au
-# deploiement qu'il autorise. D'ou l'absence de declencheur `push` ici.
+# Pousser suffit a lancer la verification : sur n'importe quelle branche, PR
+# ouverte ou pas. Toutes, sauf `main` — la, c'est `deploy-preview.yml` qui appelle
+# la CI, et sur un tag `deploy-production.yml` : un seul run, un seul verdict, et
+# il est relie au deploiement qu'il autorise. Reautoriser `main` ici ferait tourner
+# deux fois Postgres et Playwright a chaque merge, pour deux verdicts qu'il faudrait
+# ensuite comparer.
+#
+# Pas de `pull_request` non plus, pour la meme raison : il rejouerait le meme commit
+# une seconde fois a chaque push d'une branche du depot. Le run declenche par le push
+# s'affiche deja dans les checks de la PR — c'est le meme SHA. Contrepartie assumee :
+# la CI verifie le commit de la branche et non sa fusion avec `main`, et une PR
+# ouverte depuis un fork ne serait pas verifiee du tout.
 on:
-  pull_request:
+  push:
+    branches-ignore: [main]
   workflow_call:
 
 jobs:

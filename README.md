@@ -49,6 +49,9 @@ pas, plutôt que d'échouer plus tard sur un timeout de connexion illisible.
 Le déploiement est fait par GitHub Actions, jamais à la main, et jamais par Vercel de sa
 propre initiative.
 
+- **Un push sur une branche** lance la CI, et rien d'autre : lint, types, tests, invariants
+  SQL et parcours Playwright. Pas besoin d'ouvrir une PR pour la déclencher, et quand la PR
+  existe, ce run est le check qu'elle affiche.
 - **Un merge dans `main`** publie une preview sur
   `home-budget-git-main-tjarriers-projects.vercel.app`, après CI verte. Le résumé du run
   affiche l'URL et les hôtes attribués. Cet hôte est la cible attendue, à confirmer par le
