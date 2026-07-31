@@ -131,7 +131,9 @@ OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucu
   de l'intégration Git, elle ne sert plus la production : Vercel ne déploie plus `main` du
   tout, c'est `deploy-preview.yml` qui le fait, **en preview**, donc avec les variables
   d'environnement Preview. L'avertissement inverse qui figurait ici ne valait que tant que
-  l'intégration Git envoyait `main` en production.
+  l'intégration Git envoyait `main` en production. Cet hôte est la cible attendue, à
+  confirmer par le premier run de `deploy-preview.yml` : si Vercel n'attribue pas l'alias à
+  un déploiement `--prebuilt`, voir le repli décrit dans la spec.
 - **On ne choisit pas ce hostname, on choisit la ref.** Vercel le fabrique à partir de la
   ref git du déploiement, et les sous-domaines `*.vercel.app` sont réservés : aucun
   `vercel alias set` n'est possible dessus. Ne reconstruis jamais ce nom à la main non
@@ -165,8 +167,10 @@ appelable (`workflow_call`), les deux l'appellent, aucun ne recopie ses étapes.
 - **Preview au merge** (`deploy-preview.yml`) : push sur `main`, ou déclenchement manuel
   sur une branche. Cible `-git-<ref>-` : l'alias dépend de la branche déployée. Sur `main`,
   c'est `-git-main-` ; sur un autre ref, c'est `-git-<branche>-`, qui n'est pas dans les
-  redirect URIs de Google, donc login y échoue sur purpose — et l'alias check du workflow
-  ne signale l'erreur que si c'est `main` qui rate.
+  redirect URIs de Google, donc login y échoue délibérément — et le contrôle d'alias du
+  workflow ne signale l'erreur que si c'est `main` qui rate. Cette attribution reste à
+  confirmer par le premier run réel ; si Vercel ne l'attribue pas, voir le repli dans la
+  spec (faire porter le déploiement sur une autre ref).
 - **Production au tag** (`deploy-production.yml`) : un tag `vX.Y.Z`. Le workflow refuse un
   tag posé hors de `main`, rejoue la CI complète (un tag peut pointer un commit qu'elle n'a
   jamais vu), puis attend une revue humaine.
@@ -175,7 +179,12 @@ appelable (`workflow_call`), les deux l'appellent, aucun ne recopie ses étapes.
 Rien ne s'écrit sur la base avant qu'un artefact existe, et la migration précède toujours la
 promotion, afin que le code neuf ne parle jamais à un schéma vieux. `apps/web/test/deploiement.test.ts`
 le verrouille en comparant les positions des trois étapes dans chaque workflow (les commentaires
-sont ignorés) — reordonner une étape dans le fichier ferait tomber le test à juste titre.
+sont ignorés) — réordonner une étape dans le fichier ferait tomber le test à juste titre.
+
+Une migration qui échoue arrête le déploiement, code et schéma restent cohérents. L'autre
+moitié n'a pas de filet : si la migration réussit mais que la promotion échoue, la base est à
+jour et l'ancien code tourne encore dessus — revenir à un état cohérent est alors une décision
+humaine, pas un `if` dans le workflow.
 
 `drizzle-kit push` reste interdit, y compris en production. Les workflows appellent
 `db:migrate`.
