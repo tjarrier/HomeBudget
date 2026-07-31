@@ -210,13 +210,17 @@ valeur **éditable** de champ de saisie, pas de l'affichage.
 - Le focus visible n'est **jamais** supprimé : `focus-visible:ring-[3px]` avec décalage.
 - Aucune information portée par la couleur seule : `aria-current` sur la nav,
   `aria-label` sur les avatars, libellé en clair sur chaque badge.
-- **360px** est la largeur plancher testée (issue C2).
+- **360px** est la largeur plancher testée (issue C2), et c'est la seule taille de
+  téléphone de la suite e2e : `e2e/telephone.ts` la définit une fois, les trois specs
+  l'importent. Un bloc calé sur 390px rendrait invisible le débordement que C2 corrige.
+  Le canari du solde et le parcours de saisie s'y rejouent à l'identique (issue C3) :
+  l'usage réel est mobile, une preuve qui ne vaudrait qu'en 1280px n'en est pas une.
 - **La navigation est sous le pouce.** Sous 768px, l'`<aside>` devient une barre
   `fixed bottom-0` de quatre cellules d'au moins 44px, `main` réserve la hauteur
   correspondante, et `app/layout.tsx` déclare `viewport-fit=cover` pour que
   `env(safe-area-inset-bottom)` cesse de valoir `0` sur iOS. L'`<aside>` reste **avant**
   `<main>` dans le DOM : l'ordre de lecture prime sur l'ordre visuel.
-  `e2e/parcours.spec.ts` mesure les deux faits en viewport 390 × 844 — le bas de la
+  `e2e/parcours.spec.ts` mesure les deux faits en viewport 360 × 740 — le bas de la
   barre atteint le bas du viewport, et on peut s'y déconnecter.
 - **`viewport-fit=cover` étend le document sous les quatre bords, pas seulement le bas.**
   Sa contrepartie se paie donc partout : `inset-top` sur l'entête mobile, `inset-left` sur

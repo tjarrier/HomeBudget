@@ -1,5 +1,6 @@
 import { type Locator, type Page, expect, test } from '@playwright/test'
 import { ouvrirSession } from './session'
+import { TELEPHONE } from './telephone'
 
 /**
  * Issue C1 — « aucun bouton, lien ou champ de `apps/web` ne passe sous le
@@ -17,10 +18,9 @@ import { ouvrirSession } from './session'
  */
 const PLANCHER = 44
 
-// 360px : la largeur plancher du projet (voir `components/nav-principale.tsx`).
-// 740px de haut, soit un telephone court — les ecrans defilent, la barre basse
-// reste ancree.
-test.use({ viewport: { width: 360, height: 740 } })
+// Le telephone de la suite, defini dans `e2e/telephone.ts` : 360px, la largeur
+// plancher du projet (voir `components/nav-principale.tsx`).
+test.use(TELEPHONE)
 
 // `input[type=hidden]` n'est pas une cible : il compense un `<select disabled>`
 // (voir `formulaire-depense.tsx`). Tout le reste est touche au pouce.
