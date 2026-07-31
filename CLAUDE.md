@@ -161,7 +161,7 @@ Taskfile ajoute, ce sont les prérequis qu'un script npm ne sait pas exprimer.
 
     task dev             lance l'application sur http://localhost:3000
     task test:integration    les invariants SQL et la façade, contre Postgres
-    task test:e2e:frais      base neuve, puis les trois parcours Playwright
+    task test:e2e:frais      base neuve, puis les parcours Playwright
 
     task db:up           Postgres local (un conteneur)
     task db:reset        détruit, remonte, migre et seede la base — DESTRUCTIF
@@ -188,4 +188,7 @@ Ne l'ajuste pas pour le faire passer : trouve ce qui a cassé.
 
 Le même solde est vérifié après un aller-retour complet par Postgres
 (`packages/db/test/facade.integration.test.ts`) et à l'écran
-(`apps/web/e2e/parcours.spec.ts`).
+(`apps/web/e2e/parcours.spec.ts`) — à l'écran, **dans les deux tailles** : au large et
+sur le téléphone de 360 px (`apps/web/e2e/telephone.ts`), parce que c'est celui-là qui
+sert. Le parcours de saisie s'y rejoue aussi, et dans cet ordre : les deux canaris lisent
+le seed intact avant que la moindre saisie ne l'écrive.

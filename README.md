@@ -35,7 +35,7 @@ redirection `http://localhost:3000/api/auth/callback/google`) et ses identifiant
 | `task test` | Tous les tests unitaires — aucune dépendance à Docker |
 | `task test:domain` | Le cœur métier seul, la boucle la plus rapide |
 | `task test:integration` | Les invariants SQL et la façade, contre Postgres |
-| `task test:e2e:frais` | Base neuve, puis les trois parcours Playwright |
+| `task test:e2e:frais` | Base neuve, puis les parcours Playwright |
 | `task dev` | L'application sur http://localhost:3000 |
 | `task db:up` / `db:down` | Démarre / arrête le Postgres local (port 5433) |
 | `task db:reset` | **Destructif** : détruit le volume, remigre, reseede |

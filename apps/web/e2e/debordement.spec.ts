@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { type Page, expect, test } from '@playwright/test'
 import { ouvrirSession } from './session'
+import { TELEPHONE } from './telephone'
 
 /**
  * Issue C2 — « a 360px de large, aucune page ne doit scroller horizontalement ».
@@ -24,13 +25,10 @@ import { ouvrirSession } from './session'
  * empeche, pas ce filet.
  */
 
-// `isMobile` n'est pas cosmetique. Sans lui, Chromium headless pose une barre de
-// defilement classique de 15px qui ampute `clientWidth` : le test mesurerait
-// 345px de place disponible et crierait sur des ecrans qui tiennent parfaitement
-// dans les 360px d'un telephone, dont les barres sont en surimpression. Avec, la
-// meta viewport de `app/layout.tsx` s'applique pour de vrai — c'est le rendu
-// qu'on pretend verifier.
-test.use({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true })
+// 360px et `isMobile` : le pourquoi des deux est dans `e2e/telephone.ts`, qui les
+// definit pour toute la suite. C'est la mesure de `clientWidth` de ce fichier qui
+// exige `isMobile` — sans lui, une barre de defilement classique en amputerait 15px.
+test.use(TELEPHONE)
 
 const APP = fileURLToPath(new URL('../app', import.meta.url))
 

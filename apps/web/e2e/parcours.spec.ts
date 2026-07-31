@@ -1,5 +1,35 @@
-import { expect, test } from '@playwright/test'
+import { type Page, expect, test } from '@playwright/test'
 import { ouvrirSession } from './session'
+import { TELEPHONE } from './telephone'
+
+/**
+ * Les deux tailles d'ecran ou le cœur du projet doit passer.
+ *
+ * L'usage reel est un telephone : un canari qui ne se verifie qu'en 1280px ne
+ * dit rien de ce qui est reellement utilise (issue C3). Le rail lateral et la
+ * barre au pouce sont deux mises en page differentes — deux occasions distinctes
+ * de perdre le solde de vue ou de casser la saisie.
+ */
+const TAILLES = [
+  { nom: 'ordinateur', options: {} },
+  { nom: 'telephone', options: TELEPHONE },
+] as const
+
+/**
+ * Le solde en centimes, lu sur l'attribut `value` du `<data>` — la valeur
+ * exacte, jamais l'euro formate.
+ *
+ * La saisie se joue une fois par taille d'ecran et chaque passage baisse la
+ * dette de Liz : c'est l'ECART qui est verifie, pas un montant grave dans le
+ * test, qui serait faux au second passage.
+ */
+async function soldeEnCentimes(page: Page): Promise<number> {
+  const valeur = await page.getByTestId('phrase-synthese').locator('data').getAttribute('value')
+  // `Number(null)` vaut 0, pas NaN : sans ce garde-fou, un `<data>` prive de son
+  // attribut se lirait comme un solde nul au lieu de faire echouer le test.
+  expect(valeur).toMatch(/^-?\d+$/)
+  return Number(valeur)
+}
 
 test('un visiteur sans session est renvoye vers /login', async ({ page }) => {
   await page.goto('/')
@@ -41,46 +71,76 @@ test.describe('parcours authentifies', () => {
     ])
   })
 
-  test('le solde de reference du seed est a l ecran', async ({ page }) => {
-    // LE CANARI, jusque dans l'UI. S'il tombe, une des quatre regles du
-    // CLAUDE.md a ete violee — ne l'ajuste pas, trouve ce qui a casse.
-    await page.goto('/')
-    // Si cette assertion echoue avec une URL /login, le cookie est mal forme :
-    // verifier BETTER_AUTH_SECRET et la signature dans e2e/session.ts.
-    await expect(page).toHaveURL('/')
-    // LE CANARI, jusque dans l'UI. Le bandeau enchasse le montant AU MILIEU de
-    // la phrase (« Liz doit 1 145,80 € à Thomas ») : le sens se verifie donc par
-    // motif, la valeur reste epinglee au nœud <data>. Le solde reste 114 580.
-    await expect(page.getByTestId('phrase-synthese')).toContainText(/Liz doit .+ à Thomas/)
-    await expect(page.getByTestId('phrase-synthese').locator('data')).toHaveText('1 145,80 €')
-  })
+  // L'ORDRE COMPTE, et il est le seul possible : le canari lit le seed intact,
+  // la saisie l'ecrit. Les deux tailles rejouent donc le canari AVANT que la
+  // moindre saisie n'ait eu lieu. Playwright execute les tests dans l'ordre de
+  // declaration et `workers: 1` (playwright.config.ts) leur interdit de se
+  // croiser. Regrouper les quatre tests par taille d'ecran plutot que par
+  // parcours ferait lire au canari du telephone le solde deja modifie par la
+  // saisie de l'ordinateur : ne reorganise pas ces deux boucles en une seule.
+  for (const { nom, options } of TAILLES) {
+    test.describe(`sur un ${nom}`, () => {
+      test.use(options)
 
-  test('ajouter une depense fait bouger le solde', async ({ page }) => {
-    await page.goto('/depenses')
+      test('le solde de reference du seed est a l ecran', async ({ page }) => {
+        // LE CANARI, jusque dans l'UI. S'il tombe, une des quatre regles du
+        // CLAUDE.md a ete violee — ne l'ajuste pas, trouve ce qui a casse.
+        await page.goto('/')
+        // Si cette assertion echoue avec une URL /login, le cookie est mal forme :
+        // verifier BETTER_AUTH_SECRET et la signature dans e2e/session.ts.
+        await expect(page).toHaveURL('/')
+        // Le bandeau enchasse le montant AU MILIEU de la phrase (« Liz doit
+        // 1 145,80 € à Thomas ») : le sens se verifie donc par motif, la valeur
+        // reste epinglee au nœud <data>.
+        await expect(page.getByTestId('phrase-synthese')).toContainText(/Liz doit .+ à Thomas/)
+        const solde = page.getByTestId('phrase-synthese').locator('data')
+        await expect(solde).toHaveText('1 145,80 €')
+        // Le texte dit l'euro, l'attribut dit les centimes. C'est en centimes que
+        // le canari est ecrit partout ailleurs (114 580) : on le verifie ici sous
+        // la meme forme, a l'abri des espaces insecables du formatage francais.
+        await expect(solde).toHaveAttribute('value', '114580')
+      })
+    })
+  }
 
-    // La promesse de B3 : les champs a defaut correct sont replies.
-    await expect(page.getByLabel('Date')).toBeHidden()
-    await expect(page.getByText(/Aujourd'hui · payé par/)).toBeVisible()
-    await page.getByRole('button', { name: 'Modifier' }).click()
+  for (const { nom, options } of TAILLES) {
+    test.describe(`sur un ${nom}`, () => {
+      test.use(options)
 
-    await page.fill('input[name="date"]', '2026-07-10')
-    await page.fill('input[name="description"]', 'Courses du samedi')
-    await page.fill('input[name="montant"]', '50,00')
-    await page.selectOption('select[name="payePar"]', 'liz')
-    await page.selectOption('select[name="type"]', 'courante')
+      test('ajouter une depense fait bouger le solde', async ({ page }) => {
+        await page.goto('/')
+        const soldeAvant = await soldeEnCentimes(page)
 
-    // L'apercu en direct, avant validation : moitie-moitie sur 50 €.
-    await expect(page.getByTestId('apercu-thomas')).toHaveText('25,00 €')
-    await expect(page.getByTestId('apercu-liz')).toHaveText('25,00 €')
+        await page.goto('/depenses')
 
-    await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
-    await expect(page.getByTestId('liste-depenses')).toContainText('Courses du samedi')
+        // La promesse de B3 : les champs a defaut correct sont replies.
+        await expect(page.getByLabel('Date')).toBeHidden()
+        await expect(page.getByText(/Aujourd'hui · payé par/)).toBeVisible()
+        await page.getByRole('button', { name: 'Modifier' }).click()
 
-    await page.goto('/')
-    // Liz a paye 50 € dont 25 € pour Thomas : la dette de Liz baisse de 25 €.
-    await expect(page.getByTestId('phrase-synthese')).toContainText(/Liz doit .+ à Thomas/)
-    await expect(page.getByTestId('phrase-synthese').locator('data')).toHaveText('1 120,80 €')
-  })
+        // La description porte la taille d'ecran : les deux passages ecrivent
+        // dans la meme base, et une ligne anonyme ne dirait pas lequel des deux
+        // a echoue.
+        const description = `Courses du samedi (${nom})`
+        await page.fill('input[name="date"]', '2026-07-10')
+        await page.fill('input[name="description"]', description)
+        await page.fill('input[name="montant"]', '50,00')
+        await page.selectOption('select[name="payePar"]', 'liz')
+        await page.selectOption('select[name="type"]', 'courante')
+
+        // L'apercu en direct, avant validation : moitie-moitie sur 50 €.
+        await expect(page.getByTestId('apercu-thomas')).toHaveText('25,00 €')
+        await expect(page.getByTestId('apercu-liz')).toHaveText('25,00 €')
+
+        await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
+        await expect(page.getByTestId('liste-depenses')).toContainText(description)
+
+        await page.goto('/')
+        // Liz a paye 50 € dont 25 € pour Thomas : sa dette baisse de 25 €.
+        expect(await soldeEnCentimes(page)).toBe(soldeAvant - 2500)
+      })
+    })
+  }
 
   test.describe('borne haute de la date de depense (issue #29)', () => {
     // Calculee INDEPENDAMMENT de `dateMaxDepense` (le domaine) : ce test doit
@@ -187,10 +247,10 @@ test.describe('parcours authentifies', () => {
   })
 
   // Le viewport par defaut de Chromium (1280x720) affiche le rail lateral : les
-  // deux defauts de l'issue #13 n'y existent tout simplement pas. On descend a
-  // la taille d'un telephone courant pour les rendre observables.
+  // deux defauts de l'issue #13 n'y existent tout simplement pas. Ces trois
+  // parcours-la n'ont donc de sens qu'a la taille d'un telephone.
   test.describe('sur un telephone', () => {
-    test.use({ viewport: { width: 390, height: 844 } })
+    test.use(TELEPHONE)
 
     test('la navigation est ancree au bord inferieur de l ecran', async ({ page }) => {
       await page.goto('/')
@@ -199,10 +259,12 @@ test.describe('parcours authentifies', () => {
       const boite = await barre.boundingBox()
       // Le fait a verrouiller n'est pas « dans la moitie basse » mais « ancree
       // au bord inferieur » : le bas de la barre doit atteindre le bas du
-      // viewport (844px), a 8px pres. Un seuil de simple moitie passerait
-      // encore vert si la barre cessait d'etre fixed et se retrouvait poussee
-      // en bas d'une page longue.
-      expect((boite?.y ?? 0) + (boite?.height ?? 0)).toBeGreaterThan(844 - 8)
+      // viewport, a 8px pres. Un seuil de simple moitie passerait encore vert si
+      // la barre cessait d'etre fixed et se retrouvait poussee en bas d'une page
+      // longue. La hauteur est lue sur TELEPHONE : un viewport change ailleurs
+      // ne doit pas laisser une constante perimee valider n'importe quoi.
+      const bas = TELEPHONE.viewport.height
+      expect((boite?.y ?? 0) + (boite?.height ?? 0)).toBeGreaterThan(bas - 8)
     })
 
     test('un signOut qui echoue ne fait pas croire a la sortie', async ({ page }) => {
