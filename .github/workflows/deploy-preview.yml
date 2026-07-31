@@ -1,0 +1,120 @@
+name: Deploiement preview
+
+# Le deployeur, et lui seul : `apps/web/vercel.json` a coupe les deploiements de
+# l'integration Git. Un merge dans `main` publie ici, en preview, apres CI verte.
+#
+# `workflow_dispatch` n'a pas d'entree `ref` : le selecteur de branche natif de
+# GitHub fait deja le travail, et une entree en plus ferait verifier une branche
+# pendant qu'on en deploie une autre. Un dispatch sur une autre branche produit
+# l'hote `-git-<branche>-` correspondant, qui n'est pas dans les redirect URIs de
+# Google : la connexion y echouera, et c'est sans solution automatique puisque
+# Google n'accepte aucun wildcard.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pas d'annulation : `db:migrate` est la seule etape non idempotente de la
+# chaine, et deux runs concurrents sur la meme base sont la seule facon de la
+# corrompre. On fait la queue.
+concurrency:
+  group: preview
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verif:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: verif
+    runs-on: ubuntu-latest
+    environment: Preview
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # La migration d'abord. Elle porte sur la base de PREVIEW : `DATABASE_URL`
+      # vient du secret de l'environment `Preview`, qui doit pointer une autre
+      # base que la production. Une preview branchee sur la prod y creerait de
+      # vraies depenses, et une version qui porte des depenses n'est plus
+      # supprimable (`0002` et la FK `restrict`).
+      - name: Migrer la base de preview
+        run: pnpm --filter @homebudget/db db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Installer la CLI Vercel
+        run: npm install --global vercel@latest
+
+      - name: Tirer la configuration et les variables de Preview
+        working-directory: apps/web
+        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      # Sans BETTER_AUTH_URL dans l'environnement Preview du projet Vercel,
+      # `next build` echoue : `origineAuth()` refuse de demarrer sur Vercel
+      # plutot que de retomber sur `localhost`, et c'est voulu — cette URI est
+      # enregistree chez Google, donc le tour OAuth reussirait et renverrait
+      # l'utilisateur sur son propre poste, sans aucune erreur.
+      #
+      # Cette garde ne change pas le verdict, elle le rend lisible tout de suite
+      # au lieu de deux minutes plus tard dans une stacktrace de build. Le
+      # fichier tire contient aussi DATABASE_URL et GOOGLE_CLIENT_SECRET : on
+      # n'en extrait que cette seule variable.
+      - name: Lire l'origine annoncee a Google
+        working-directory: apps/web
+        run: |
+          origine=$(grep -m1 '^BETTER_AUTH_URL=' .vercel/.env.preview.local | cut -d= -f2- | tr -d '"' || true)
+          if [ -z "$origine" ]; then
+            echo "::error::BETTER_AUTH_URL est absente de l'environnement Preview du projet Vercel. Posez-y l'URL de branche stable, la meme que le redirect URI enregistre chez Google."
+            exit 1
+          fi
+          echo "ORIGINE=$origine" >> "$GITHUB_ENV"
+
+      - name: Construire
+        working-directory: apps/web
+        run: vercel build --token="$VERCEL_TOKEN"
+
+      - name: Publier
+        working-directory: apps/web
+        run: |
+          url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          echo "URL=$url" >> "$GITHUB_ENV"
+
+      # La verification que l'issue demande de faire pour de vrai, et non de
+      # supposer : l'origine annoncee a Google d'un cote, les hotes que Vercel a
+      # reellement attribues au deploiement de l'autre. Ils doivent coincider sur
+      # `home-budget-git-main-...`. On ne filtre que des hostnames, jamais la
+      # sortie brute de `vercel inspect`.
+      - name: Resumer
+        working-directory: apps/web
+        run: |
+          hotes=$(vercel inspect "$URL" --token="$VERCEL_TOKEN" 2>&1 \
+            | grep -o '[a-z0-9.-]*\.vercel\.app' | sort -u || true)
+          {
+            echo "## Preview publiee"
+            echo
+            echo "- Ref deployee : \`${{ github.ref_name }}\`"
+            echo "- URL unique : $URL"
+            echo "- Origine annoncee a Google : $ORIGINE"
+            echo
+            echo '### Hotes attribues par Vercel'
+            echo
+            echo '```'
+            echo "$hotes"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
