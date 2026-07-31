@@ -75,6 +75,30 @@ jobs:
           fi
           echo "ORIGINE=$origine" >> "$GITHUB_ENV"
 
+      # Deux sources pour une seule base : la migration utilise le secret
+      # d'environment GitHub, l'application la variable du projet Vercel, que
+      # `vercel build` embarque. Si elles divergent, la migration s'applique sur
+      # une base et le code neuf parle a une autre — un run vert sur la mauvaise
+      # base, le seul mode de defaillance que l'ordre des etapes ne rattrape pas.
+      # On ne compare que ce qui identifie la base, jamais les identifiants.
+      - name: Verifier que les deux DATABASE_URL designent la meme base
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          empreinte() {
+            printf '%s' "$1" | sed -e 's|^[a-z+]*://||' -e 's|^[^@]*@||' -e 's|?.*$||' -e 's|:[0-9]*/|/|'
+          }
+          servie=$(grep -m1 '^DATABASE_URL=' .vercel/.env.preview.local | cut -d= -f2- | tr -d '"' || true)
+          if [ -z "$servie" ]; then
+            echo "::error::DATABASE_URL est absente de l'environnement Preview du projet Vercel."
+            exit 1
+          fi
+          if [ "$(empreinte "$DATABASE_URL")" != "$(empreinte "$servie")" ]; then
+            echo "::error::Les deux DATABASE_URL ne designent pas la meme base : la migration viserait $(empreinte "$DATABASE_URL"), l'application est servie par $(empreinte "$servie"). Si l'application utilise volontairement le pooler Supabase et la migration la connexion directe, les empreintes different legitimement : adaptez ce controle plutot que de le retirer."
+            exit 1
+          fi
+
       - name: Construire
         working-directory: apps/web
         run: vercel build --token="$VERCEL_TOKEN"
@@ -102,9 +126,11 @@ jobs:
       # Sur `main`, l'alias `home-budget-git-main-...` doit etre present dans
       # les hotes. Si Vercel ne l'attribue pas, le tour OAuth est casse : la
       # connexion Google renverrait l'utilisateur sur une URL inconnue. Le
-      # deploiement echoue et le message d'erreur explique : il faut redemarrer
-      # avec une autre ref (un dispatch manuel sur une autre branche, ou attendre
-      # le merge suivant si une priorite a laisse main diverger).
+      # deploiement echoue ; sur un autre ref le controle est saute, donc y
+      # redemarrer ne diagnostiquerait rien. Le message renvoie a la liste des
+      # hotes attribues, affichee juste au-dessus dans le resume, et si l'alias
+      # n'est jamais attribue, au repli decrit dans la spec (faire porter le
+      # deploiement sur une autre ref).
       #
       # Sur un autre ref (workflow_dispatch), l'alias `-git-<branche>-` ne figure
       # pas dans les URIs enregistrees chez Google : la divergence est attendue,
@@ -134,9 +160,9 @@ jobs:
 
           # Verification du matching sur `main`.
           if [ "$REF" = "main" ]; then
-            hostname=$(echo "$ORIGINE" | sed 's|https://||')
-            if ! echo "$hotes" | grep -q "^$hostname$"; then
-              echo "::error::l'alias attendu $hostname n'a pas ete attribue par Vercel. Redemarrer le deploiement avec une autre ref pour diagnostiquer."
+            hostname=$(echo "$ORIGINE" | sed -e 's|^https\?://||' -e 's|/.*$||')
+            if ! echo "$hotes" | grep -qxF "$hostname"; then
+              echo "::error::l'alias attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus ; si l'alias n'est jamais attribue, appliquer le repli de la spec (faire porter le deploiement sur une autre ref)."
               exit 1
             fi
           fi
