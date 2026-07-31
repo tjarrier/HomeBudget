@@ -19,6 +19,16 @@ const RACINE_DEPOT = fileURLToPath(new URL('../../..', import.meta.url))
 const lire = (cheminRelatif: string): string =>
   readFileSync(join(RACINE_DEPOT, cheminRelatif), 'utf8')
 
+/**
+ * Les lignes de commentaire retirées : ce qui compte est l'ordre des commandes
+ * exécutées, pas l'ordre dans lequel les commentaires les mentionnent.
+ */
+const sansCommentaires = (contenu: string): string =>
+  contenu
+    .split('\n')
+    .filter((ligne) => !/^\s*#/.test(ligne))
+    .join('\n')
+
 describe('vercel.json', () => {
   it("coupe les deploiements de l'integration Git", () => {
     const config = JSON.parse(lire('apps/web/vercel.json'))
@@ -66,28 +76,24 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
     expect(contenu).toContain('needs: verif')
   })
 
-  it('migre la base avant de promouvoir le code', () => {
-    // La regle qui coute de l'argent si elle tombe : une migration qui echoue
-    // doit arreter le deploiement avant que du code neuf ne parle a un schema
-    // vieux. Ce test compare des positions dans le fichier, donc aucun
-    // commentaire ne doit mentionner `vercel deploy` avant l'etape de migration.
-    const migration = contenu.indexOf('db:migrate')
-    const promotion = contenu.indexOf('vercel deploy')
+  it('construit, puis migre, puis promeut', () => {
+    // L'ordre qui coûte de l'argent s'il tombe. Construire d'abord : rien ne
+    // s'écrit en base avant qu'un artefact existe. Migrer avant de promouvoir :
+    // du code neuf ne parle jamais à un schéma vieux.
+    const etapes = sansCommentaires(contenu)
+    const construction = etapes.indexOf('vercel build')
+    const migration = etapes.indexOf('db:migrate')
+    const promotion = etapes.indexOf('vercel deploy')
 
-    expect(migration).toBeGreaterThan(-1)
-    expect(promotion).toBeGreaterThan(-1)
-    expect(migration).toBeLessThan(promotion)
+    expect(construction).toBeGreaterThan(-1)
+    expect(migration).toBeGreaterThan(construction)
+    expect(promotion).toBeGreaterThan(migration)
   })
 
   it("n'utilise jamais drizzle-kit push, qui supprimerait nos garde-fous", () => {
     // Les lignes de commentaire sont retirees : ce qui est interdit, c'est
     // d'executer la commande, pas de dire pourquoi elle est interdite.
-    const sansCommentaires = contenu
-      .split('\n')
-      .filter((ligne) => !/^\s*#/.test(ligne))
-      .join('\n')
-
-    expect(sansCommentaires).not.toContain('drizzle-kit push')
+    expect(sansCommentaires(contenu)).not.toContain('drizzle-kit push')
   })
 
   it('declare son environment GitHub, la ou vit DATABASE_URL', () => {
