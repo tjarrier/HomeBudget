@@ -80,7 +80,14 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
   })
 
   it("n'utilise jamais drizzle-kit push, qui supprimerait nos garde-fous", () => {
-    expect(contenu).not.toContain('drizzle-kit push')
+    // Les lignes de commentaire sont retirees : ce qui est interdit, c'est
+    // d'executer la commande, pas de dire pourquoi elle est interdite.
+    const sansCommentaires = contenu
+      .split('\n')
+      .filter((ligne) => !/^\s*#/.test(ligne))
+      .join('\n')
+
+    expect(sansCommentaires).not.toContain('drizzle-kit push')
   })
 
   it('declare son environment GitHub, la ou vit DATABASE_URL', () => {
@@ -91,6 +98,10 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
     // Le Root Directory vaut `apps/web`. Une commande `vercel` lancee a la
     // racine du depot ne trouverait pas le projet.
     expect(contenu).toContain('working-directory: apps/web')
+  })
+
+  it('ne laisse pas deux migrations courir sur la meme base', () => {
+    expect(contenu).toContain('cancel-in-progress: false')
   })
 })
 
@@ -105,20 +116,16 @@ describe('deploy-preview.yml', () => {
   it('ne promeut jamais en production', () => {
     expect(preview).not.toContain('--prod')
   })
-
-  it('ne laisse pas deux migrations courir sur la meme base', () => {
-    expect(preview).toContain('cancel-in-progress: false')
-  })
 })
 
 describe('deploy-production.yml', () => {
   const production = lire('.github/workflows/deploy-production.yml')
 
   it('ne se declenche que sur un tag de version', () => {
-    expect(production).toContain('tags:')
-    expect(production).toContain('v[0-9]+.[0-9]+.[0-9]+')
     // Aucun declencheur de branche : la production ne suit pas `main` commit par
     // commit, elle suit des versions.
+    expect(production).toMatch(/^on:\n\s+push:\n\s+tags:\n/m)
+    expect(production).toContain('v[0-9]+.[0-9]+.[0-9]+')
     expect(production).not.toContain('branches:')
   })
 
@@ -129,6 +136,8 @@ describe('deploy-production.yml', () => {
   it('refuse le tag avant de jouer la CI, pas apres', () => {
     // Un job de garde, pas une etape dans `deploy` : un tag pose sur un commit
     // hors `main` est refuse en dix secondes, sans brûler Postgres ni Playwright.
+    expect(production).toContain('merge-base --is-ancestor')
+    expect(production).toMatch(/verif:\n\s+needs: garde/)
     expect(production.indexOf('merge-base --is-ancestor')).toBeLessThan(
       production.indexOf('uses: ./.github/workflows/ci.yml'),
     )

@@ -48,16 +48,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # La migration d'abord. Elle porte sur la base de PREVIEW : `DATABASE_URL`
-      # vient du secret de l'environment `Preview`, qui doit pointer une autre
-      # base que la production. Une preview branchee sur la prod y creerait de
-      # vraies depenses, et une version qui porte des depenses n'est plus
-      # supprimable (`0002` et la FK `restrict`).
-      - name: Migrer la base de preview
-        run: pnpm --filter @homebudget/db db:migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
       - name: Installer la CLI Vercel
         run: npm install --global vercel@latest
 
@@ -88,6 +78,16 @@ jobs:
       - name: Construire
         working-directory: apps/web
         run: vercel build --token="$VERCEL_TOKEN"
+
+      # L'ordre n'est pas negociable : rien ne s'ecrit sur la base avant qu'un
+      # artefact existe, et la migration precede toujours la promotion, afin que le
+      # code neuf ne parle jamais a un schema vieux. Elle porte sur la base de
+      # PREVIEW : `DATABASE_URL` vient du secret de l'environment `Preview`, qui
+      # doit pointer une autre base que la production.
+      - name: Migrer la base de preview
+        run: pnpm --filter @homebudget/db db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Publier
         working-directory: apps/web

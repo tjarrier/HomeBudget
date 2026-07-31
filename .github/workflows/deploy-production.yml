@@ -62,14 +62,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # L'ordre n'est pas negociable, et il est sequentiel dans ce seul job : une
-      # migration qui echoue arrete le deploiement avant que du code neuf ne parle
-      # a un schema vieux.
-      - name: Migrer la base de production
-        run: pnpm --filter @homebudget/db db:migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
       - name: Installer la CLI Vercel
         run: npm install --global vercel@latest
 
@@ -80,6 +72,16 @@ jobs:
       - name: Construire
         working-directory: apps/web
         run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      # L'ordre n'est pas negociable : rien ne s'ecrit sur la base avant qu'un
+      # artefact existe, et la migration precede toujours la promotion, afin que le
+      # code neuf ne parle jamais a un schema vieux. Le seul chemin autorise est
+      # `db:migrate` ; tout outil qui comparerait le schema TS a la base et
+      # proposerait de supprimer nos garde-fous y est formellement interdit.
+      - name: Migrer la base de production
+        run: pnpm --filter @homebudget/db db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Promouvoir
         working-directory: apps/web
