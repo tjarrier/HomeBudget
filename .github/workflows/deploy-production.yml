@@ -1,0 +1,97 @@
+name: Deploiement production
+
+# Une version, pas un commit. La production ne bouge que sur un tag, et le tag
+# est la seule chose qui la fait bouger — `apps/web/vercel.json` a coupe les
+# deploiements de l'integration Git.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Un job, et non une etape de `deploy` : un tag pose sur un commit hors `main`
+  # est refuse en dix secondes, sans brûler Postgres et Playwright pour rien.
+  garde:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verifier que le commit tague appartient a main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Le commit $GITHUB_SHA n'est pas un ancetre de main. Un tag pose hors de main ne part pas en production."
+            exit 1
+          fi
+
+  # Un tag peut pointer un commit que la CI n'a jamais vu : on rejoue la
+  # verification complete, on ne fait pas confiance a l'historique.
+  verif:
+    needs: garde
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: verif
+    runs-on: ubuntu-latest
+    # Protection par reviewer requise sur cet environment : approuver, ce n'est
+    # pas seulement publier du code, c'est autoriser une migration sur la base de
+    # production. La revue se place donc apres le vert de la CI et avant l'ecriture.
+    environment: Production
+
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # L'ordre n'est pas negociable, et il est sequentiel dans ce seul job : une
+      # migration qui echoue arrete le deploiement avant que du code neuf ne parle
+      # a un schema vieux.
+      - name: Migrer la base de production
+        run: pnpm --filter @homebudget/db db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Installer la CLI Vercel
+        run: npm install --global vercel@latest
+
+      - name: Tirer la configuration et les variables de Production
+        working-directory: apps/web
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Construire
+        working-directory: apps/web
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Promouvoir
+        working-directory: apps/web
+        env:
+          REF: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          {
+            echo "## Production promue"
+            echo
+            echo "- Version : \`$REF\`"
+            echo "- Commit : \`$SHA\`"
+            echo "- Deploiement : $url"
+          } >> "$GITHUB_STEP_SUMMARY"

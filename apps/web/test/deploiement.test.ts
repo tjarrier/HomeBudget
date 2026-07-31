@@ -53,12 +53,11 @@ describe('ci.yml', () => {
 })
 
 /**
- * Les regles qui valent pour les deux workflows de deploiement. La tache 4 y
- * ajoute `deploy-production.yml` ; l'entree unique ci-dessous n'est pas un oubli
- * a ce stade du plan.
+ * Les regles qui valent pour les deux workflows de deploiement.
  */
 const WORKFLOWS_DE_DEPLOIEMENT = [
   ['deploy-preview.yml', lire('.github/workflows/deploy-preview.yml')],
+  ['deploy-production.yml', lire('.github/workflows/deploy-production.yml')],
 ] as const
 
 describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
@@ -109,5 +108,34 @@ describe('deploy-preview.yml', () => {
 
   it('ne laisse pas deux migrations courir sur la meme base', () => {
     expect(preview).toContain('cancel-in-progress: false')
+  })
+})
+
+describe('deploy-production.yml', () => {
+  const production = lire('.github/workflows/deploy-production.yml')
+
+  it('ne se declenche que sur un tag de version', () => {
+    expect(production).toContain('tags:')
+    expect(production).toContain('v[0-9]+.[0-9]+.[0-9]+')
+    // Aucun declencheur de branche : la production ne suit pas `main` commit par
+    // commit, elle suit des versions.
+    expect(production).not.toContain('branches:')
+  })
+
+  it('refuse un tag pose hors de main', () => {
+    expect(production).toContain('merge-base --is-ancestor')
+  })
+
+  it('refuse le tag avant de jouer la CI, pas apres', () => {
+    // Un job de garde, pas une etape dans `deploy` : un tag pose sur un commit
+    // hors `main` est refuse en dix secondes, sans brûler Postgres ni Playwright.
+    expect(production.indexOf('merge-base --is-ancestor')).toBeLessThan(
+      production.indexOf('uses: ./.github/workflows/ci.yml'),
+    )
+    expect(production).toContain('needs: garde')
+  })
+
+  it('promeut en production', () => {
+    expect(production).toContain('vercel deploy --prebuilt --prod')
   })
 })
