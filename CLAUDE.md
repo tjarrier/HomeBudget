@@ -126,13 +126,18 @@ Sur Vercel, l'absence de la variable **fait échouer le démarrage**, délibér�
 `localhost` serait le pire des cas : cette URI *est* enregistrée chez Google, donc le tour
 OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucune erreur.
 
-- **Cible Preview : l'URL de BRANCHE**, `home-budget-git-<branche>-tjarriers-projects.vercel.app`,
-  et une branche de preview figée (`preview`) pour n'avoir qu'un seul redirect URI à
-  enregistrer. Surtout pas `-git-main-` : c'est un alias de la **production**, donc les
-  previews atterriraient sur la vraie base après authentification.
-- Ne reconstruis jamais ce hostname à la main : au-delà de 63 caractères avant `.vercel.app`,
-  Vercel tronque, et retire le slug de scope en entier. Lis-le dans le commentaire du bot
-  Vercel sur la PR, ou dans le `redirect_uri` que Google affiche quand il refuse.
+- **Cible Preview : `https://home-budget-git-main-tjarriers-projects.vercel.app`.** C'est
+  l'URL de branche de `main`, et depuis que `apps/web/vercel.json` coupe les déploiements
+  de l'intégration Git, elle ne sert plus la production : Vercel ne déploie plus `main` du
+  tout, c'est `deploy-preview.yml` qui le fait, **en preview**, donc avec les variables
+  d'environnement Preview. L'avertissement inverse qui figurait ici ne valait que tant que
+  l'intégration Git envoyait `main` en production.
+- **On ne choisit pas ce hostname, on choisit la ref.** Vercel le fabrique à partir de la
+  ref git du déploiement, et les sous-domaines `*.vercel.app` sont réservés : aucun
+  `vercel alias set` n'est possible dessus. Ne reconstruis jamais ce nom à la main non
+  plus : au-delà de 63 caractères avant `.vercel.app`, Vercel tronque et retire le slug de
+  scope en entier. Lis-le dans le résumé du run de `deploy-preview.yml`, qui affiche côte à
+  côte l'origine annoncée à Google et les hôtes réellement attribués.
 - **`DATABASE_URL` de Preview doit pointer sur une autre base que la production.** Une
   preview branchée sur la prod y crée de vraies dépenses et de vraies versions de config —
   et une version qui porte des dépenses n'est plus supprimable (`0002` et la FK `restrict`).
@@ -145,6 +150,37 @@ OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucu
 **L'aperçu des parts** partage la fonction `calculerPartsPourSaisie()` avec l'écriture
 réelle. Ne les dédouble jamais : un aperçu qui diverge de l'écriture est un mensonge
 affiché à l'utilisateur.
+
+## Déploiement
+
+**Vercel ne déploie plus rien tout seul.** `apps/web/vercel.json` pose
+`git.deploymentEnabled: false`. Le fichier est dans `apps/web` et non à la racine parce
+que c'est le *Root Directory* du projet Vercel : Vercel ne lit que celui-là, et un fichier
+à la racine serait ignoré en silence — `main` repartirait en production par la porte de
+derrière, sans que rien ne le signale.
+
+Deux workflows, un seul déployeur, et une seule définition de « vérifié » : `ci.yml` est
+appelable (`workflow_call`), les deux l'appellent, aucun ne recopie ses étapes.
+
+- **Preview au merge** (`deploy-preview.yml`) : push sur `main`, ou déclenchement manuel
+  sur une branche. Cible `-git-main-`.
+- **Production au tag** (`deploy-production.yml`) : un tag `vX.Y.Z`. Le workflow refuse un
+  tag posé hors de `main`, rejoue la CI complète (un tag peut pointer un commit qu'elle n'a
+  jamais vu), puis attend une revue humaine.
+
+**L'ordre ne se négocie pas : construction d'abord, migration ensuite, promotion finalement.**
+Rien ne s'écrit sur la base avant qu'un artefact existe, et la migration précède toujours la
+promotion, afin que le code neuf ne parle jamais à un schéma vieux. `apps/web/test/deploiement.test.ts`
+le verrouille en comparant les positions des trois étapes dans chaque workflow — n'y écris pas
+`vercel build` ou `vercel deploy` dans un commentaire placé avant l'étape de migration, tu ferais
+tomber le test à juste titre.
+
+`drizzle-kit push` reste interdit, y compris en production. Les workflows appellent
+`db:migrate`.
+
+Approuver le déploiement de production, ce n'est pas seulement publier du code : c'est
+autoriser une migration sur la base réelle. La revue se place après le vert de la CI et
+avant l'écriture.
 
 ## Commandes
 
