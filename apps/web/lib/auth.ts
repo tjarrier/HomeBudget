@@ -2,6 +2,7 @@ import { compte, db, session, utilisateur, verification } from '@homebudget/db'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { avantCreationUtilisateur } from './allowlist.js'
+import { origineAuth, originesDeConfiance } from './origine.js'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -9,7 +10,8 @@ export const auth = betterAuth({
     schema: { user: utilisateur, session, account: compte, verification },
   }),
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3000',
+  baseURL: origineAuth(),
+  trustedOrigins: originesDeConfiance(),
   // Aucune inscription par mot de passe : la seule porte est Google, filtree
   // par l'allowlist. Un test verrouille cette ligne.
   emailAndPassword: { enabled: false },

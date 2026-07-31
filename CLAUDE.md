@@ -116,6 +116,27 @@ que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
 colonne `user.personne`. Sans RLS, **ce hook est la sécurité du projet** ; il est verrouillé
 par `apps/web/test/allowlist.test.ts`, qui ne dépend d'aucun credential Google.
 
+**L'origine annoncée à Google** est résolue par `apps/web/lib/origine.ts`, jamais écrite
+en dur. Google n'accepte **aucun wildcard** dans ses *Authorized redirect URIs* : chaque
+origine doit y être enregistrée à la main. Or l'URL d'un déploiement Vercel (`VERCEL_URL`)
+est unique par déploiement — la suivre donnerait un `redirect_uri_mismatch` à chaque push.
+L'auth s'appuie donc sur `VERCEL_BRANCH_URL`, stable par branche, et `trustedOrigins`
+ajoute l'URL unique du déploiement pour que la connexion ne soit pas refusée en mismatch
+d'origine quand on l'ouvre directement.
+
+Ce qui en découle, et qui casse silencieusement si on l'oublie :
+
+- **Ne pas définir `BETTER_AUTH_URL` pour l'environnement Preview de Vercel.** Une valeur
+  explicite gagne sur la dérivation : toutes les previews retomberaient sur une origine
+  fixe. En Production, l'expliciter est correct.
+- Un *Authorized redirect URI* par branche de preview, en plus de la production :
+  `https://homebudget-git-<branche>-<team>.vercel.app/api/auth/callback/google`.
+- **`DATABASE_URL` de Preview doit pointer sur une autre base que la production.** Une
+  preview branchée sur la prod y crée de vraies dépenses et de vraies versions de config —
+  et une version qui porte des dépenses n'est plus supprimable (`0002` et la FK `restrict`).
+- `createAuthClient()` reste sans `baseURL` : le client utilise l'origine courante du
+  navigateur, donc il fonctionne sur n'importe quel hôte sans configuration.
+
 **L'aperçu des parts** partage la fonction `calculerPartsPourSaisie()` avec l'écriture
 réelle. Ne les dédouble jamais : un aperçu qui diverge de l'écriture est un mensonge
 affiché à l'utilisateur.
