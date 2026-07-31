@@ -1,3 +1,16 @@
+/**
+ * Les seules variables que ce module lit. Volontairement pas `NodeJS.ProcessEnv` :
+ * Next.js l'augmente avec un `NODE_ENV` requis, ce qui rend inassignable tout
+ * environnement partiel — et donc intestable chaque cas isolement.
+ */
+type EnvironnementVercel = {
+  BETTER_AUTH_URL?: string
+  VERCEL_ENV?: string
+  VERCEL_URL?: string
+  VERCEL_BRANCH_URL?: string
+  VERCEL_PROJECT_PRODUCTION_URL?: string
+}
+
 const https = (hote: string) => `https://${hote}`
 
 /**
@@ -14,7 +27,7 @@ const https = (hote: string) => `https://${hote}`
  * comprise — et qu'une preview qui annonce le domaine de prod y poserait son
  * cookie de session.
  */
-export function origineAuth(env: NodeJS.ProcessEnv = process.env): string {
+export function origineAuth(env: EnvironnementVercel = process.env): string {
   if (env.BETTER_AUTH_URL) return env.BETTER_AUTH_URL
   if (env.VERCEL_ENV === 'production' && env.VERCEL_PROJECT_PRODUCTION_URL) {
     return https(env.VERCEL_PROJECT_PRODUCTION_URL)
@@ -29,7 +42,7 @@ export function origineAuth(env: NodeJS.ProcessEnv = process.env): string {
  * preview est consultable mais la connexion y echoue en mismatch d'origine.
  * Le tour OAuth, lui, repose l'utilisateur sur l'URL de branche.
  */
-export function originesDeConfiance(env: NodeJS.ProcessEnv = process.env): string[] {
+export function originesDeConfiance(env: EnvironnementVercel = process.env): string[] {
   return [env.VERCEL_URL, env.VERCEL_BRANCH_URL, env.VERCEL_PROJECT_PRODUCTION_URL]
     .filter((hote): hote is string => Boolean(hote))
     .map(https)
