@@ -80,7 +80,9 @@ describe('le branchement sur Better Auth', () => {
     // `BETTER_AUTH_URL = undefined` y stocke la chaine "undefined", truthy —
     // le test passerait alors pour la mauvaise raison.
     const environnement = Object.entries(process.env).filter(([nom]) => nom !== 'BETTER_AUTH_URL')
-    process.env = { ...Object.fromEntries(environnement), ...PREVIEW }
+    // Le cast porte sur l'affectation, pas sur le fixture : `process.env` exige
+    // un NODE_ENV que la reconstruction ci-dessus perd de vue, alors qu'il y est.
+    process.env = { ...Object.fromEntries(environnement), ...PREVIEW } as NodeJS.ProcessEnv
     vi.resetModules()
 
     const { auth } = await import('../lib/auth.js')
