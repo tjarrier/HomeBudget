@@ -54,11 +54,16 @@ describe('ci.yml', () => {
     expect(ci).toContain('workflow_call:')
   })
 
-  it('ne se declenche plus sur push', () => {
-    // Sur `main`, c'est `deploy-preview.yml` qui appelle la CI. Garder le
-    // declencheur `push` ferait tourner deux fois Postgres et Playwright a
-    // chaque merge, pour deux verdicts qu'il faudrait ensuite comparer.
-    expect(ci).not.toMatch(/^\s+push:/m)
+  it('se declenche au push', () => {
+    // Pousser suffit a lancer la verification, PR ouverte ou pas.
+    expect(ci).toMatch(/^\s+push:/m)
+  })
+
+  it("sauf sur `main`, ou c'est le deploiement qui l'appelle", () => {
+    // Sur `main`, c'est `deploy-preview.yml` qui appelle la CI. L'y declencher
+    // aussi au push ferait tourner deux fois Postgres et Playwright a chaque
+    // merge, pour deux verdicts qu'il faudrait ensuite comparer.
+    expect(ci).toMatch(/^\s+branches-ignore: \[main\]$/m)
   })
 })
 
