@@ -72,9 +72,15 @@ describe('originesDeConfiance', () => {
 describe('le branchement sur Better Auth', () => {
   it("annonce a Google l'URL de branche, et fait confiance au deploiement", async () => {
     // Une resolution correcte mais debranchee ne sert a rien : ce test lit la
-    // configuration que Better Auth a reellement recue.
-    process.env = { ...process.env, ...PREVIEW }
-    delete process.env.BETTER_AUTH_URL
+    // configuration que Better Auth a reellement recue. La CI pose
+    // BETTER_AUTH_URL : il faut donc l'OMETTRE pour simuler une preview.
+    //
+    // Ni `delete` (interdit par Biome) ni l'affectation d'`undefined` qu'il
+    // propose : process.env coerce toute valeur en chaine, donc
+    // `BETTER_AUTH_URL = undefined` y stocke la chaine "undefined", truthy —
+    // le test passerait alors pour la mauvaise raison.
+    const environnement = Object.entries(process.env).filter(([nom]) => nom !== 'BETTER_AUTH_URL')
+    process.env = { ...Object.fromEntries(environnement), ...PREVIEW }
     vi.resetModules()
 
     const { auth } = await import('../lib/auth.js')
