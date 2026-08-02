@@ -176,11 +176,20 @@ describe('deploy-preview.yml', () => {
     expect(preview).not.toContain('--prod')
   })
 
-  it("ne fait echouer le run que si l'alias attendu manque sur main", () => {
-    // La decision qui a produit ce comportement : sur une autre ref, l'ecart est
-    // normal (l'hote est `-git-<branche>-`), donc on imprime sans echouer.
-    expect(preview).toContain('if [ "$REF" = "main" ]')
-    expect(preview).toMatch(/if \[ "\$REF" = "main" \][\s\S]*?exit 1/)
+  it("fait echouer le run des que l'alias attendu manque, sur n'importe quelle ref", () => {
+    // Un garde-fou `if [ "$REF" = "main" ]` vivait ici, parce qu'on croyait
+    // l'alias fabrique a partir de la ref : sur une autre branche, l'ecart aurait
+    // ete normal. Le premier run reel a dementi la croyance. L'alias d'auteur
+    // `<projet>-<utilisateur>-<scope>` est attribue a tout deploiement de la CLI,
+    // quelle que soit la branche — les hotes `-git-<branche>-` viennent de
+    // l'integration Git, que `vercel.json` coupe.
+    //
+    // La verification vaut donc partout, et sauter le controle sur les autres refs
+    // ne ferait que masquer une anomalie reelle.
+    const etapes = sansCommentaires(preview)
+
+    expect(etapes).not.toContain('$REF" = "main"')
+    expect(etapes).toMatch(/grep -qxF "\$hostname"[\s\S]*?exit 1/)
   })
 })
 
