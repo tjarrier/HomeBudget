@@ -69,29 +69,32 @@ jobs:
         working-directory: apps/web
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      # Deux sources pour une seule base : la migration utilise le secret
-      # d'environment GitHub, l'application la variable du projet Vercel, que
-      # `vercel build` embarque. Si elles divergent, la migration s'applique sur
-      # une base et le code neuf parle a une autre — un run vert sur la mauvaise
-      # base, le seul mode de defaillance que l'ordre des etapes ne rattrape pas.
-      # On ne compare que ce qui identifie la base, jamais les identifiants.
-      - name: Verifier que les deux DATABASE_URL designent la meme base de production
+      # Il n'y a plus deux sources pour une seule base. Le secret d'environment
+      # GitHub est la seule, et cette etape la recopie dans le projet Vercel, que
+      # `vercel deploy` capture en creant le deploiement. La migration et
+      # l'application ne peuvent plus viser deux bases differentes — par
+      # construction, et non plus par verification.
+      #
+      # Une verification vivait ici, et elle ne pouvait pas fonctionner :
+      # `DATABASE_URL` est marquee *Sensitive* cote Vercel, donc `vercel pull` en
+      # ecrit la chaine `[SENSITIVE]` et jamais la valeur. Elle comparait une
+      # empreinte reelle a une constante, et echouait a chaque run.
+      #
+      # `--force` ecrase en une seule operation : un `rm` puis un `add` laisserait
+      # l'application sans base si le run mourait entre les deux. `--sensitive`
+      # preserve la protection de la valeur, qui passe par stdin et jamais par la
+      # ligne de commande.
+      - name: Aligner DATABASE_URL sur le secret GitHub
         working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          empreinte() {
-            printf '%s' "$1" | sed -e 's|^[a-z+]*://||' -e 's|^.*@||' -e 's|?.*$||' -e 's|:[0-9]*/|/|'
-          }
-          servie=$(grep -m1 '^DATABASE_URL=' .vercel/.env.production.local | cut -d= -f2- | tr -d '"' || true)
-          if [ -z "$servie" ]; then
-            echo "::error::DATABASE_URL est absente de l'environnement Production du projet Vercel."
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL est absente de l'environment Production du depot. Sans elle, cette etape effacerait la base que sert l'application."
             exit 1
           fi
-          if [ "$(empreinte "$DATABASE_URL")" != "$(empreinte "$servie")" ]; then
-            echo "::error::Les deux DATABASE_URL ne designent pas la meme base : la migration viserait $(empreinte "$DATABASE_URL"), l'application est servie par $(empreinte "$servie"). Si l'application utilise volontairement le pooler Supabase et la migration la connexion directe, les empreintes different legitimement : adaptez ce controle plutot que de le retirer."
-            exit 1
-          fi
+          printf '%s' "$DATABASE_URL" \
+            | vercel env add DATABASE_URL production --force --sensitive --yes --token="$VERCEL_TOKEN"
 
       - name: Construire
         working-directory: apps/web
