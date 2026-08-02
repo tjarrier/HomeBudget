@@ -210,14 +210,22 @@ jour et l'ancien code tourne encore dessus — revenir à un état cohérent est
 humaine, pas un `if` dans le workflow.
 
 **Une seule source pour `DATABASE_URL`.** Le secret d'environment GitHub est la source ;
-chaque déploiement la recopie dans le projet Vercel (`vercel env add --force --sensitive`)
-avant de construire. La migration et l'application ne peuvent donc plus viser deux bases
-différentes — par construction, et non par vérification. L'étape qui comparait les deux
-valeurs a été retirée parce qu'elle ne pouvait pas fonctionner : `DATABASE_URL` est marquée
-*Sensitive* côté Vercel, donc `vercel pull` en écrit la chaîne `[SENSITIVE]` et jamais la
-valeur. Elle comparait une empreinte réelle à une constante, et échouait à chaque run.
-N'utilise jamais `vercel env rm` suivi d'un `add` : entre les deux, l'application n'a plus
-de base.
+chaque déploiement la recopie dans le projet Vercel avant de construire. La migration et
+l'application ne peuvent donc plus viser deux bases différentes — par construction, et non
+par vérification. L'étape qui comparait les deux valeurs a été retirée parce qu'elle ne
+pouvait pas fonctionner : `DATABASE_URL` est marquée *Sensitive* côté Vercel, donc
+`vercel pull` en écrit la chaîne `[SENSITIVE]` et jamais la valeur. Elle comparait une
+empreinte réelle à une constante, et échouait à chaque run.
+
+**La recopie passe par l'API, jamais par `vercel env add`.** La CLI a tourné en production
+et n'a rien écrit : malgré `--yes`, elle demande « Git branch? », le pipe lui donne EOF,
+elle abandonne — et **sort en 0**. L'étape s'est déclarée verte pendant que l'application
+continuait de parler à l'ancienne base, jusqu'à un `ENOTFOUND` à l'exécution. Le workflow
+poste donc sur `/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true` et **vérifie le code
+HTTP** : c'est la leçon du run qui a menti, une commande peut sortir en 0 sans rien faire.
+`upsert` écrase en une seule opération — jamais un `DELETE` suivi d'un `POST`, entre les
+deux l'application n'a plus de base. Et le corps de la réponse ne s'affiche pas : il
+contient la valeur.
 
 `drizzle-kit push` reste interdit, y compris en production. Les workflows appellent
 `db:migrate`.
