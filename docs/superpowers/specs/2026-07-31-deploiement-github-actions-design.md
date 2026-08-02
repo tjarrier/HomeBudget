@@ -30,7 +30,12 @@ continuerait de partir en production par la porte de derrière — sans que rien
 signale. C'est le pire mode de défaillance possible pour cette tâche, puisque tout le
 reste en dépend.
 
-Corollaire : la CLI Vercel tourne avec `working-directory: apps/web`.
+Corollaire — et il va dans le sens **inverse** de l'intuition : la CLI Vercel tourne à
+la **racine du dépôt**. Elle joint le Root Directory au répertoire courant, donc lancée
+depuis `apps/web` elle cherche `apps/web/apps/web`. `vercel build` s'en tire par un
+repli assorti d'un avertissement ; `vercel deploy --prebuilt` échoue net. Ce que la CLI
+écrit — `.vercel/project.json`, le fichier d'environnement, `.vercel/output` — atterrit
+donc à la racine, et les étapes qui le lisent aussi.
 
 ### Écart 2 — pas d'entrée `ref` sur le `workflow_dispatch`
 

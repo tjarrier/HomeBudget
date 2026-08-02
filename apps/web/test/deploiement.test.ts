@@ -140,10 +140,19 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
     expect(contenu).toMatch(/environment: (Preview|Production)/)
   })
 
-  it('fait tourner la CLI Vercel dans le Root Directory du projet', () => {
-    // Le Root Directory vaut `apps/web`. Une commande `vercel` lancee a la
-    // racine du depot ne trouverait pas le projet.
-    expect(contenu).toContain('working-directory: apps/web')
+  it('fait tourner la CLI Vercel a la racine du depot', () => {
+    // Le Root Directory du projet vaut `apps/web`, et la CLI *joint* ce reglage
+    // au repertoire courant. Lancee depuis `apps/web`, elle cherche donc
+    // `apps/web/apps/web`, qui n'existe pas. `vercel build` s'en tire par un
+    // repli — avec un avertissement que personne ne lit — mais
+    // `vercel deploy --prebuilt` echoue net :
+    //
+    //   Error: The provided path ".../apps/web/apps/web" does not exist.
+    //
+    // La CLI tourne donc a la racine, et c'est `rootDirectory` qui la mene dans
+    // `apps/web`. Le fichier tire par `vercel pull` atterrit a la racine lui
+    // aussi : l'etape qui y lit BETTER_AUTH_URL suit le meme chemin.
+    expect(sansCommentaires(contenu)).not.toContain('working-directory: apps/web')
   })
 
   it('ne laisse pas deux migrations courir sur la meme base', () => {
