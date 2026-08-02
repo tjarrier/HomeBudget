@@ -29,6 +29,22 @@ const sansCommentaires = (contenu: string): string =>
     .filter((ligne) => !/^\s*#/.test(ligne))
     .join('\n')
 
+/**
+ * Le corps d'une étape, de son `- name:` jusqu'au suivant.
+ *
+ * Sans ce cadrage, une assertion « il y a bien un `exit 1` après le code HTTP »
+ * se satisfait de l'`exit 1` d'une étape *ultérieure* — le contrôle d'alias, par
+ * exemple. Vérifié : en retirant le contrôle du code HTTP de l'étape
+ * d'alignement, le fichier entier passait encore.
+ */
+const etape = (contenu: string, nom: string): string => {
+  const debut = contenu.indexOf(`- name: ${nom}`)
+  if (debut === -1) return ''
+
+  const suivante = contenu.indexOf('- name:', debut + 1)
+  return suivante === -1 ? contenu.slice(debut) : contenu.slice(debut, suivante)
+}
+
 describe('vercel.json', () => {
   it("coupe les deploiements de l'integration Git", () => {
     const config = JSON.parse(lire('apps/web/vercel.json'))
@@ -70,6 +86,9 @@ describe('ci.yml', () => {
 /**
  * Les regles qui valent pour les deux workflows de deploiement.
  */
+/** Le nom de l'étape, identique dans les deux workflows. */
+const ALIGNEMENT = 'Aligner DATABASE_URL sur le secret GitHub'
+
 const WORKFLOWS_DE_DEPLOIEMENT = [
   ['deploy-preview.yml', lire('.github/workflows/deploy-preview.yml')],
   ['deploy-production.yml', lire('.github/workflows/deploy-production.yml')],
@@ -147,10 +166,15 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
   it("verifie que l'ecriture a eu lieu, au lieu de croire le code de sortie", () => {
     // La lecon du run qui a menti : une commande peut sortir en 0 sans rien
     // faire. On lit le code HTTP de la reponse, et on echoue s'il n'est pas bon.
-    const etapes = sansCommentaires(contenu)
+    //
+    // L'assertion est cadree sur l'etape, et pas sur le fichier : sinon
+    // l'`exit 1` du controle d'alias, plus bas, la satisfait a lui seul. Verifie
+    // en retirant le controle du code HTTP — le fichier entier passait encore.
+    const alignement = etape(sansCommentaires(contenu), ALIGNEMENT)
 
-    expect(etapes).toContain('http_code')
-    expect(etapes).toMatch(/http_code[\s\S]*?exit 1/)
+    expect(alignement).toContain('http_code')
+    expect(alignement).toMatch(/"200"[\s\S]*?"201"/)
+    expect(alignement).toMatch(/http_code[\s\S]*?exit 1/)
   })
 
   it("n'utilise jamais drizzle-kit push, qui supprimerait nos garde-fous", () => {
