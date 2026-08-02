@@ -95,6 +95,41 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
     expect(promotion).toBeGreaterThan(migration)
   })
 
+  it("aligne DATABASE_URL sur le secret GitHub avant d'en dependre", () => {
+    // Il n'y a plus deux sources pour une seule base : le secret GitHub est la
+    // seule, et le workflow la recopie dans le projet Vercel. Les deux ne peuvent
+    // plus diverger — par construction, et non plus par verification.
+    //
+    // La verification qui vivait ici ne pouvait pas fonctionner : `DATABASE_URL`
+    // est marquee *Sensitive* cote Vercel, donc `vercel pull` en ecrit la chaine
+    // `[SENSITIVE]` et jamais la valeur. Elle comparait une empreinte reelle a une
+    // constante, et echouait a chaque run.
+    //
+    // L'alignement precede la construction, donc aussi la migration et la
+    // promotion : a partir de la, tout le monde vise la meme base.
+    const etapes = sansCommentaires(contenu)
+    const alignement = etapes.indexOf('vercel env add DATABASE_URL')
+
+    expect(alignement).toBeGreaterThan(-1)
+    expect(etapes.indexOf('vercel build')).toBeGreaterThan(alignement)
+  })
+
+  it('ecrase DATABASE_URL au lieu de la supprimer puis la recreer', () => {
+    // Un `vercel env rm` suivi d'un `add` ouvre une fenetre — courte, mais reelle
+    // — ou la variable n'existe plus. Un run qui echoue entre les deux laisse
+    // l'application sans base. `--force` ecrase en une seule operation.
+    const etapes = sansCommentaires(contenu)
+
+    expect(etapes).toContain('--force')
+    expect(etapes).not.toContain('vercel env rm')
+  })
+
+  it('conserve le drapeau Sensitive en reecrivant DATABASE_URL', () => {
+    // Sans `--sensitive`, l'ecrasement rendrait la valeur lisible par tout token
+    // ayant acces au projet. On aligne la valeur, on ne degrade pas sa protection.
+    expect(sansCommentaires(contenu)).toContain('--sensitive')
+  })
+
   it("n'utilise jamais drizzle-kit push, qui supprimerait nos garde-fous", () => {
     // Les lignes de commentaire sont retirees : ce qui est interdit, c'est
     // d'executer la commande, pas de dire pourquoi elle est interdite.

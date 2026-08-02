@@ -195,6 +195,16 @@ moitié n'a pas de filet : si la migration réussit mais que la promotion échou
 jour et l'ancien code tourne encore dessus — revenir à un état cohérent est alors une décision
 humaine, pas un `if` dans le workflow.
 
+**Une seule source pour `DATABASE_URL`.** Le secret d'environment GitHub est la source ;
+chaque déploiement la recopie dans le projet Vercel (`vercel env add --force --sensitive`)
+avant de construire. La migration et l'application ne peuvent donc plus viser deux bases
+différentes — par construction, et non par vérification. L'étape qui comparait les deux
+valeurs a été retirée parce qu'elle ne pouvait pas fonctionner : `DATABASE_URL` est marquée
+*Sensitive* côté Vercel, donc `vercel pull` en écrit la chaîne `[SENSITIVE]` et jamais la
+valeur. Elle comparait une empreinte réelle à une constante, et échouait à chaque run.
+N'utilise jamais `vercel env rm` suivi d'un `add` : entre les deux, l'application n'a plus
+de base.
+
 `drizzle-kit push` reste interdit, y compris en production. Les workflows appellent
 `db:migrate`.
 
