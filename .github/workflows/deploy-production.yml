@@ -86,10 +86,19 @@ jobs:
       # ecrit la chaine `[SENSITIVE]` et jamais la valeur. Elle comparait une
       # empreinte reelle a une constante, et echouait a chaque run.
       #
-      # `--force` ecrase en une seule operation : un `rm` puis un `add` laisserait
-      # l'application sans base si le run mourait entre les deux. `--sensitive`
-      # preserve la protection de la valeur, qui passe par stdin et jamais par la
-      # ligne de commande.
+      # On passe par l'API, et non par `vercel env add`. La CLI a tourne sur la
+      # preview et n'a rien ecrit : malgre `--yes`, elle demande une branche git,
+      # le pipe lui donne EOF, elle abandonne — et sort en 0. L'etape s'est
+      # declaree verte pendant que l'application parlait a l'ancienne base. Le
+      # code HTTP est verifie pour cette raison : une commande peut mentir.
+      #
+      # `upsert=true` ecrase en une seule operation : un DELETE puis un POST
+      # laisserait l'application sans base si le run mourait entre les deux.
+      # `type: sensitive` preserve la protection de la valeur, qui passe par
+      # stdin et jamais par la ligne de commande.
+      #
+      # Le corps de la reponse n'est jamais affiche : il contient la valeur. Seul
+      # le code d'erreur en est extrait.
       - name: Aligner DATABASE_URL sur le secret GitHub
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -98,8 +107,18 @@ jobs:
             echo "::error::DATABASE_URL est absente de l'environment Production du depot. Sans elle, cette etape effacerait la base que sert l'application."
             exit 1
           fi
-          printf '%s' "$DATABASE_URL" \
-            | vercel env add DATABASE_URL production --force --sensitive --yes --token="$VERCEL_TOKEN"
+          code=$(jq -n --arg v "$DATABASE_URL" \
+              '{key:"DATABASE_URL", value:$v, type:"sensitive", target:["production"]}' \
+            | curl -sS -o reponse.json -w '%{http_code}' -X POST \
+                "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true&teamId=$VERCEL_ORG_ID" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
+                -H 'Content-Type: application/json' \
+                --data @-)
+          if [ "$code" != "200" ] && [ "$code" != "201" ]; then
+            echo "::error::l'ecriture de DATABASE_URL dans le projet Vercel a repondu $code ($(jq -r '.error.code // "sans code"' reponse.json)). L'application viserait une autre base que la migration."
+            exit 1
+          fi
+          rm -f reponse.json
 
       - name: Construire
         run: vercel build --prod --token="$VERCEL_TOKEN"

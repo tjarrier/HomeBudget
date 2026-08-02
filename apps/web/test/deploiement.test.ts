@@ -29,6 +29,22 @@ const sansCommentaires = (contenu: string): string =>
     .filter((ligne) => !/^\s*#/.test(ligne))
     .join('\n')
 
+/**
+ * Le corps d'une étape, de son `- name:` jusqu'au suivant.
+ *
+ * Sans ce cadrage, une assertion « il y a bien un `exit 1` après le code HTTP »
+ * se satisfait de l'`exit 1` d'une étape *ultérieure* — le contrôle d'alias, par
+ * exemple. Vérifié : en retirant le contrôle du code HTTP de l'étape
+ * d'alignement, le fichier entier passait encore.
+ */
+const etape = (contenu: string, nom: string): string => {
+  const debut = contenu.indexOf(`- name: ${nom}`)
+  if (debut === -1) return ''
+
+  const suivante = contenu.indexOf('- name:', debut + 1)
+  return suivante === -1 ? contenu.slice(debut) : contenu.slice(debut, suivante)
+}
+
 describe('vercel.json', () => {
   it("coupe les deploiements de l'integration Git", () => {
     const config = JSON.parse(lire('apps/web/vercel.json'))
@@ -70,6 +86,9 @@ describe('ci.yml', () => {
 /**
  * Les regles qui valent pour les deux workflows de deploiement.
  */
+/** Le nom de l'étape, identique dans les deux workflows. */
+const ALIGNEMENT = 'Aligner DATABASE_URL sur le secret GitHub'
+
 const WORKFLOWS_DE_DEPLOIEMENT = [
   ['deploy-preview.yml', lire('.github/workflows/deploy-preview.yml')],
   ['deploy-production.yml', lire('.github/workflows/deploy-production.yml')],
@@ -108,26 +127,54 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
     // L'alignement precede la construction, donc aussi la migration et la
     // promotion : a partir de la, tout le monde vise la meme base.
     const etapes = sansCommentaires(contenu)
-    const alignement = etapes.indexOf('vercel env add DATABASE_URL')
+    const alignement = etapes.indexOf('/env?upsert=true')
 
     expect(alignement).toBeGreaterThan(-1)
     expect(etapes.indexOf('vercel build')).toBeGreaterThan(alignement)
   })
 
+  it("n'aligne pas DATABASE_URL par la CLI, qui pose une question", () => {
+    // `vercel env add DATABASE_URL preview --force --sensitive --yes` a tourne en
+    // production et n'a rien ecrit. Malgre `--yes`, la CLI demande :
+    //
+    //   Leave empty to apply to all Preview branches.
+    //   ? Git branch?
+    //
+    // Le pipe fournit la valeur puis EOF, la CLI abandonne — et sort en 0.
+    // L'etape s'est declaree verte pendant que l'application continuait de parler
+    // a l'ancienne base. On passe par l'API, qui ne pose aucune question.
+    expect(sansCommentaires(contenu)).not.toContain('vercel env add')
+  })
+
   it('ecrase DATABASE_URL au lieu de la supprimer puis la recreer', () => {
-    // Un `vercel env rm` suivi d'un `add` ouvre une fenetre — courte, mais reelle
-    // — ou la variable n'existe plus. Un run qui echoue entre les deux laisse
-    // l'application sans base. `--force` ecrase en une seule operation.
+    // Un `rm` suivi d'un `add` ouvre une fenetre — courte, mais reelle — ou la
+    // variable n'existe plus. Un run qui echoue entre les deux laisse
+    // l'application sans base. `upsert` ecrase en une seule operation.
     const etapes = sansCommentaires(contenu)
 
-    expect(etapes).toContain('--force')
+    expect(etapes).toContain('upsert=true')
     expect(etapes).not.toContain('vercel env rm')
+    expect(etapes).not.toContain('-X DELETE')
   })
 
   it('conserve le drapeau Sensitive en reecrivant DATABASE_URL', () => {
-    // Sans `--sensitive`, l'ecrasement rendrait la valeur lisible par tout token
-    // ayant acces au projet. On aligne la valeur, on ne degrade pas sa protection.
-    expect(sansCommentaires(contenu)).toContain('--sensitive')
+    // Sans lui, l'ecrasement rendrait la valeur lisible par tout token ayant
+    // acces au projet. On aligne la valeur, on ne degrade pas sa protection.
+    expect(sansCommentaires(contenu)).toContain('"sensitive"')
+  })
+
+  it("verifie que l'ecriture a eu lieu, au lieu de croire le code de sortie", () => {
+    // La lecon du run qui a menti : une commande peut sortir en 0 sans rien
+    // faire. On lit le code HTTP de la reponse, et on echoue s'il n'est pas bon.
+    //
+    // L'assertion est cadree sur l'etape, et pas sur le fichier : sinon
+    // l'`exit 1` du controle d'alias, plus bas, la satisfait a lui seul. Verifie
+    // en retirant le controle du code HTTP — le fichier entier passait encore.
+    const alignement = etape(sansCommentaires(contenu), ALIGNEMENT)
+
+    expect(alignement).toContain('http_code')
+    expect(alignement).toMatch(/"200"[\s\S]*?"201"/)
+    expect(alignement).toMatch(/http_code[\s\S]*?exit 1/)
   })
 
   it("n'utilise jamais drizzle-kit push, qui supprimerait nos garde-fous", () => {
