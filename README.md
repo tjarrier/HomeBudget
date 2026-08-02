@@ -53,9 +53,9 @@ propre initiative.
   SQL et parcours Playwright. Pas besoin d'ouvrir une PR pour la déclencher, et quand la PR
   existe, ce run est le check qu'elle affiche.
 - **Un merge dans `main`** publie une preview sur
-  `home-budget-git-main-tjarriers-projects.vercel.app`, après CI verte. Le résumé du run
-  affiche l'URL et les hôtes attribués. Cet hôte est la cible attendue, à confirmer par le
-  premier run réel (voir `CLAUDE.md` et le repli prévu si l'alias n'est pas attribué).
+  `home-budget-tjarrier-tjarriers-projects.vercel.app`, après CI verte. Le résumé du run
+  affiche l'URL et les hôtes attribués. C'est l'alias d'auteur que Vercel donne à tout
+  déploiement de la CLI ; il ne dépend pas de la branche (voir `CLAUDE.md`).
 - **Un tag de version** publie en production :
 
   ```sh

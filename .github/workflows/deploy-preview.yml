@@ -5,10 +5,10 @@ name: Deploiement preview
 #
 # `workflow_dispatch` n'a pas d'entree `ref` : le selecteur de branche natif de
 # GitHub fait deja le travail, et une entree en plus ferait verifier une branche
-# pendant qu'on en deploie une autre. Un dispatch sur une autre branche produit
-# l'hote `-git-<branche>-` correspondant, qui n'est pas dans les redirect URIs de
-# Google : la connexion y echouera, et c'est sans solution automatique puisque
-# Google n'accepte aucun wildcard.
+# pendant qu'on en deploie une autre. Un dispatch sur une autre branche recoit le
+# MEME hote — l'alias d'auteur ne depend pas de la ref — donc la connexion y
+# fonctionne, mais la preview de `main` cesse d'etre en ligne jusqu'au prochain
+# deploiement. Ce n'est pas une panne, c'est ce qu'on a demande.
 on:
   push:
     branches: [main]
@@ -132,18 +132,23 @@ jobs:
       # supposer : l'origine annoncee a Google d'un cote, les hotes que Vercel a
       # reellement attribues au deploiement de l'autre.
       #
-      # Sur `main`, l'alias `home-budget-git-main-...` doit etre present dans
-      # les hotes. Si Vercel ne l'attribue pas, le tour OAuth est casse : la
-      # connexion Google renverrait l'utilisateur sur une URL inconnue. Le
-      # deploiement echoue ; sur un autre ref le controle est saute, donc y
-      # redemarrer ne diagnostiquerait rien. Le message renvoie a la liste des
-      # hotes attribues, affichee juste au-dessus dans le resume, et si l'alias
-      # n'est jamais attribue, au repli decrit dans la spec (faire porter le
-      # deploiement sur une autre ref).
+      # L'alias attendu — `home-budget-tjarrier-...`, l'alias d'auteur — doit
+      # figurer parmi les hotes. Si Vercel ne l'attribue pas, le tour OAuth est
+      # casse : la connexion Google renverrait l'utilisateur sur une URL inconnue.
+      # Le deploiement echoue, et le message renvoie a la liste des hotes,
+      # affichee juste au-dessus dans le resume.
       #
-      # Sur un autre ref (workflow_dispatch), l'alias `-git-<branche>-` ne figure
-      # pas dans les URIs enregistrees chez Google : la divergence est attendue,
-      # documentee, et sans solution automatique. On affiche, sans echec.
+      # Le controle vaut sur n'importe quelle ref. Un garde-fou
+      # `if [ "$REF" = "main" ]` vivait ici, parce qu'on croyait l'alias fabrique
+      # a partir de la ref ; le premier run reel a dementi la croyance. Les hotes
+      # `-git-<branche>-` viennent de l'integration Git, que `vercel.json` coupe.
+      # Un deploiement de la CLI recoit l'alias d'auteur, et lui seul, quelle que
+      # soit la branche.
+      #
+      # Consequence pour un `workflow_dispatch` sur une autre branche : le
+      # controle passe, mais la preview de `main` n'est plus en ligne — l'alias
+      # suit le dernier deploiement. Rien a verifier la-dessus, c'est ce qu'on a
+      # demande.
       #
       # On ne filtre que des hostnames, jamais la sortie brute de `vercel inspect`.
       - name: Resumer
@@ -166,11 +171,9 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          # Verification du matching sur `main`.
-          if [ "$REF" = "main" ]; then
-            hostname=$(echo "$ORIGINE" | sed -e 's|^https\?://||' -e 's|/.*$||')
-            if ! echo "$hotes" | grep -qxF "$hostname"; then
-              echo "::error::l'alias attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus ; si l'alias n'est jamais attribue, appliquer le repli de la spec (faire porter le deploiement sur une autre ref)."
-              exit 1
-            fi
+          # L'origine annoncee a Google doit figurer parmi les hotes attribues.
+          hostname=$(echo "$ORIGINE" | sed -e 's|^https\?://||' -e 's|/.*$||')
+          if ! echo "$hotes" | grep -qxF "$hostname"; then
+            echo "::error::l'alias attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus. Si c'est le nom d'utilisateur qui a change dans l'alias d'auteur, le compte proprietaire du VERCEL_TOKEN a change : poser le nouvel hote dans BETTER_AUTH_URL et l'enregistrer dans les redirect URIs de Google."
+            exit 1
           fi

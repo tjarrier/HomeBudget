@@ -44,26 +44,59 @@ créerait une divergence réelle : le job `verif` vérifierait la branche du dis
 pendant que le job `deploy` déploierait la ref saisie. Vert sur un commit, en ligne
 sur un autre — exactement ce que cette tâche existe pour supprimer.
 
-### Écart 3 — la cible Preview est `-git-main-`, et personne ne la choisit
+### Écart 3 — la cible Preview est l'alias d'auteur, et l'alias ne dépend pas de la ref
 
-L'issue disait `-git-main-`, CLAUDE.md disait `-git-preview-`. Le point tranché : les
-sous-domaines `*.vercel.app` **ne peuvent pas être assignés à la main**, ce sont des
-noms réservés que Vercel fabrique lui-même à partir de la **ref git du déploiement**.
-Aucun `vercel alias set` n'est donc possible sur un hôte `.vercel.app` ; on ne choisit
-pas le hostname, on choisit la ref. La preview déploie le commit de `main`, donc
-l'hôte est :
+> **Corrigé après le premier passage réel.** Ce paragraphe affirmait que l'hôte est
+> `-git-main-`, fabriqué à partir de la **ref git** du déploiement. La vérification
+> prévue plus bas — celle qui devait confirmer au lieu de supposer — a démenti la
+> supposition. Le texte d'origine est conservé en fin de section.
 
-    https://home-budget-git-main-tjarriers-projects.vercel.app
+Les sous-domaines `*.vercel.app` **ne peuvent pas être assignés à la main** : ce sont
+des noms réservés, aucun `vercel alias set` n'est possible dessus. Cette moitié tient.
 
-C'est l'issue qui avait raison, et CLAUDE.md doit être corrigé : son avertissement
-(« `-git-main-` est un alias de la production ») ne tient que tant que l'intégration
-Git envoie `main` en production. Une fois `deploymentEnabled: false`, Vercel ne
-déploie plus `main` du tout ; c'est le workflow qui le fait, en preview, donc avec les
-variables d'environnement Preview.
+Ce qui ne tenait pas, c'est *ce dont* Vercel fabrique le nom. Ce n'est pas la ref, c'est
+la **source du déploiement**. L'API le montre sur le projet réel :
 
-Cet hôte fait 39 caractères avant `.vercel.app` : la troncature à 63 caractères dont
-parle CLAUDE.md ne mord pas ici. C'est le seul cas où prédire le hostname est sûr, et
-la vérification du premier passage (plus bas) le confirme au lieu de le supposer.
+    source=cli  ref=main  → home-budget-tjarrier-...
+    source=git  ref=main  → home-budget-tjarriers-projects, home-budget-git-main-...
+
+Le déploiement de la CLI portait `main` en métadonnée et n'a reçu aucun `-git-main-`.
+Les hôtes `-git-<branche>-` sont attribués par l'**intégration Git**, c'est-à-dire
+exactement le mécanisme que l'écart 1 coupe. Un déploiement `--prebuilt` n'en obtiendra
+donc jamais, quelle que soit la branche.
+
+Ce qu'il obtient à la place est l'**alias d'auteur**, `<projet>-<utilisateur>-<scope>` :
+
+    https://home-budget-tjarrier-tjarriers-projects.vercel.app
+
+Il est stable, il suit le dernier déploiement, et Vercel le pose sans qu'on demande
+rien. Sa seule dépendance est le compte propriétaire du `VERCEL_TOKEN` : en changer
+change l'hôte, et le contrôle d'alias du workflow le signale au run suivant.
+
+Corollaire sur le `workflow_dispatch` : un dispatch sur une autre branche ne produit
+plus un hôte différent, il **reprend le même**. La connexion y fonctionne, mais la
+preview de `main` cesse d'être en ligne jusqu'au prochain déploiement. Le contrôle
+d'alias, qui ne s'appliquait qu'à `main`, vaut désormais sur toutes les refs.
+
+Cet hôte fait 37 caractères avant `.vercel.app` : la troncature à 63 caractères dont
+parle CLAUDE.md ne mord pas ici.
+
+<details>
+<summary>Le texte d'origine, démenti par le premier passage</summary>
+
+> L'issue disait `-git-main-`, CLAUDE.md disait `-git-preview-`. Le point tranché : les
+> sous-domaines `*.vercel.app` **ne peuvent pas être assignés à la main**, ce sont des
+> noms réservés que Vercel fabrique lui-même à partir de la **ref git du déploiement**.
+> Aucun `vercel alias set` n'est donc possible sur un hôte `.vercel.app` ; on ne choisit
+> pas le hostname, on choisit la ref. La preview déploie le commit de `main`, donc
+> l'hôte est `https://home-budget-git-main-tjarriers-projects.vercel.app`.
+
+</details>
+
+L'avertissement que CLAUDE.md portait par ailleurs (« `-git-main-` est un alias de la
+production ») ne tenait que tant que l'intégration Git envoyait `main` en production.
+Une fois `deploymentEnabled: false`, Vercel ne déploie plus `main` du tout ; c'est le
+workflow qui le fait, en preview, donc avec les variables d'environnement Preview.
 
 ## 1. Vercel ne déploie plus tout seul
 
@@ -146,12 +179,11 @@ ce fichier contient aussi `DATABASE_URL` et `GOOGLE_CLIENT_SECRET`, il ne doit j
 
 ### Le déclenchement manuel
 
-Un dispatch sur une autre branche produit l'hôte `-git-<branche>-` correspondant, qui
-n'est pas dans les *Authorized redirect URIs* de Google — donc la connexion Google y
-échouera. C'est sans solution automatique (Google n'accepte aucun wildcard) : soit on
-enregistre l'URI à la main pour cette branche, soit ce mode sert à regarder le rendu
-sans se connecter. Le résumé du run affiche l'origine annoncée, ce qui rend l'échec
-compréhensible au lieu de mystérieux.
+Un dispatch sur une autre branche reprend le **même** hôte : l'alias d'auteur ne dépend
+pas de la ref (écart 3). La connexion Google y fonctionne donc, mais l'alias quitte le
+déploiement précédent — la preview de `main` cesse d'être en ligne jusqu'au prochain
+merge. Le résumé du run affiche la ref déployée à côté de l'origine, ce qui rend l'état
+lisible plutôt que surprenant.
 
 ## 4. Production — `.github/workflows/deploy-production.yml`
 
@@ -217,7 +249,7 @@ prenne pour un test d'UI égaré.
   faux. Ajouter une section « Déploiement » : preview au merge, production au tag, la
   migration avant la promotion, `drizzle-kit push` toujours interdit.
 - **`apps/web/test/origine.test.ts`** — ses fixtures utilisent
-  `-git-preview-`. Les passer à `-git-main-` : le test ne change pas de sens (il
+  `-git-preview-`. Les passer à l'alias d'auteur : le test ne change pas de sens (il
   vérifie qu'on lit la variable et qu'on ignore l'URL unique du déploiement), mais il
   cesse de documenter un hôte qu'on n'utilise pas.
 - **README.md** — comment on livre : `git tag v0.1.0 && git push origin v0.1.0`, puis
@@ -237,33 +269,39 @@ passage.
      supprimable (`0002` et la FK `restrict`).
    - `Production` → `DATABASE_URL` de Supabase, **plus la protection par reviewer**.
 3. **Variables d'environnement Preview du projet Vercel** :
-   `BETTER_AUTH_URL=https://home-budget-git-main-tjarriers-projects.vercel.app`, plus
+   `BETTER_AUTH_URL=https://home-budget-tjarrier-tjarriers-projects.vercel.app`, plus
    `DATABASE_URL` (la base de preview), `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`,
    `GOOGLE_CLIENT_SECRET`, `ALLOWLIST_THOMAS`, `ALLOWLIST_LIZ`.
 4. **Console Google, après la vérification du premier passage** : ajouter le redirect
-   URI `https://home-budget-git-main-tjarriers-projects.vercel.app/api/auth/callback/google`.
+   URI `https://home-budget-tjarrier-tjarriers-projects.vercel.app/api/auth/callback/google`.
 
 ## La vérification du premier passage
 
-L'issue le dit : il faut le vérifier pour de vrai, pas le supposer. Il reste une
-inconnue que seul un run tranche — **est-ce que Vercel attribue bien l'alias de
+L'issue le dit : il faut le vérifier pour de vrai, pas le supposer. Il restait une
+inconnue que seul un run pouvait trancher — **est-ce que Vercel attribue l'alias de
 branche à un déploiement `--prebuilt` fait par la CLI, alors que les déploiements Git
 sont désactivés ?**
 
-Le protocole, dans cet ordre :
+**Le run a répondu non**, et c'est ce qui a produit la version corrigée de l'écart 3.
+Le repli imaginé ici — faire porter au déploiement une autre ref, pour obtenir
+`-git-preview-` — n'aurait pas marché : il reposait sur la même croyance fausse. La
+ref n'y change rien, la source du déploiement seule compte. La cible retenue est
+l'alias d'auteur, que Vercel attribue déjà de lui-même.
 
-1. déclencher `deploy-preview.yml` à la main sur `main` ;
-2. lire le résumé du run : l'origine annoncée et les alias attribués doivent
-   coïncider sur `home-budget-git-main-tjarriers-projects.vercel.app` ;
-3. ouvrir cette URL et vérifier qu'elle sert la **base de preview**, pas la
+Ce qu'il reste à vérifier, une fois `BETTER_AUTH_URL` et le redirect URI posés :
+
+1. le résumé du run fait coïncider l'origine annoncée et les hôtes attribués sur
+   `home-budget-tjarrier-tjarriers-projects.vercel.app` — le workflow échoue sinon ;
+2. ouvrir cette URL et vérifier qu'elle sert la **base de preview**, pas la
    production (le solde y diffère, ou la base est vide) ;
-4. seulement alors, enregistrer le redirect URI chez Google et tester la connexion.
+3. tester la connexion Google.
 
-**Si l'alias n'est pas attribué**, on ne peut pas le poser à la main (écart 3). Le
-repli est de faire porter au déploiement une autre ref : le workflow force la branche
-`preview` sur le commit de `main` et déploie depuis ce checkout, pour obtenir
-`-git-preview-`. On ne l'écrit pas d'avance : ce serait de la machinerie contre un
-problème hypothétique.
+Et une inconnue demeure, sur l'autre moitié : **quels alias Vercel donne-t-il à un
+`vercel deploy --prebuilt --prod` fait par la CLI ?** Le domaine de production
+`home-budget-tjarriers-projects.vercel.app` est attaché au *projet* et non à
+l'intégration Git, donc il devrait suivre — mais c'est exactement le raisonnement qui
+vient d'être démenti pour la preview. Le premier tag le tranchera ; en attendant, ne
+pas le supposer.
 
 ## Ce qu'on ne fait pas
 

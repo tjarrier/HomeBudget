@@ -126,20 +126,29 @@ Sur Vercel, l'absence de la variable **fait échouer le démarrage**, délibér�
 `localhost` serait le pire des cas : cette URI *est* enregistrée chez Google, donc le tour
 OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucune erreur.
 
-- **Cible Preview : `https://home-budget-git-main-tjarriers-projects.vercel.app`.** C'est
-  l'URL de branche de `main`, et depuis que `apps/web/vercel.json` coupe les déploiements
-  de l'intégration Git, elle ne sert plus la production : Vercel ne déploie plus `main` du
-  tout, c'est `deploy-preview.yml` qui le fait, **en preview**, donc avec les variables
-  d'environnement Preview. L'avertissement inverse qui figurait ici ne valait que tant que
-  l'intégration Git envoyait `main` en production. Cet hôte est la cible attendue, à
-  confirmer par le premier run de `deploy-preview.yml` : si Vercel n'attribue pas l'alias à
-  un déploiement `--prebuilt`, voir le repli décrit dans la spec.
-- **On ne choisit pas ce hostname, on choisit la ref.** Vercel le fabrique à partir de la
-  ref git du déploiement, et les sous-domaines `*.vercel.app` sont réservés : aucun
-  `vercel alias set` n'est possible dessus. Ne reconstruis jamais ce nom à la main non
-  plus : au-delà de 63 caractères avant `.vercel.app`, Vercel tronque et retire le slug de
-  scope en entier. Lis-le dans le résumé du run de `deploy-preview.yml`, qui affiche côte à
-  côte l'origine annoncée à Google et les hôtes réellement attribués.
+- **Cible Preview : `https://home-budget-tjarrier-tjarriers-projects.vercel.app`.** C'est
+  l'**alias d'auteur** : `<projet>-<utilisateur>-<scope>`. Vercel l'attribue à tout
+  déploiement fait par la CLI, et il suit le dernier en date.
+- **L'alias ne dépend pas de la ref, il dépend de la source du déploiement.** Le dépôt a
+  longtemps affirmé le contraire — « on ne choisit pas le hostname, on choisit la ref » —
+  et le premier run réel l'a démenti. Le déploiement portait `main` en métadonnée et n'a
+  reçu aucun `-git-main-`. L'API le montre sans ambiguïté :
+
+      source=cli  ref=main  → home-budget-tjarrier-...
+      source=git  ref=main  → home-budget-tjarriers-projects, home-budget-git-main-...
+
+  Les hôtes `-git-<branche>-` sont fabriqués par l'**intégration Git**, que
+  `vercel.json` coupe précisément. Un déploiement CLI n'en obtient jamais, quelle que
+  soit la branche : déployer depuis une branche `preview` ne donnerait pas
+  `-git-preview-`, seulement le même alias d'auteur.
+- **Ce hostname ne se pose pas à la main** : les sous-domaines `*.vercel.app` sont
+  réservés, aucun `vercel alias set` n'est possible dessus. Ne le reconstruis pas non
+  plus : au-delà de 63 caractères avant `.vercel.app`, Vercel tronque et retire le slug
+  de scope en entier. Lis-le dans le résumé du run de `deploy-preview.yml`, qui affiche
+  côte à côte l'origine annoncée à Google et les hôtes réellement attribués.
+- **Il porte le nom du compte qui déploie.** Changer le propriétaire du `VERCEL_TOKEN`
+  change l'hôte, donc casse le tour OAuth. Le contrôle d'alias du workflow le signale au
+  run suivant ; il faut alors réenregistrer le redirect URI chez Google.
 - **`DATABASE_URL` de Preview doit pointer sur une autre base que la production.** Une
   preview branchée sur la prod y crée de vraies dépenses et de vraies versions de config —
   et une version qui porte des dépenses n'est plus supprimable (`0002` et la FK `restrict`).
@@ -180,12 +189,11 @@ branche et non sa fusion avec `main`, et une PR ouverte depuis un fork ne serait
 vérifiée du tout.
 
 - **Preview au merge** (`deploy-preview.yml`) : push sur `main`, ou déclenchement manuel
-  sur une branche. Cible `-git-<ref>-` : l'alias dépend de la branche déployée. Sur `main`,
-  c'est `-git-main-` ; sur un autre ref, c'est `-git-<branche>-`, qui n'est pas dans les
-  redirect URIs de Google, donc login y échoue délibérément — et le contrôle d'alias du
-  workflow ne signale l'erreur que si c'est `main` qui rate. Cette attribution reste à
-  confirmer par le premier run réel ; si Vercel ne l'attribue pas, voir le repli dans la
-  spec (faire porter le déploiement sur une autre ref).
+  sur une branche. Cible l'alias d'auteur, qui ne dépend pas de la ref — un dispatch sur
+  une autre branche produit donc le **même** hôte, et le déploiement précédent perd
+  l'alias. C'est la seule vraie conséquence de déployer autre chose que `main` : la
+  preview de `main` n'est plus en ligne tant qu'on n'a pas redéployé. Le contrôle d'alias
+  du workflow ne fait échouer le run que sur `main`.
 - **Production au tag** (`deploy-production.yml`) : un tag `vX.Y.Z`. Le workflow refuse un
   tag posé hors de `main`, rejoue la CI complète (un tag peut pointer un commit qu'elle n'a
   jamais vu), puis attend une revue humaine.
