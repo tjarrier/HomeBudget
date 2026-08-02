@@ -51,8 +51,14 @@ jobs:
       - name: Installer la CLI Vercel
         run: npm install --global vercel@latest
 
+      # La CLI tourne a la racine du depot, et non dans `apps/web` : le Root
+      # Directory du projet vaut `apps/web`, et la CLI le *joint* au repertoire
+      # courant. Lancee depuis `apps/web`, elle cherche `apps/web/apps/web`.
+      # `vercel build` s'en tire par un repli assorti d'un avertissement,
+      # `vercel deploy --prebuilt` echoue net. Tout ce que la CLI ecrit —
+      # `.vercel/project.json`, le fichier d'environnement, `.vercel/output` —
+      # atterrit donc a la racine, et les etapes qui le lisent aussi.
       - name: Tirer la configuration et les variables de Preview
-        working-directory: apps/web
         run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
       # Sans BETTER_AUTH_URL dans l'environnement Preview du projet Vercel,
@@ -66,7 +72,6 @@ jobs:
       # fichier tire contient aussi DATABASE_URL et GOOGLE_CLIENT_SECRET : on
       # n'en extrait que cette seule variable.
       - name: Lire l'origine annoncee a Google
-        working-directory: apps/web
         run: |
           origine=$(grep -m1 '^BETTER_AUTH_URL=' .vercel/.env.preview.local | cut -d= -f2- | tr -d '"' || true)
           if [ -z "$origine" ]; then
@@ -95,7 +100,6 @@ jobs:
       # production : une preview branchee sur la prod y creerait de vraies
       # depenses et de vraies versions de config.
       - name: Aligner DATABASE_URL sur le secret GitHub
-        working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
@@ -107,7 +111,6 @@ jobs:
             | vercel env add DATABASE_URL preview --force --sensitive --yes --token="$VERCEL_TOKEN"
 
       - name: Construire
-        working-directory: apps/web
         run: vercel build --token="$VERCEL_TOKEN"
 
       # L'ordre n'est pas negociable : rien ne s'ecrit sur la base avant qu'un
@@ -121,7 +124,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Publier
-        working-directory: apps/web
         run: |
           url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
           echo "URL=$url" >> "$GITHUB_ENV"
@@ -145,7 +147,6 @@ jobs:
       #
       # On ne filtre que des hostnames, jamais la sortie brute de `vercel inspect`.
       - name: Resumer
-        working-directory: apps/web
         env:
           REF: ${{ github.ref_name }}
         run: |

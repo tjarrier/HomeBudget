@@ -5,6 +5,7 @@
       "dist",
       "node_modules",
       ".next",
+      ".vercel",
       "coverage",
       "packages/*/drizzle/meta",
       "apps/web/test-results",

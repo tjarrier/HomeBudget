@@ -161,6 +161,12 @@ que c'est le *Root Directory* du projet Vercel : Vercel ne lit que celui-là, et
 à la racine serait ignoré en silence — `main` repartirait en production par la porte de
 derrière, sans que rien ne le signale.
 
+**Mais la CLI Vercel, elle, tourne à la racine du dépôt**, et pas dans `apps/web`. Elle
+*joint* le Root Directory au répertoire courant : lancée depuis `apps/web`, elle cherche
+`apps/web/apps/web`. `vercel build` s'en tire par un repli assorti d'un avertissement,
+`vercel deploy --prebuilt` échoue net. Tout ce qu'elle écrit — `.vercel/project.json`,
+le fichier d'environnement, `.vercel/output` — est donc à la racine.
+
 Deux workflows, un seul déployeur, et une seule définition de « vérifié » : `ci.yml` est
 appelable (`workflow_call`), les deux l'appellent, aucun ne recopie ses étapes.
 

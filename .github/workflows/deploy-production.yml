@@ -65,8 +65,14 @@ jobs:
       - name: Installer la CLI Vercel
         run: npm install --global vercel@latest
 
+      # La CLI tourne a la racine du depot, et non dans `apps/web` : le Root
+      # Directory du projet vaut `apps/web`, et la CLI le *joint* au repertoire
+      # courant. Lancee depuis `apps/web`, elle cherche `apps/web/apps/web`.
+      # `vercel build` s'en tire par un repli assorti d'un avertissement,
+      # `vercel deploy --prebuilt` echoue net. Tout ce que la CLI ecrit —
+      # `.vercel/project.json`, le fichier d'environnement, `.vercel/output` —
+      # atterrit donc a la racine, et les etapes qui le lisent aussi.
       - name: Tirer la configuration et les variables de Production
-        working-directory: apps/web
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       # Il n'y a plus deux sources pour une seule base. Le secret d'environment
@@ -85,7 +91,6 @@ jobs:
       # preserve la protection de la valeur, qui passe par stdin et jamais par la
       # ligne de commande.
       - name: Aligner DATABASE_URL sur le secret GitHub
-        working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
@@ -97,7 +102,6 @@ jobs:
             | vercel env add DATABASE_URL production --force --sensitive --yes --token="$VERCEL_TOKEN"
 
       - name: Construire
-        working-directory: apps/web
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
       # L'ordre n'est pas negociable : rien ne s'ecrit sur la base avant qu'un
@@ -111,7 +115,6 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Promouvoir
-        working-directory: apps/web
         env:
           REF: ${{ github.ref_name }}
           SHA: ${{ github.sha }}
