@@ -152,7 +152,11 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
     // La CLI tourne donc a la racine, et c'est `rootDirectory` qui la mene dans
     // `apps/web`. Le fichier tire par `vercel pull` atterrit a la racine lui
     // aussi : l'etape qui y lit BETTER_AUTH_URL suit le meme chemin.
-    expect(sansCommentaires(contenu)).not.toContain('working-directory: apps/web')
+    //
+    // On refuse toute ecriture du chemin, pas la seule forme nue : `./apps/web`
+    // et `${{ github.workspace }}/apps/web` designent le meme repertoire et
+    // reintroduiraient exactement le meme bug.
+    expect(sansCommentaires(contenu)).not.toMatch(/working-directory:.*apps\/web/)
   })
 
   it('ne laisse pas deux migrations courir sur la meme base', () => {
