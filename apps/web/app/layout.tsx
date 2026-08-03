@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import type { ReactNode } from 'react'
 import './globals.css'
+import { PostHogProvider } from '@/components/posthog-provider'
 
 // Auto-hebergee par next/font : aucune requete vers Google au runtime, et
 // aucun decalage de rendu au chargement.
@@ -33,7 +34,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="fr" className={inter.variable}>
       {/* Les couleurs viennent des tokens. Toute classe `slate-*` ecrite ici
           court-circuiterait le theme : changer un token ne se verrait plus. */}
-      <body className="min-h-screen bg-app text-strong antialiased">{children}</body>
+      <body className="min-h-screen bg-app text-strong antialiased">
+        <PostHogProvider>{children}</PostHogProvider>
+      </body>
     </html>
   )
 }
