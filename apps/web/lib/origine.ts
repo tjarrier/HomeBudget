@@ -30,7 +30,7 @@ export function origineAuth(env: EnvironnementVercel = process.env): string {
   if (env.VERCEL_ENV) {
     throw new Error(
       'BETTER_AUTH_URL est requise sur Vercel, pour Production comme pour Preview. ' +
-        "Posez-y l'URL de branche stable, la meme que le redirect URI enregistre chez Google.",
+        'Posez-y le domaine de production du projet, la meme URL que le redirect URI enregistre chez Google.',
     )
   }
   return 'http://localhost:3000'
@@ -41,7 +41,8 @@ export function origineAuth(env: EnvironnementVercel = process.env): string {
  * comme un CSRF. L'URL unique du deploiement en fait partie parce que c'est
  * celle que propose le dashboard Vercel : sans elle, la preview ouverte depuis
  * le dashboard est consultable mais la connexion y echoue en mismatch
- * d'origine. Le tour OAuth, lui, repose l'utilisateur sur l'URL de branche.
+ * d'origine. Le tour OAuth, lui, repose l'utilisateur sur le domaine annonce a
+ * Google — celui du projet, pose par BETTER_AUTH_URL.
  */
 export function originesDeConfiance(env: EnvironnementVercel = process.env): string[] {
   return env.VERCEL_URL ? [`https://${env.VERCEL_URL}`] : []
