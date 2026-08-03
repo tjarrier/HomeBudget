@@ -48,7 +48,7 @@ jobs:
       URL_COPIE: postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # `pg_dump` ne passe pas le pooler Supabase en mode transaction (6543), et
       # la connexion directe est en IPv6 seul, injoignable depuis un runner. On
@@ -111,7 +111,7 @@ jobs:
       # motif `.gpg` et non un nom de fichier : publier un `.sql` par erreur
       # devient impossible. 90 jours est le maximum offert par GitHub.
       - name: Publier la sauvegarde
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sauvegarde-chiffree
           path: homebudget-*.sql.gz.gpg
