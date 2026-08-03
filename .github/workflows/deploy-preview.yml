@@ -6,7 +6,8 @@ name: Deploiement preview
 # `workflow_dispatch` n'a pas d'entree `ref` : le selecteur de branche natif de
 # GitHub fait deja le travail, et une entree en plus ferait verifier une branche
 # pendant qu'on en deploie une autre. Un dispatch sur une autre branche recoit le
-# MEME hote — l'alias d'auteur ne depend pas de la ref — donc la connexion y
+# MEME hote — c'est le domaine de production du projet `homebudget-preview`, il
+# suit le dernier deploiement et ne depend pas de la ref — donc la connexion y
 # fonctionne, mais la preview de `main` cesse d'etre en ligne jusqu'au prochain
 # deploiement. Ce n'est pas une panne, c'est ce qu'on a demande.
 on:
@@ -95,7 +96,7 @@ jobs:
       # `.vercel/project.json`, le fichier d'environnement, `.vercel/output` —
       # atterrit donc a la racine, et les etapes qui le lisent aussi.
       - name: Tirer la configuration et les variables de Preview
-        run: vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       # Sans BETTER_AUTH_URL dans l'environnement Preview du projet Vercel,
       # `next build` echoue : `origineAuth()` refuse de demarrer sur Vercel
@@ -109,9 +110,9 @@ jobs:
       # n'en extrait que cette seule variable.
       - name: Lire l'origine annoncee a Google
         run: |
-          origine=$(grep -m1 '^BETTER_AUTH_URL=' .vercel/.env.preview.local | cut -d= -f2- | tr -d '"' || true)
+          origine=$(grep -m1 '^BETTER_AUTH_URL=' .vercel/.env.production.local | cut -d= -f2- | tr -d '"' || true)
           if [ -z "$origine" ]; then
-            echo "::error::BETTER_AUTH_URL est absente de l'environnement Preview du projet Vercel. Posez-y l'URL de branche stable, la meme que le redirect URI enregistre chez Google."
+            echo "::error::BETTER_AUTH_URL est absente de l'environnement Production du projet homebudget-preview. Posez-y le domaine de production de ce projet, le meme que le redirect URI enregistre chez Google."
             exit 1
           fi
           echo "ORIGINE=$origine" >> "$GITHUB_ENV"
@@ -148,7 +149,8 @@ jobs:
       #
       # Le secret vise la base de PREVIEW, qui doit etre distincte de la
       # production : une preview branchee sur la prod y creerait de vraies
-      # depenses et de vraies versions de config.
+      # depenses et de vraies versions de config. La cible Vercel, elle, est
+      # `production` — celle du projet miroir, dont la production est notre preview.
       - name: Aligner DATABASE_URL sur le secret GitHub
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -158,7 +160,7 @@ jobs:
             exit 1
           fi
           code=$(jq -n --arg v "$DATABASE_URL" \
-              '{key:"DATABASE_URL", value:$v, type:"sensitive", target:["preview"]}' \
+              '{key:"DATABASE_URL", value:$v, type:"sensitive", target:["production"]}' \
             | curl -sS -o reponse.json -w '%{http_code}' -X POST \
                 "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true&teamId=$VERCEL_ORG_ID" \
                 -H "Authorization: Bearer $VERCEL_TOKEN" \
@@ -171,7 +173,7 @@ jobs:
           rm -f reponse.json
 
       - name: Construire
-        run: vercel build --token="$VERCEL_TOKEN"
+        run: vercel build --prod --token="$VERCEL_TOKEN"
 
       # L'ordre n'est pas negociable : rien ne s'ecrit sur la base avant qu'un
       # artefact existe, et la migration precede toujours la promotion, afin que le
@@ -185,30 +187,27 @@ jobs:
 
       - name: Publier
         run: |
-          url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
           echo "URL=$url" >> "$GITHUB_ENV"
 
-      # La verification que l'issue demande de faire pour de vrai, et non de
-      # supposer : l'origine annoncee a Google d'un cote, les hotes que Vercel a
-      # reellement attribues au deploiement de l'autre.
+      # L'hote attendu est le domaine de production du projet `homebudget-preview`,
+      # que Vercel attribue au projet et non a l'auteur du deploiement. Il doit
+      # figurer parmi les hotes du deploiement : sinon le tour OAuth est casse, la
+      # connexion Google renvoyant l'utilisateur sur une URL inconnue.
       #
-      # L'alias attendu — `home-budget-tjarrier-...`, l'alias d'auteur — doit
-      # figurer parmi les hotes. Si Vercel ne l'attribue pas, le tour OAuth est
-      # casse : la connexion Google renverrait l'utilisateur sur une URL inconnue.
-      # Le deploiement echoue, et le message renvoie a la liste des hotes,
-      # affichee juste au-dessus dans le resume.
+      # Ce controle a change de nature en changeant de solution. Il verifiait qu'un
+      # hote *subi* — l'alias d'auteur, que Vercel fabriquait a partir du nom du
+      # compte deployeur — ressemblait a ce qu'on attendait. Il verifie maintenant
+      # que l'hote *demande* a bien ete attribue.
       #
-      # Le controle vaut sur n'importe quelle ref. Un garde-fou
-      # `if [ "$REF" = "main" ]` vivait ici, parce qu'on croyait l'alias fabrique
-      # a partir de la ref ; le premier run reel a dementi la croyance. Les hotes
-      # `-git-<branche>-` viennent de l'integration Git, que `vercel.json` coupe.
-      # Un deploiement de la CLI recoit l'alias d'auteur, et lui seul, quelle que
-      # soit la branche.
+      # Il vaut sur n'importe quelle ref. Un garde-fou `if [ "$REF" = "main" ]`
+      # vivait ici, parce qu'on croyait l'hote fabrique a partir de la ref ; le
+      # premier run reel a dementi la croyance, et le domaine du projet n'en depend
+      # pas davantage.
       #
-      # Consequence pour un `workflow_dispatch` sur une autre branche : le
-      # controle passe, mais la preview de `main` n'est plus en ligne — l'alias
-      # suit le dernier deploiement. Rien a verifier la-dessus, c'est ce qu'on a
-      # demande.
+      # Consequence pour un `workflow_dispatch` sur une autre branche : le controle
+      # passe, mais la preview de `main` n'est plus en ligne — le domaine suit le
+      # dernier deploiement. Rien a verifier la-dessus, c'est ce qu'on a demande.
       #
       # On ne filtre que des hostnames, jamais la sortie brute de `vercel inspect`.
       - name: Resumer
@@ -234,6 +233,6 @@ jobs:
           # L'origine annoncee a Google doit figurer parmi les hotes attribues.
           hostname=$(echo "$ORIGINE" | sed -e 's|^https\?://||' -e 's|/.*$||')
           if ! echo "$hotes" | grep -qxF "$hostname"; then
-            echo "::error::l'alias attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus. Si c'est le nom d'utilisateur qui a change dans l'alias d'auteur, le compte proprietaire du VERCEL_TOKEN a change : poser le nouvel hote dans BETTER_AUTH_URL et l'enregistrer dans les redirect URIs de Google."
+            echo "::error::l'hote attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus. Verifier que le projet homebudget-preview n'a pas ete renomme, et que BETTER_AUTH_URL porte bien son domaine de production."
             exit 1
           fi
