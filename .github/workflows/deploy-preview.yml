@@ -98,11 +98,12 @@ jobs:
       - name: Tirer la configuration et les variables de Preview
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      # Sans BETTER_AUTH_URL dans l'environnement Preview du projet Vercel,
-      # `next build` echoue : `origineAuth()` refuse de demarrer sur Vercel
-      # plutot que de retomber sur `localhost`, et c'est voulu — cette URI est
-      # enregistree chez Google, donc le tour OAuth reussirait et renverrait
-      # l'utilisateur sur son propre poste, sans aucune erreur.
+      # Sans BETTER_AUTH_URL dans l'environnement Production du projet
+      # homebudget-preview, `next build` echoue : `origineAuth()` refuse de
+      # demarrer sur Vercel plutot que de retomber sur `localhost`, et c'est
+      # voulu — cette URI est enregistree chez Google, donc le tour OAuth
+      # reussirait et renverrait l'utilisateur sur son propre poste, sans
+      # aucune erreur.
       #
       # Cette garde ne change pas le verdict, elle le rend lisible tout de suite
       # au lieu de deux minutes plus tard dans une stacktrace de build. Le
