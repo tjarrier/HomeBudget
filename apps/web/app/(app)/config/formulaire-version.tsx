@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { type ApercuCloture, type LigneCloture, apercuCloture } from '@/lib/apercu-cloture'
 import { formaterDate } from '@/lib/format'
 import type { Charge, VersionConfig } from '@homebudget/domain'
+import posthog from 'posthog-js'
 import { useActionState, useState } from 'react'
 
 /** L'inverse de `parserCharges` de l'action : une ligne « Libellé=791,00 ». */
@@ -41,9 +42,16 @@ export function FormulaireVersion({ courante }: { courante: VersionConfig | null
     courante ? enLignes(courante.chargesCommunes) : '',
   )
 
+  function soumettreVersion(form: FormData) {
+    posthog.capture('budget_configuration_submission_started', {
+      has_current_configuration: courante !== null,
+    })
+    action(form)
+  }
+
   return (
     <Carte titre="Nouvelle version">
-      <form action={action} className="flex flex-col gap-3.5">
+      <form action={soumettreVersion} className="flex flex-col gap-3.5">
         {/* La raison d'etre du projet, dite a l'utilisateur au moment ou il en
             doute. C'est l'un des deux seuls accents chromatiques du systeme.
             Le detail « quelle version, quelle date » a quitte ce bandeau statique

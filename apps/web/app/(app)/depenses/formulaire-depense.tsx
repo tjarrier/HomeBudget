@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { aujourdhuiLocal, formaterDate } from '@/lib/format'
 import { type Personne, type TypeDepense, dateMaxDepense, modeParDefaut } from '@homebudget/domain'
+import posthog from 'posthog-js'
 import { useActionState, useEffect, useState } from 'react'
 
 const LIBELLE_TYPE: Record<TypeDepense, string> = {
@@ -143,9 +144,17 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
     if (etat) setMessageApercu(null)
   }, [etat])
 
+  function soumettreDepense(form: FormData) {
+    posthog.capture('expense_submission_started', {
+      expense_type: type,
+      allocation_mode: mode,
+    })
+    action(form)
+  }
+
   return (
     <Carte titre="Ajouter une dépense">
-      <form action={action} className="flex flex-col gap-3.5">
+      <form action={soumettreDepense} className="flex flex-col gap-3.5">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="montant">Montant (€)</Label>
           <Input

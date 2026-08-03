@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { signIn } from '@/lib/auth-client'
+import posthog from 'posthog-js'
 
 /**
  * La seule part interactive de l'ecran : l'`onClick` de connexion. Isolee ici
@@ -16,9 +17,10 @@ export function BoutonGoogle() {
     <Button
       type="button"
       className="w-full"
-      onClick={() =>
+      onClick={() => {
+        posthog.capture('google_sign_in_started')
         signIn.social({ provider: 'google', callbackURL: '/', errorCallbackURL: '/login' })
-      }
+      }}
     >
       Se connecter avec Google
     </Button>

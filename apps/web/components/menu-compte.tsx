@@ -7,6 +7,7 @@ import { useRef, useState } from 'react'
 import { Avatar } from '@/components/avatar'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth-client'
+import posthog from 'posthog-js'
 
 /**
  * Qui est connecte, et par ou sortir.
@@ -36,6 +37,8 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
       return
     }
     feuille.current?.close()
+    posthog.capture('user_logged_out')
+    posthog.reset()
     // La session vit dans un cookie lu cote serveur : rester sur place
     // afficherait un ecran encore rendu avec l'ancienne. `replace` plutot que
     // `push` pour que le bouton retour ne ramene pas sur la coque authentifiee,
