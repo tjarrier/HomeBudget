@@ -89,6 +89,9 @@ describe('ci.yml', () => {
 /** Le nom de l'étape, identique dans les deux workflows. */
 const ALIGNEMENT = 'Aligner DATABASE_URL sur le secret GitHub'
 
+/** Le nom de l'étape qui vérifie l'identité du projet Vercel ciblé. */
+const CIBLE = 'Confirmer la cible'
+
 const WORKFLOWS_DE_DEPLOIEMENT = [
   ['deploy-preview.yml', lire('.github/workflows/deploy-preview.yml')],
   ['deploy-production.yml', lire('.github/workflows/deploy-production.yml')],
@@ -237,6 +240,36 @@ describe('deploy-preview.yml', () => {
 
     expect(etapes).not.toContain('$REF" = "main"')
     expect(etapes).toMatch(/grep -qxF "\$hostname"[\s\S]*?exit 1/)
+  })
+
+  it('refuse de continuer si VERCEL_PROJECT_ID ne designe pas le projet miroir', () => {
+    // `--prod` dans le workflow de preview n'est correct que parce que le projet visé
+    // n'est pas celui de la production : `homebudget-preview` n'a qu'une production,
+    // et c'est notre preview.
+    //
+    // Ce qui le rend correct repose donc entièrement sur un secret d'environment. Or
+    // un secret d'environment absent ne vaut pas vide : GitHub retombe en silence sur
+    // celui du dépôt, qui désigne la PRODUCTION. Sans cette garde, l'alignement
+    // écraserait la `DATABASE_URL` de production avec celle de la base de recette, et
+    // la promotion y publierait un commit de `main` jamais taggé.
+    //
+    // Le contrôle d'alias, en fin de workflow, verrait la promotion — mais après
+    // coup, et il ne verrait rien de la variable écrasée. Cette garde passe avant
+    // tout ce qui écrit, donc avant `vercel pull` lui-même.
+    const etapes = sansCommentaires(preview)
+    const cible = etape(etapes, CIBLE)
+
+    expect(cible).toContain('/v9/projects/$VERCEL_PROJECT_ID')
+    expect(cible).toContain('$PROJET_ATTENDU')
+    expect(cible).toMatch(/http_code[\s\S]*?exit 1/)
+    expect(preview).toMatch(/^\s+PROJET_ATTENDU: homebudget-preview$/m)
+
+    // La position, mesurée contre les deux commandes qui comptent : la première qui
+    // parle a Vercel, et la première qui y écrit.
+    const garde = etapes.indexOf(`- name: ${CIBLE}`)
+    expect(garde).toBeGreaterThan(-1)
+    expect(etapes.indexOf('vercel pull')).toBeGreaterThan(garde)
+    expect(etapes.indexOf('/env?upsert=true')).toBeGreaterThan(garde)
   })
 })
 
