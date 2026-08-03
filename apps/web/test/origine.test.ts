@@ -10,19 +10,19 @@ afterEach(() => {
 
 /**
  * Un environnement Vercel de preview, tel qu'il arrive reellement au runtime :
- * le domaine de production du projet miroir `homebudget-preview`, pose a la
+ * le domaine de production du projet miroir `home-budget-preview`, pose a la
  * main parce que Google n'accepte aucun wildcard, et l'URL unique du
  * deploiement, que Vercel genere seul et qui change a chaque push.
  */
 const PREVIEW = {
   VERCEL_ENV: 'preview',
-  VERCEL_URL: 'homebudget-preview-a1b2c3-tjarriers-projects.vercel.app',
-  BETTER_AUTH_URL: 'https://homebudget-preview.vercel.app',
+  VERCEL_URL: 'home-budget-preview-a1b2c3-tjarriers-projects.vercel.app',
+  BETTER_AUTH_URL: 'https://home-budget-preview.vercel.app',
 }
 
 describe('origineAuth', () => {
   it("prend l'URL posee par l'environnement", () => {
-    expect(origineAuth(PREVIEW)).toBe('https://homebudget-preview.vercel.app')
+    expect(origineAuth(PREVIEW)).toBe('https://home-budget-preview.vercel.app')
   })
 
   it("ignore l'URL unique du deploiement, qui change a chaque push", () => {
@@ -58,7 +58,7 @@ describe('originesDeConfiance', () => {
     // C'est celle que propose le dashboard Vercel. Sans elle, la preview
     // ouverte depuis le dashboard refuse la connexion en mismatch d'origine.
     expect(originesDeConfiance(PREVIEW)).toEqual([
-      'https://homebudget-preview-a1b2c3-tjarriers-projects.vercel.app',
+      'https://home-budget-preview-a1b2c3-tjarriers-projects.vercel.app',
     ])
   })
 
@@ -79,9 +79,9 @@ describe('le branchement sur Better Auth', () => {
 
     const { auth } = await import('../lib/auth.js')
 
-    expect(auth.options.baseURL).toBe('https://homebudget-preview.vercel.app')
+    expect(auth.options.baseURL).toBe('https://home-budget-preview.vercel.app')
     expect(auth.options.trustedOrigins).toEqual([
-      'https://homebudget-preview-a1b2c3-tjarriers-projects.vercel.app',
+      'https://home-budget-preview-a1b2c3-tjarriers-projects.vercel.app',
     ])
   })
 })

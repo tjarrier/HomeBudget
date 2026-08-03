@@ -6,7 +6,7 @@ name: Deploiement preview
 # `workflow_dispatch` n'a pas d'entree `ref` : le selecteur de branche natif de
 # GitHub fait deja le travail, et une entree en plus ferait verifier une branche
 # pendant qu'on en deploie une autre. Un dispatch sur une autre branche recoit le
-# MEME hote — c'est le domaine de production du projet `homebudget-preview`, il
+# MEME hote — c'est le domaine de production du projet `home-budget-preview`, il
 # suit le dernier deploiement et ne depend pas de la ref — donc la connexion y
 # fonctionne, mais la preview de `main` cesse d'etre en ligne jusqu'au prochain
 # deploiement. Ce n'est pas une panne, c'est ce qu'on a demande.
@@ -42,7 +42,7 @@ jobs:
       # ci-dessus vient de l'environment `Preview`, qui surcharge celui du depot :
       # c'est cette surcharge, et elle seule, qui empeche ce workflow de deployer sur
       # la production. L'etape « Confirmer la cible » verifie qu'elle a bien eu lieu.
-      PROJET_ATTENDU: homebudget-preview
+      PROJET_ATTENDU: home-budget-preview
 
     steps:
       - uses: actions/checkout@v7
@@ -99,7 +99,7 @@ jobs:
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       # Sans BETTER_AUTH_URL dans l'environnement Production du projet
-      # homebudget-preview, `next build` echoue : `origineAuth()` refuse de
+      # home-budget-preview, `next build` echoue : `origineAuth()` refuse de
       # demarrer sur Vercel plutot que de retomber sur `localhost`, et c'est
       # voulu — cette URI est enregistree chez Google, donc le tour OAuth
       # reussirait et renverrait l'utilisateur sur son propre poste, sans
@@ -113,7 +113,7 @@ jobs:
         run: |
           origine=$(grep -m1 '^BETTER_AUTH_URL=' .vercel/.env.production.local | cut -d= -f2- | tr -d '"' || true)
           if [ -z "$origine" ]; then
-            echo "::error::BETTER_AUTH_URL est absente de l'environnement Production du projet homebudget-preview. Posez-y le domaine de production de ce projet, le meme que le redirect URI enregistre chez Google."
+            echo "::error::BETTER_AUTH_URL est absente de l'environnement Production du projet home-budget-preview. Posez-y le domaine de production de ce projet, le meme que le redirect URI enregistre chez Google."
             exit 1
           fi
           echo "ORIGINE=$origine" >> "$GITHUB_ENV"
@@ -191,7 +191,7 @@ jobs:
           url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
           echo "URL=$url" >> "$GITHUB_ENV"
 
-      # L'hote attendu est le domaine de production du projet `homebudget-preview`,
+      # L'hote attendu est le domaine de production du projet `home-budget-preview`,
       # que Vercel attribue au projet et non a l'auteur du deploiement. Il doit
       # figurer parmi les hotes du deploiement : sinon le tour OAuth est casse, la
       # connexion Google renvoyant l'utilisateur sur une URL inconnue.
@@ -234,6 +234,6 @@ jobs:
           # L'origine annoncee a Google doit figurer parmi les hotes attribues.
           hostname=$(echo "$ORIGINE" | sed -e 's|^https\?://||' -e 's|/.*$||')
           if ! echo "$hotes" | grep -qxF "$hostname"; then
-            echo "::error::l'hote attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus. Verifier que le projet homebudget-preview n'a pas ete renomme, et que BETTER_AUTH_URL porte bien son domaine de production."
+            echo "::error::l'hote attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus. Verifier que le projet home-budget-preview n'a pas ete renomme, et que BETTER_AUTH_URL porte bien son domaine de production."
             exit 1
           fi

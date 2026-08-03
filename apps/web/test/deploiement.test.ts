@@ -240,7 +240,7 @@ describe('deploy-preview.yml', () => {
   it('promeut sur le projet miroir, dont la production est notre preview', () => {
     // `--prod` a longtemps ete interdit ici, et l'interdiction etait juste : elle
     // empechait ce workflow d'ecraser la production. Ce qui a change n'est pas le
-    // drapeau, c'est le projet — `homebudget-preview` n'a qu'une production, et c'est
+    // drapeau, c'est le projet — `home-budget-preview` n'a qu'une production, et c'est
     // notre preview. Ce qui protege la vraie production est desormais l'etape
     // « Confirmer la cible », testee plus haut.
     //
@@ -280,7 +280,7 @@ describe('deploy-preview.yml', () => {
 
   it('refuse de continuer si VERCEL_PROJECT_ID ne designe pas le projet miroir', () => {
     // `--prod` dans le workflow de preview n'est correct que parce que le projet visé
-    // n'est pas celui de la production : `homebudget-preview` n'a qu'une production,
+    // n'est pas celui de la production : `home-budget-preview` n'a qu'une production,
     // et c'est notre preview.
     //
     // Ce qui le rend correct repose donc entièrement sur un secret d'environment. Or
@@ -298,7 +298,7 @@ describe('deploy-preview.yml', () => {
     expect(cible).toContain('/v9/projects/$VERCEL_PROJECT_ID')
     expect(cible).toContain('$PROJET_ATTENDU')
     expect(cible).toMatch(/http_code[\s\S]*?exit 1/)
-    expect(preview).toMatch(/^\s+PROJET_ATTENDU: homebudget-preview$/m)
+    expect(preview).toMatch(/^\s+PROJET_ATTENDU: home-budget-preview$/m)
 
     // Le code HTTP est verrouillé séparément, parce que l'assertion ci-dessus ne
     // suffit pas : son `exit 1` est aussi celui du contrôle du nom, plus bas dans

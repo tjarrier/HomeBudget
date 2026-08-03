@@ -126,8 +126,8 @@ Sur Vercel, l'absence de la variable **fait échouer le démarrage**, délibér�
 `localhost` serait le pire des cas : cette URI *est* enregistrée chez Google, donc le tour
 OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucune erreur.
 
-- **Cible Preview : `https://homebudget-preview.vercel.app`.** C'est le domaine de
-  production d'un **second projet Vercel**, `homebudget-preview`, dont la production
+- **Cible Preview : `https://home-budget-preview.vercel.app`.** C'est le domaine de
+  production d'un **second projet Vercel**, `home-budget-preview`, dont la production
   *est* notre preview — `deploy-preview.yml` y déploie avec `--prod`.
 - **« Production » est relatif au projet Vercel.** Un `--prod` dans le workflow de
   preview n'est donc pas une erreur : il promeut sur le projet miroir, qui n'a qu'une
@@ -140,7 +140,7 @@ OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucu
   production avec celle de la base de recette, puis y publierait un commit de `main`
   jamais taggé. L'étape « Confirmer la cible » demande son nom au projet avant
   `vercel pull`, donc avant la première commande qui écrit quoi que ce soit.
-- **Le nom du projet se choisit, le domaine se lit.** `homebudget-preview` est
+- **Le nom du projet se choisit, le domaine se lit.** `home-budget-preview` est
   littéral dans le workflow. Son domaine, lui, porterait un suffixe de scope si le nom
   avait été pris globalement : lis-le dans le résumé du run, qui affiche côte à côte
   l'origine annoncée à Google et les hôtes réellement attribués. Ne le reconstruis
@@ -197,7 +197,7 @@ branche et non sa fusion avec `main`, et une PR ouverte depuis un fork ne serait
 vérifiée du tout.
 
 - **Preview au merge** (`deploy-preview.yml`) : push sur `main`, ou déclenchement
-  manuel sur une branche. Déploie en `--prod` sur le projet `homebudget-preview`,
+  manuel sur une branche. Déploie en `--prod` sur le projet `home-budget-preview`,
   dont le domaine de production ne dépend pas de la ref — un dispatch sur une autre
   branche produit donc le **même** hôte, et le déploiement précédent le perd. C'est
   la seule vraie conséquence de déployer autre chose que `main` : la preview de
