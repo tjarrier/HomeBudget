@@ -263,13 +263,12 @@ describe('deploy-preview.yml', () => {
     expect(etapes).toContain(`.vercel/.env.${environnement}.local`)
   })
 
-  it("fait echouer le run des que l'alias attendu manque, sur n'importe quelle ref", () => {
+  it("fait echouer le run des que l'hote attendu manque, sur n'importe quelle ref", () => {
     // Un garde-fou `if [ "$REF" = "main" ]` vivait ici, parce qu'on croyait
-    // l'alias fabrique a partir de la ref : sur une autre branche, l'ecart aurait
-    // ete normal. Le premier run reel a dementi la croyance. L'alias d'auteur
-    // `<projet>-<utilisateur>-<scope>` est attribue a tout deploiement de la CLI,
-    // quelle que soit la branche — les hotes `-git-<branche>-` viennent de
-    // l'integration Git, que `vercel.json` coupe.
+    // l'hote fabrique a partir de la ref : sur une autre branche, l'ecart aurait
+    // ete normal. Le premier run reel a dementi la croyance, et le domaine du
+    // projet miroir n'en depend pas davantage — il est attache au projet, pas a
+    // la branche ni au compte qui deploie.
     //
     // La verification vaut donc partout, et sauter le controle sur les autres refs
     // ne ferait que masquer une anomalie reelle.
@@ -300,6 +299,13 @@ describe('deploy-preview.yml', () => {
     expect(cible).toContain('$PROJET_ATTENDU')
     expect(cible).toMatch(/http_code[\s\S]*?exit 1/)
     expect(preview).toMatch(/^\s+PROJET_ATTENDU: homebudget-preview$/m)
+
+    // Le code HTTP est verrouillé séparément, parce que l'assertion ci-dessus ne
+    // suffit pas : son `exit 1` est aussi celui du contrôle du nom, plus bas dans
+    // la même étape. Retirer tout le bloc `if [ "$code" != "200" ]` la laisserait
+    // verte — vérifié. Sans ce bloc, une réponse 403 donnerait un `name` vide, et
+    // le run échouerait en accusant le mauvais coupable.
+    expect(cible).toContain('!= "200"')
 
     // La position, mesurée contre les deux commandes qui comptent : la première qui
     // parle a Vercel, et la première qui y écrit.
