@@ -126,9 +126,9 @@ Sur Vercel, l'absence de la variable **fait échouer le démarrage**, délibér�
 `localhost` serait le pire des cas : cette URI *est* enregistrée chez Google, donc le tour
 OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucune erreur.
 
-- **Cible Preview : `https://home-budget-preview.vercel.app`.** C'est le domaine de
-  production d'un **second projet Vercel**, `home-budget-preview`, dont la production
-  *est* notre preview — `deploy-preview.yml` y déploie avec `--prod`.
+- **Cible Preview : `https://preview.homebudget.thomasjarrier.fr`.** Un domaine à nous,
+  attaché à la production d'un **second projet Vercel**, `home-budget-preview`, dont la
+  production *est* notre preview — `deploy-preview.yml` y déploie avec `--prod`.
 - **« Production » est relatif au projet Vercel.** Un `--prod` dans le workflow de
   preview n'est donc pas une erreur : il promeut sur le projet miroir, qui n'a qu'une
   production et dont c'est la seule raison d'exister. Ce qui le rend correct est
@@ -140,14 +140,20 @@ OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucu
   production avec celle de la base de recette, puis y publierait un commit de `main`
   jamais taggé. L'étape « Confirmer la cible » demande son nom au projet avant
   `vercel pull`, donc avant la première commande qui écrit quoi que ce soit.
-- **Le nom du projet se choisit, le domaine se lit.** `home-budget-preview` est
-  littéral dans le workflow. Son domaine, lui, porterait un suffixe de scope si le nom
-  avait été pris globalement : lis-le dans le résumé du run, qui affiche côte à côte
-  l'origine annoncée à Google et les hôtes réellement attribués. Ne le reconstruis
-  pas.
-- **Pourquoi pas un domaine à nous.** Le plan gratuit de Vercel n'affecte aucun
-  domaine personnalisé à l'environnement Preview, et le projet ne passe pas par un
-  domaine personnel. C'est ce qui a fermé le chemin de l'issue #55.
+- **Le nom du projet se choisit, les hôtes se lisent.** `home-budget-preview` est
+  littéral dans le workflow. Ses hôtes, eux, se lisent dans le résumé du run, qui
+  affiche côte à côte l'origine annoncée à Google et les alias réellement attribués au
+  déploiement. Ne les reconstruis pas : le domaine `.vercel.app` du projet porterait un
+  suffixe de scope si le nom avait été pris globalement.
+- **Un domaine à nous est possible ici, et seulement ici.** Le plan gratuit de Vercel
+  n'affecte aucun domaine personnalisé à l'environnement *Preview* — c'est ce qui avait
+  fermé le chemin de l'issue #55. Mais sur le projet miroir, notre preview *est* une
+  production : un domaine personnalisé s'y attache comme sur n'importe quelle production.
+- **Le contrôle d'hôte interroge l'API, jamais l'affichage de la CLI.** Il a filtré les
+  hôtes de `vercel inspect` sur le suffixe `.vercel.app`. Le jour où l'origine est
+  devenue un domaine à nous, il ne pouvait plus la trouver *par construction*, et il a
+  échoué sur un déploiement parfaitement sain. Il lit maintenant `.alias` du
+  déploiement, qui ne présuppose aucun suffixe.
 - **Ce que la solution précédente coûtait**, et qui explique celle-ci : la cible était
   l'**alias d'auteur** `home-budget-tjarrier-tjarriers-projects.vercel.app`,
   `<projet>-<utilisateur>-<scope>`, que Vercel attribue à tout déploiement de la CLI.

@@ -191,10 +191,10 @@ jobs:
           url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
           echo "URL=$url" >> "$GITHUB_ENV"
 
-      # L'hote attendu est le domaine de production du projet `home-budget-preview`,
-      # que Vercel attribue au projet et non a l'auteur du deploiement. Il doit
-      # figurer parmi les hotes du deploiement : sinon le tour OAuth est casse, la
-      # connexion Google renvoyant l'utilisateur sur une URL inconnue.
+      # L'hote attendu est un domaine de production du projet `home-budget-preview`,
+      # attache au projet et non a l'auteur du deploiement. Il doit figurer parmi les
+      # hotes du deploiement : sinon le tour OAuth est casse, la connexion Google
+      # renvoyant l'utilisateur sur une URL inconnue.
       #
       # Ce controle a change de nature en changeant de solution. Il verifiait qu'un
       # hote *subi* — l'alias d'auteur, que Vercel fabriquait a partir du nom du
@@ -210,13 +210,30 @@ jobs:
       # passe, mais la preview de `main` n'est plus en ligne — le domaine suit le
       # dernier deploiement. Rien a verifier la-dessus, c'est ce qu'on a demande.
       #
-      # On ne filtre que des hostnames, jamais la sortie brute de `vercel inspect`.
+      # Les hotes se demandent a l'API, pas a l'affichage de `vercel inspect`. Le
+      # filtre precedent, `grep -o '[a-z0-9.-]*\.vercel\.app'`, ne gardait que ce
+      # qui finissait par `.vercel.app` : le jour ou l'origine est devenue un
+      # domaine a nous, il ne pouvait plus la contenir *par construction*, et le
+      # controle a echoue sur un deploiement pourtant sain. Un filtre par suffixe
+      # ne pouvait pas survivre a un changement de suffixe.
+      #
+      # `.alias` liste les alias reellement assignes au deploiement, quel que soit
+      # leur domaine. Le corps n'est jamais affiche en entier : les logs d'un depot
+      # public se lisent sans compte.
       - name: Resumer
         env:
           REF: ${{ github.ref_name }}
         run: |
-          hotes=$(vercel inspect "$URL" --token="$VERCEL_TOKEN" 2>&1 \
-            | grep -o '[a-z0-9.-]*\.vercel\.app' | sort -u || true)
+          code=$(curl -sS -o deploiement.json -w '%{http_code}' \
+            "https://api.vercel.com/v13/deployments/${URL#https://}?teamId=$VERCEL_ORG_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")
+          if [ "$code" != "200" ]; then
+            echo "::error::la lecture du deploiement a repondu $code ($(jq -r '.error.code // "sans code"' deploiement.json)). Le deploiement est publie, mais rien ne confirme que l'origine annoncee a Google le sert."
+            rm -f deploiement.json
+            exit 1
+          fi
+          hotes=$(jq -r '.alias[]?' deploiement.json | sort -u)
+          rm -f deploiement.json
           {
             echo "## Preview publiee"
             echo
@@ -234,6 +251,6 @@ jobs:
           # L'origine annoncee a Google doit figurer parmi les hotes attribues.
           hostname=$(echo "$ORIGINE" | sed -e 's|^https\?://||' -e 's|/.*$||')
           if ! echo "$hotes" | grep -qxF "$hostname"; then
-            echo "::error::l'hote attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus. Verifier que le projet home-budget-preview n'a pas ete renomme, et que BETTER_AUTH_URL porte bien son domaine de production."
+            echo "::error::l'hote attendu $hostname n'a pas ete attribue par Vercel. Voir la liste des hotes attribues dans le resume ci-dessus. Verifier que ce domaine est bien attache au projet home-budget-preview et a sa production, et que BETTER_AUTH_URL porte le meme."
             exit 1
           fi
