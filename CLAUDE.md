@@ -126,29 +126,37 @@ Sur Vercel, l'absence de la variable **fait échouer le démarrage**, délibér�
 `localhost` serait le pire des cas : cette URI *est* enregistrée chez Google, donc le tour
 OAuth réussirait et renverrait l'utilisateur sur son propre poste — sans aucune erreur.
 
-- **Cible Preview : `https://home-budget-tjarrier-tjarriers-projects.vercel.app`.** C'est
-  l'**alias d'auteur** : `<projet>-<utilisateur>-<scope>`. Vercel l'attribue à tout
-  déploiement fait par la CLI, et il suit le dernier en date.
-- **L'alias ne dépend pas de la ref, il dépend de la source du déploiement.** Le dépôt a
-  longtemps affirmé le contraire — « on ne choisit pas le hostname, on choisit la ref » —
-  et le premier run réel l'a démenti. Le déploiement portait `main` en métadonnée et n'a
-  reçu aucun `-git-main-`. L'API le montre sans ambiguïté :
-
-      source=cli  ref=main  → home-budget-tjarrier-...
-      source=git  ref=main  → home-budget-tjarriers-projects, home-budget-git-main-...
-
-  Les hôtes `-git-<branche>-` sont fabriqués par l'**intégration Git**, que
-  `vercel.json` coupe précisément. Un déploiement CLI n'en obtient jamais, quelle que
-  soit la branche : déployer depuis une branche `preview` ne donnerait pas
-  `-git-preview-`, seulement le même alias d'auteur.
-- **Ce hostname ne se pose pas à la main** : les sous-domaines `*.vercel.app` sont
-  réservés, aucun `vercel alias set` n'est possible dessus. Ne le reconstruis pas non
-  plus : au-delà de 63 caractères avant `.vercel.app`, Vercel tronque et retire le slug
-  de scope en entier. Lis-le dans le résumé du run de `deploy-preview.yml`, qui affiche
-  côte à côte l'origine annoncée à Google et les hôtes réellement attribués.
-- **Il porte le nom du compte qui déploie.** Changer le propriétaire du `VERCEL_TOKEN`
-  change l'hôte, donc casse le tour OAuth. Le contrôle d'alias du workflow le signale au
-  run suivant ; il faut alors réenregistrer le redirect URI chez Google.
+- **Cible Preview : `https://homebudget-preview.vercel.app`.** C'est le domaine de
+  production d'un **second projet Vercel**, `homebudget-preview`, dont la production
+  *est* notre preview — `deploy-preview.yml` y déploie avec `--prod`.
+- **« Production » est relatif au projet Vercel.** Un `--prod` dans le workflow de
+  preview n'est donc pas une erreur : il promeut sur le projet miroir, qui n'a qu'une
+  production et dont c'est la seule raison d'exister. Ce qui le rend correct est
+  l'identité du projet ciblé, et rien d'autre.
+- **Cette identité repose sur un secret d'environment, donc elle se vérifie.**
+  `VERCEL_PROJECT_ID` est surchargé par l'environment GitHub `Preview`. Un secret
+  d'environment absent ne vaut pas vide : GitHub retombe en silence sur celui du
+  dépôt, qui désigne la **production**. Le workflow y écraserait la `DATABASE_URL` de
+  production avec celle de la base de recette, puis y publierait un commit de `main`
+  jamais taggé. L'étape « Confirmer la cible » demande son nom au projet avant
+  `vercel pull`, donc avant la première commande qui écrit quoi que ce soit.
+- **Le nom du projet se choisit, le domaine se lit.** `homebudget-preview` est
+  littéral dans le workflow. Son domaine, lui, porterait un suffixe de scope si le nom
+  avait été pris globalement : lis-le dans le résumé du run, qui affiche côte à côte
+  l'origine annoncée à Google et les hôtes réellement attribués. Ne le reconstruis
+  pas.
+- **Pourquoi pas un domaine à nous.** Le plan gratuit de Vercel n'affecte aucun
+  domaine personnalisé à l'environnement Preview, et le projet ne passe pas par un
+  domaine personnel. C'est ce qui a fermé le chemin de l'issue #55.
+- **Ce que la solution précédente coûtait**, et qui explique celle-ci : la cible était
+  l'**alias d'auteur** `home-budget-tjarrier-tjarriers-projects.vercel.app`,
+  `<projet>-<utilisateur>-<scope>`, que Vercel attribue à tout déploiement de la CLI.
+  Il ne se posait pas à la main — les sous-domaines `*.vercel.app` sont réservés,
+  aucun `vercel alias set` n'est possible dessus. Il ne dépendait pas de la ref mais
+  de la source du déploiement : le dépôt a longtemps affirmé le contraire, et le
+  premier run réel l'a démenti. Et surtout il **portait le nom du compte qui
+  déploie**, donc changer le propriétaire du `VERCEL_TOKEN` cassait le tour OAuth.
+  Le domaine d'un projet ne dépend d'aucune de ces trois choses.
 - **`DATABASE_URL` de Preview doit pointer sur une autre base que la production.** Une
   preview branchée sur la prod y crée de vraies dépenses et de vraies versions de config —
   et une version qui porte des dépenses n'est plus supprimable (`0002` et la FK `restrict`).
@@ -188,12 +196,13 @@ rejouerait le même commit. La contrepartie est assumée — la CI vérifie le c
 branche et non sa fusion avec `main`, et une PR ouverte depuis un fork ne serait pas
 vérifiée du tout.
 
-- **Preview au merge** (`deploy-preview.yml`) : push sur `main`, ou déclenchement manuel
-  sur une branche. Cible l'alias d'auteur, qui ne dépend pas de la ref — un dispatch sur
-  une autre branche produit donc le **même** hôte, et le déploiement précédent perd
-  l'alias. C'est la seule vraie conséquence de déployer autre chose que `main` : la
-  preview de `main` n'est plus en ligne tant qu'on n'a pas redéployé. Le contrôle d'alias
-  du workflow ne fait échouer le run que sur `main`.
+- **Preview au merge** (`deploy-preview.yml`) : push sur `main`, ou déclenchement
+  manuel sur une branche. Déploie en `--prod` sur le projet `homebudget-preview`,
+  dont le domaine de production ne dépend pas de la ref — un dispatch sur une autre
+  branche produit donc le **même** hôte, et le déploiement précédent le perd. C'est
+  la seule vraie conséquence de déployer autre chose que `main` : la preview de
+  `main` n'est plus en ligne tant qu'on n'a pas redéployé. Le contrôle d'alias, lui,
+  vaut sur n'importe quelle ref.
 - **Production au tag** (`deploy-production.yml`) : un tag `vX.Y.Z`. Le workflow refuse un
   tag posé hors de `main`, rejoue la CI complète (un tag peut pointer un commit qu'elle n'a
   jamais vu), puis attend une revue humaine.
