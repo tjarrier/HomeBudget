@@ -37,6 +37,11 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      # Le projet dont la production EST notre preview. Le secret VERCEL_PROJECT_ID
+      # ci-dessus vient de l'environment `Preview`, qui surcharge celui du depot :
+      # c'est cette surcharge, et elle seule, qui empeche ce workflow de deployer sur
+      # la production. L'etape « Confirmer la cible » verifie qu'elle a bien eu lieu.
+      PROJET_ATTENDU: homebudget-preview
 
     steps:
       - uses: actions/checkout@v7
@@ -50,6 +55,37 @@ jobs:
 
       - name: Installer la CLI Vercel
         run: npm install --global vercel@latest
+
+      # Un secret d'environment absent ne vaut pas vide : GitHub retombe en silence
+      # sur celui du depot, qui designe le projet de PRODUCTION. Le workflow
+      # ecraserait alors la DATABASE_URL de la production avec celle de la base de
+      # recette, puis y publierait un commit de `main` jamais tagge.
+      #
+      # Le controle d'alias, en fin de course, verrait la promotion — mais apres
+      # coup, et il ne verrait rien de la variable ecrasee. Cette garde passe donc
+      # avant `vercel pull`, la premiere commande qui parle a Vercel.
+      #
+      # Le code HTTP est verifie avant le contenu : sans ca, une reponse 403 donnerait
+      # un `name` vide et un message d'erreur qui parlerait du mauvais probleme.
+      #
+      # Seul `.name` est extrait de la reponse, et le corps n'est jamais affiche : les
+      # logs d'un depot public se lisent sans compte.
+      - name: Confirmer la cible
+        run: |
+          code=$(curl -sS -o projet.json -w '%{http_code}' \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN")
+          if [ "$code" != "200" ]; then
+            echo "::error::la lecture du projet Vercel a repondu $code ($(jq -r '.error.code // "sans code"' projet.json)). Impossible de confirmer que ce run ne visera pas la production : rien n'a ete deploye."
+            rm -f projet.json
+            exit 1
+          fi
+          nom=$(jq -r '.name' projet.json)
+          rm -f projet.json
+          if [ "$nom" != "$PROJET_ATTENDU" ]; then
+            echo "::error::VERCEL_PROJECT_ID designe le projet '$nom' et non '$PROJET_ATTENDU'. Le secret VERCEL_PROJECT_ID de l'environment Preview est probablement absent : GitHub retombe alors sur celui du depot, qui designe la production. Rien n'a ete deploye."
+            exit 1
+          fi
 
       # La CLI tourne a la racine du depot, et non dans `apps/web` : le Root
       # Directory du projet vaut `apps/web`, et la CLI le *joint* au repertoire
