@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 #
-# Joue `empreinte.sql` sur la base passee en argument et ecrit le resultat sur la
-# sortie standard.
+# Joue `empreinte.sql` sur la base passee en argument, sur la sortie standard.
 #
-#   scripts/empreinte.sh "$DATABASE_URL" > prod.txt
+#   scripts/empreinte.sh "$DATABASE_URL" > prod.csv
 #
-# Un seul point d'entree, appele deux fois par le workflow — une fois sur la
-# production, une fois sur la copie restauree. Deux invocations avec des options
-# differentes produiraient un `diff` qui parle de mise en forme.
+# Un seul point d'entree, appele deux fois par le workflow : deux invocations aux
+# options differentes produiraient un `diff` qui parle de mise en forme.
 set -euo pipefail
 
 url=${1:?usage: scripts/empreinte.sh <url-postgres>}

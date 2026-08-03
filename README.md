@@ -74,15 +74,13 @@ Une CI rouge bloque les deux.
 
 Chaque nuit, le workflow **Sauvegarde de la production** dumpe la base, la chiffre, la
 restaure dans un Postgres vierge et compare une empreinte entre la production et la
-copie. L'artefact — `homebudget-<date>.sql.gz.gpg`, rétention 90 jours — n'est publié
-qu'à cette condition : une sauvegarde jamais restaurée est une hypothèse, pas une
-garantie.
+copie. L'artefact — `homebudget-<date>.sql.gz.gpg`, chiffré en AES256, rétention
+90 jours — n'est publié qu'à cette condition : une sauvegarde jamais restaurée est une
+hypothèse, pas une garantie.
 
-Le dépôt est public, donc ses artefacts sont téléchargeables par n'importe qui : le dump
-est chiffré en AES256 **avant** de toucher le disque du runner. La passphrase est le
-secret `BACKUP_PASSPHRASE`, et elle doit aussi vivre dans un gestionnaire de mots de
-passe — un secret GitHub ne se relit pas, et un dump qu'on ne sait plus déchiffrer n'est
-pas une sauvegarde.
+La passphrase est le secret `BACKUP_PASSPHRASE`, et elle doit aussi vivre dans un
+gestionnaire de mots de passe : un secret GitHub ne se relit pas, et un dump qu'on ne
+sait plus déchiffrer n'est pas une sauvegarde.
 
 Pour restaurer, sur une base **vierge** (la commande refuse une base peuplée, et n'y
 touche pas) :

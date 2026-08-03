@@ -6,15 +6,12 @@ import { describe, expect, it } from 'vitest'
 
 /**
  * La sauvegarde de la production, verrouillee comme le deploiement l'est deja :
- * en lisant les fichiers comme du texte, sans parseur YAML.
+ * les fichiers sont lus comme du texte, sans parseur YAML.
  *
- * Ce que ces assertions protegent n'est pas du style. Ce sont les trois choses
- * qui, si elles cedaient, produiraient une sauvegarde inutile sans qu'aucun run
- * ne passe au rouge :
- *
- * 1. l'artefact d'un depot public ne contient que du chiffre ;
- * 2. rien n'est publie qui n'ait ete restaure et compare ;
- * 3. la commande de restauration du workflow est celle du poste, la meme.
+ * Les trois choses qui, si elles cedaient, produiraient une sauvegarde inutile
+ * sans qu'aucun run ne passe au rouge : l'artefact d'un depot public ne contient
+ * que du chiffre ; rien n'est publie qui n'ait ete restaure et compare ; la
+ * commande de restauration du workflow est celle du poste, la meme.
  *
  * Le test vit dans `packages/db` parce que c'est la base qu'on sauvegarde, et
  * qu'il tourne dans la suite unitaire — aucune dependance a Docker.
@@ -26,35 +23,31 @@ const lire = (cheminRelatif: string): string =>
 
 /**
  * Les commentaires retires : ce qui compte est l'ordre des commandes executees,
- * pas l'ordre dans lequel les commentaires les mentionnent. Le `#` doit ouvrir
- * la ligne — `--schema=public # les tables` reste une commande.
+ * pas l'ordre dans lequel les commentaires les mentionnent. Le marqueur doit
+ * ouvrir la ligne — `--schema=public # les tables` reste une commande.
  */
-const sansCommentaires = (contenu: string): string =>
+const sansCommentaires = (contenu: string, marqueur = '#'): string =>
   contenu
     .split('\n')
-    .filter((ligne) => !/^\s*#/.test(ligne))
+    .filter((ligne) => !ligne.trimStart().startsWith(marqueur))
     .join('\n')
 
-const sansCommentairesSql = (contenu: string): string =>
-  contenu
-    .split('\n')
-    .filter((ligne) => !/^\s*--/.test(ligne))
-    .join('\n')
+/** Le corps d'une etape, de son `- name:` jusqu'au suivant. */
+const etape = (contenu: string, nom: string): string =>
+  contenu.slice(contenu.indexOf(`- name: ${nom}`)).split('- name:')[1] ?? ''
 
 const SCRIPTS = ['scripts/sauvegarder.sh', 'scripts/restaurer.sh', 'scripts/empreinte.sh'] as const
 
 const workflow = sansCommentaires(lire('.github/workflows/sauvegarde.yml'))
 const sauvegarder = sansCommentaires(lire('scripts/sauvegarder.sh'))
 const restaurer = sansCommentaires(lire('scripts/restaurer.sh'))
-const empreinte = sansCommentairesSql(lire('scripts/empreinte.sql'))
+const empreinte = sansCommentaires(lire('scripts/empreinte.sql'), '--')
 const taskfile = sansCommentaires(lire('Taskfile.yml'))
 
 /**
  * Rien d'autre ne verifie ces scripts : ni `tsc`, ni Biome, ni un test qui les
- * executerait — leur chaine complete a besoin de Docker et d'une vraie base.
- *
- * Or la sauvegarde ne tourne qu'une fois par nuit, sans personne devant. Un
- * script qui ne s'analyse plus ne se decouvre que le jour ou on en a besoin.
+ * executerait — leur chaine complete a besoin de Docker et d'une vraie base. Or
+ * la sauvegarde ne tourne qu'une fois par nuit, sans personne devant.
  */
 describe.each(SCRIPTS)('%s', (chemin) => {
   it('passe `bash -n` — une apostrophe mal placee suffit a le rendre invalide', () => {
@@ -82,19 +75,21 @@ describe('sauvegarde.yml', () => {
   })
 
   it('ne declare aucun environment : un reviewer requis suspendrait chaque nuit', () => {
-    // `Production` exige une approbation. Un run planifie qui le nommerait
-    // attendrait un humain, puis expirerait — et personne ne remarquerait qu'il
-    // n'y a plus de sauvegarde. C'est pour ca que les deux secrets sont ceux du
-    // depot, et non ceux d'un environment.
     expect(workflow).not.toMatch(/^\s+environment:/m)
   })
 
-  it('chiffre avant de publier — les artefacts d’un depot public se telechargent', () => {
+  it('chiffre, restaure, compare, puis publie — dans cet ordre', () => {
+    // L'ordre est tout : ce qui atterrit dans l'artefact d'un depot public a
+    // deja ete chiffre, puis restaure une fois, puis compare.
     const chiffrement = workflow.indexOf('scripts/sauvegarder.sh')
+    const restauration = workflow.indexOf('scripts/restaurer.sh')
+    const comparaison = workflow.indexOf('diff')
     const publication = workflow.indexOf('upload-artifact')
 
     expect(chiffrement).toBeGreaterThan(-1)
-    expect(publication).toBeGreaterThan(chiffrement)
+    expect(restauration).toBeGreaterThan(chiffrement)
+    expect(comparaison).toBeGreaterThan(restauration)
+    expect(publication).toBeGreaterThan(comparaison)
   })
 
   it('ne publie que le fichier chiffre, jamais le dump ni le gzip nu', () => {
@@ -104,19 +99,14 @@ describe('sauvegarde.yml', () => {
     for (const chemin of chemins) expect(chemin).toMatch(/\.gpg$/)
   })
 
-  it('restaure la sauvegarde du run dans un Postgres vierge, celui du service', () => {
+  it('restaure dans le Postgres du service, jamais sur la production', () => {
+    // La confusion qui detruirait la base qu'on sauvegarde. L'assertion est
+    // cadree sur l'etape : `URL_PROD` est legitime ailleurs dans le fichier.
+    const restauration = etape(workflow, 'Restaurer dans le Postgres vierge du run')
+
     expect(workflow).toContain('image: postgres:17-alpine')
-    expect(workflow).toContain('scripts/restaurer.sh')
-  })
-
-  it("ne publie rien qui n'ait ete restaure puis compare — un dump vide se restaure", () => {
-    const restauration = workflow.indexOf('scripts/restaurer.sh')
-    const comparaison = workflow.indexOf('diff')
-    const publication = workflow.indexOf('upload-artifact')
-
-    expect(restauration).toBeGreaterThan(-1)
-    expect(comparaison).toBeGreaterThan(restauration)
-    expect(publication).toBeGreaterThan(comparaison)
+    expect(restauration).toContain('env.URL_COPIE')
+    expect(restauration).not.toContain('env.URL_PROD')
   })
 
   it("compare l'empreinte des deux cotes, avec le meme script", () => {
@@ -125,14 +115,11 @@ describe('sauvegarde.yml', () => {
   })
 
   it("n'affiche jamais une empreinte : elle porte le compte et les montants", () => {
-    // Les logs d'un depot public se lisent sans compte. Le `diff` du workflow
-    // compte les lignes d'ecart et n'en imprime aucune ; `cat` ou `diff -u`
-    // publieraient la somme des parts du couple.
     expect(workflow).not.toContain('cat empreinte')
     expect(workflow).not.toContain('diff -u')
   })
 
-  it("publie meme si l'empreinte diverge n'est pas une option", () => {
+  it('ne publie pas malgre un ecart : ni `always()`, ni `continue-on-error`', () => {
     expect(workflow).not.toContain('if: always()')
     expect(workflow).not.toContain('continue-on-error: true')
   })
@@ -141,9 +128,14 @@ describe('sauvegarde.yml', () => {
     expect(workflow).toContain('retention-days: 90')
   })
 
-  it('derive l’URL en mode session : pg_dump ne passe pas le pooler en transaction', () => {
-    expect(workflow).toContain('6543')
-    expect(workflow).toContain('5432')
+  it("derive l'URL en mode session : pg_dump ne passe pas le pooler en transaction", () => {
+    expect(workflow).toMatch(/sed -E .*6543.*5432/)
+  })
+
+  it("masque l'URL derivee, que GitHub ne masque plus", () => {
+    // GitHub masque la valeur du secret, pas ce qu'on en derive. Sans ce masque,
+    // un port modifie publie les identifiants de la production dans les logs.
+    expect(workflow).toContain('::add-mask::$session')
   })
 
   it('ne laisse pas deux sauvegardes se disputer le meme run', () => {
@@ -163,9 +155,6 @@ describe('scripts/sauvegarder.sh', () => {
   })
 
   it("emporte btree_gist, qu'aucun `--schema` ne ramasse", () => {
-    // Les extensions n'appartiennent a aucun schema. Le journal des migrations,
-    // restaure lui aussi, declare `0001` appliquee : sans cette option,
-    // l'extension ne serait jamais reposee sur la base de secours.
     expect(sauvegarder).toContain('--extension=btree_gist')
   })
 
@@ -186,6 +175,10 @@ describe('scripts/sauvegarder.sh', () => {
     expect(sauvegarder).toContain('set -euo pipefail')
   })
 
+  it('refuse de tourner sans passphrase : aucun dump en clair ne sort de la machine', () => {
+    expect(sauvegarder).toMatch(/\$\{BACKUP_PASSPHRASE:\?/)
+  })
+
   it('chiffre en AES256 sans jamais poser la passphrase sur la ligne de commande', () => {
     expect(sauvegarder).toContain('--symmetric')
     expect(sauvegarder).toContain('AES256')
@@ -202,10 +195,6 @@ describe('scripts/restaurer.sh', () => {
 
   it("n'efface rien : visee sur une base peuplee, elle echoue sans rien toucher", () => {
     expect(restaurer).not.toContain('--clean')
-    // Le `drop schema public` que le dump impose est en RESTRICT. Un `cascade`
-    // ici transformerait la restauration en effacement silencieux : Postgres ne
-    // refuserait plus rien, et une sauvegarde visee sur la mauvaise base
-    // remplacerait son contenu au lieu de s'arreter.
     expect(restaurer).not.toMatch(/cascade/i)
   })
 
@@ -219,8 +208,8 @@ describe('scripts/restaurer.sh', () => {
   })
 
   it('refuse de tourner sans DATABASE_URL au lieu de viser une base par defaut', () => {
-    expect(restaurer).toContain('DATABASE_URL')
-    expect(restaurer).toMatch(/set -euo pipefail/)
+    expect(restaurer).toMatch(/\$\{DATABASE_URL:\?/)
+    expect(restaurer).toContain('set -euo pipefail')
   })
 })
 
@@ -232,7 +221,7 @@ describe('scripts/empreinte.sql', () => {
     expect(empreinte).toContain("'drizzle'")
   })
 
-  it('somme les parts telles qu’elles sont stockees — aucune lecture ne recalcule', () => {
+  it("somme les parts telles qu'elles sont stockees — aucune lecture ne recalcule", () => {
     expect(empreinte).toContain('sum(part_thomas_cents)')
     expect(empreinte).toContain('sum(part_liz_cents)')
     expect(empreinte).not.toMatch(/round\(/i)
@@ -252,8 +241,6 @@ describe('task db:restaurer', () => {
 
   it('joue le script du workflow, et ne redit pas la commande a sa facon', () => {
     expect(taskfile).toContain('./scripts/restaurer.sh')
-    // Recopier la commande ici aurait cree une seconde procedure — et c'est
-    // justement celle que personne n'aurait verifiee.
     expect(taskfile).not.toContain('--single-transaction')
     expect(taskfile).not.toMatch(/\bgpg\s+-/)
   })
