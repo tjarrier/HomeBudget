@@ -47,7 +47,8 @@ après, et l'artefact ne contient que du chiffré.
 
 `homebudget-<AAAA-MM-JJ>.sql.gz.gpg`, artefact du run, rétention 90 jours (le
 maximum), chiffré en AES256 par `gpg --symmetric` avec la passphrase du secret
-d'environment `BACKUP_PASSPHRASE` (environment `Production`, à créer à la main).
+`BACKUP_PASSPHRASE`, à créer à la main dans les secrets **du dépôt** (voir
+« Déclenchement » : pas dans un environment, et c'est délibéré).
 
 **La passphrase doit vivre dans le gestionnaire de mots de passe de Thomas.** Une
 sauvegarde qu'on ne sait plus déchiffrer n'est pas une sauvegarde — et le secret
@@ -97,8 +98,25 @@ suppose rien sur la façon dont elle a été obtenue.
 
 ### Déclenchement
 
-`schedule` quotidien, plus `workflow_dispatch`. L'environment `Production` porte déjà
-`DATABASE_URL` ; il portera `BACKUP_PASSPHRASE`.
+`schedule` quotidien, plus `workflow_dispatch`.
+
+**Le workflow ne déclare aucun environment**, et les deux secrets qu'il lit sont ceux
+du dépôt. L'intention initiale était de réutiliser l'environment `Production`, qui
+porte déjà `DATABASE_URL` ; il exige un *required reviewer*, ce que la conception avait
+manqué. Un run planifié qui nommerait cet environment resterait en attente d'une
+approbation humaine, puis expirerait — et personne ne remarquerait qu'il n'y a plus de
+sauvegarde. Une sauvegarde qui demande une intervention chaque nuit n'en est pas une.
+
+`DATABASE_URL` a donc été déplacée dans les secrets du dépôt, et retirée de
+l'environment `Production`. C'est ce qui garde **une source unique** : un second
+exemplaire dans un environment `Sauvegarde` aurait fini par vieillir, et on aurait
+sauvegardé une base qui n'est plus la production, sans que rien ne le dise. La revue
+humaine avant migration n'a pas bougé : elle est portée par l'environment que déclarent
+les workflows de déploiement, pas par le secret. `Preview` garde le sien, qui surcharge
+celui du dépôt.
+
+Contrepartie assumée : la valeur devient lisible par tout workflow du dépôt, et un futur
+workflow qui omettrait `environment:` viserait la production par défaut.
 
 Pas d'alerting à construire : GitHub envoie un mail à l'auteur quand un run planifié
 échoue. À savoir, en revanche, et c'est dans le mode d'emploi : GitHub **désactive**
@@ -129,6 +147,17 @@ qui commence par un `TRUNCATE`. La restauration, elle, se protège par l'absence
 `--clean` et par `ON_ERROR_STOP` — visée sur une base peuplée, elle échoue sans rien
 toucher.
 
+**Une ligne s'est ajoutée au drill, et la conception ne l'avait pas vue.** `pg_dump`
+émet `CREATE SCHEMA public;` dès que `public` est nommé par `--schema`, et sans
+`IF NOT EXISTS`. Or toute base Postgres neuve en possède déjà un : la restauration
+mourait sur `schema "public" already exists`. Le flux commence donc par
+`drop schema public;` — **en RESTRICT**, jamais `cascade` : Postgres le refuse dès que
+le schéma contient le moindre objet, et il est dans la même transaction que le reste.
+Ce n'est pas un garde-fou de plus, c'est le même, déplacé : visée sur une base peuplée,
+la restauration échoue désormais sur cette première ligne au lieu de la première table,
+et toujours sans rien toucher. Un `cascade` ici retournerait la procédure en effacement
+silencieux.
+
 ### Le drill, une fois, pour de vrai
 
 Sur le Postgres local, avec les vraies données, qui ne quittent pas le poste :
@@ -140,6 +169,13 @@ Sur le Postgres local, avec les vraies données, qui ne quittent pas le poste :
 
 Le compte-rendu est commité dans `docs/` : la date, la sauvegarde utilisée, le solde
 des deux côtés, et ce qui a dû être ajusté. C'est la seule preuve qui compte.
+
+Premier passage : `docs/drills/2026-08-03-restauration.md`. Il porte sur les données du
+**seed**, pas sur celles de la production — la procédure est prouvée, la fidélité aux
+données réelles reste à vérifier une fois la première sauvegarde produite. Ce que ce
+passage a déjà démontré et qu'aucune relecture n'aurait donné : le `CREATE SCHEMA public`
+ci-dessus, une apostrophe qui rendait un script invalide, et deux noms de colonnes faux
+dans l'empreinte.
 
 **Sur le canari à 114 580.** L'issue demande « le canari à 114 580 centimes tenant
 après restauration du seed ». Si la production ne contient encore que le seed du

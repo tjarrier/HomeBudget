@@ -139,6 +139,31 @@ tasks:
     cmds:
       - '{{.DB}} db:seed'
 
+  db:restaurer:
+    desc: >-
+      Restaure une sauvegarde chiffree dans le Postgres local —
+      `task db:restaurer FICHIER=homebudget-AAAA-MM-JJ.sql.gz.gpg`
+    deps: [_postgres-requis]
+    dotenv: ['.env']
+    # Cette tache n'est qu'un raccourci : le script est celui que le workflow de
+    # sauvegarde joue a chaque run. Recopier la commande ici aurait cree une
+    # seconde procedure, et c'est justement celle qu'on n'aurait jamais verifiee.
+    #
+    # gpg demande la passphrase par son invite, donc il faut un vrai terminal.
+    requires:
+      vars: [FICHIER]
+    cmds:
+      - ./scripts/restaurer.sh '{{.FICHIER}}'
+
+  db:empreinte:
+    desc: >-
+      Affiche l'empreinte de la base locale — celle que le workflow compare entre
+      la production et sa copie restauree
+    deps: [_postgres-requis]
+    dotenv: ['.env']
+    cmds:
+      - ./scripts/empreinte.sh "$DATABASE_URL"
+
   # --- Portes ---------------------------------------------------------------
 
   verif:

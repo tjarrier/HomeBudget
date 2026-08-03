@@ -39,6 +39,7 @@ redirection `http://localhost:3000/api/auth/callback/google`) et ses identifiant
 | `task dev` | L'application sur http://localhost:3000 |
 | `task db:up` / `db:down` | Démarre / arrête le Postgres local (port 5433) |
 | `task db:reset` | **Destructif** : détruit le volume, remigre, reseede |
+| `task db:restaurer` | Restaure une sauvegarde chiffrée en local (voir « Sauvegarder ») |
 | `task ci` | **Destructif** : rejoue localement la séquence exacte de la CI |
 
 Les tâches qui ont besoin de la base refusent de démarrer si le conteneur ne tourne
@@ -68,6 +69,34 @@ propre initiative.
   la construction, puis la migration de la base, puis la promotion, dans cet ordre.
 
 Une CI rouge bloque les deux.
+
+## Sauvegarder, et surtout restaurer
+
+Chaque nuit, le workflow **Sauvegarde de la production** dumpe la base, la chiffre, la
+restaure dans un Postgres vierge et compare une empreinte entre la production et la
+copie. L'artefact — `homebudget-<date>.sql.gz.gpg`, rétention 90 jours — n'est publié
+qu'à cette condition : une sauvegarde jamais restaurée est une hypothèse, pas une
+garantie.
+
+Le dépôt est public, donc ses artefacts sont téléchargeables par n'importe qui : le dump
+est chiffré en AES256 **avant** de toucher le disque du runner. La passphrase est le
+secret `BACKUP_PASSPHRASE`, et elle doit aussi vivre dans un gestionnaire de mots de
+passe — un secret GitHub ne se relit pas, et un dump qu'on ne sait plus déchiffrer n'est
+pas une sauvegarde.
+
+Pour restaurer, sur une base **vierge** (la commande refuse une base peuplée, et n'y
+touche pas) :
+
+```sh
+task db:down && docker volume rm homebudget_homebudget-pgdata
+task db:up
+task db:restaurer FICHIER=homebudget-2026-08-03.sql.gz.gpg   # gpg demande la passphrase
+task dev                                                     # et on lit le solde
+```
+
+C'est exactement la commande que joue le workflow chaque nuit. Une seule procédure : celle
+qui est vérifiée est celle qu'on tapera le jour où la production aura disparu. Les
+comptes-rendus des restaurations réelles sont dans [`docs/drills/`](docs/drills/).
 
 ## Le canari
 
