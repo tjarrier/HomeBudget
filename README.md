@@ -53,10 +53,11 @@ propre initiative.
 - **Un push sur une branche** lance la CI, et rien d'autre : lint, types, tests, invariants
   SQL et parcours Playwright. Pas besoin d'ouvrir une PR pour la déclencher, et quand la PR
   existe, ce run est le check qu'elle affiche.
-- **Un merge dans `main`** publie une preview sur
-  `home-budget-tjarrier-tjarriers-projects.vercel.app`, après CI verte. Le résumé du run
-  affiche l'URL et les hôtes attribués. C'est l'alias d'auteur que Vercel donne à tout
-  déploiement de la CLI ; il ne dépend pas de la branche (voir `CLAUDE.md`).
+- **Un merge dans `main`** publie une preview sur `homebudget-preview.vercel.app`, après
+  CI verte. Le résumé du run affiche l'URL et les hôtes attribués. C'est le domaine de
+  production d'un second projet Vercel, `homebudget-preview`, dont la production *est*
+  notre preview : l'hôte ne dépend ni de la branche, ni du compte qui déploie (voir
+  `CLAUDE.md`).
 - **Un tag de version** publie en production :
 
   ```sh
