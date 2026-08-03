@@ -95,7 +95,7 @@ jobs:
       # `vercel deploy --prebuilt` echoue net. Tout ce que la CLI ecrit —
       # `.vercel/project.json`, le fichier d'environnement, `.vercel/output` —
       # atterrit donc a la racine, et les etapes qui le lisent aussi.
-      - name: Tirer la configuration et les variables de Preview
+      - name: Tirer la configuration et les variables de Production du projet miroir
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       # Sans BETTER_AUTH_URL dans l'environnement Production du projet
