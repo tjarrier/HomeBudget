@@ -212,6 +212,21 @@ describe.each(WORKFLOWS_DE_DEPLOIEMENT)('%s', (_nom, contenu) => {
   it('ne laisse pas deux migrations courir sur la meme base', () => {
     expect(contenu).toContain('cancel-in-progress: false')
   })
+
+  it("aligne DATABASE_URL sur l'environnement Vercel qu'il tire", () => {
+    // Deux valeurs à tenir ensemble : l'environnement que `vercel pull` tire, et la
+    // cible que l'API se voit écrire. Les désaccorder ne casse rien tout de suite —
+    // le build réussit, avec les variables de l'autre environnement, et
+    // l'application parle à la base que personne n'a voulu.
+    //
+    // Depuis que la preview déploie sur la *production* de son propre projet, les
+    // deux workflows tirent `production`. Ce test empêche d'en changer un seul.
+    const etapes = sansCommentaires(contenu)
+    const environnement = etapes.match(/vercel pull --yes --environment=(\w+)/)?.[1]
+
+    expect(environnement).toBeDefined()
+    expect(etapes).toContain(`target:["${environnement}"]`)
+  })
 })
 
 describe('deploy-preview.yml', () => {
@@ -222,8 +237,30 @@ describe('deploy-preview.yml', () => {
     expect(preview).toContain('workflow_dispatch:')
   })
 
-  it('ne promeut jamais en production', () => {
-    expect(preview).not.toContain('--prod')
+  it('promeut sur le projet miroir, dont la production est notre preview', () => {
+    // `--prod` a longtemps ete interdit ici, et l'interdiction etait juste : elle
+    // empechait ce workflow d'ecraser la production. Ce qui a change n'est pas le
+    // drapeau, c'est le projet — `homebudget-preview` n'a qu'une production, et c'est
+    // notre preview. Ce qui protege la vraie production est desormais l'etape
+    // « Confirmer la cible », testee plus haut.
+    //
+    // Les deux drapeaux vont ensemble ou pas du tout : `vercel deploy --prebuilt
+    // --prod` refuse un artefact construit sans `--prod`.
+    const etapes = sansCommentaires(preview)
+
+    expect(etapes).toContain('vercel build --prod')
+    expect(etapes).toContain('vercel deploy --prebuilt --prod')
+  })
+
+  it("lit l'origine dans le fichier que `vercel pull` a reellement ecrit", () => {
+    // `vercel pull --environment=X` nomme le fichier `.vercel/.env.X.local`. Viser
+    // l'autre nom ne casse pas le run tout de suite : le fichier est absent, `grep`
+    // ne trouve rien, et l'étape échoue en accusant BETTER_AUTH_URL d'être absente de
+    // l'environnement Vercel — un message qui envoie chercher au mauvais endroit.
+    const etapes = sansCommentaires(preview)
+    const environnement = etapes.match(/vercel pull --yes --environment=(\w+)/)?.[1]
+
+    expect(etapes).toContain(`.vercel/.env.${environnement}.local`)
   })
 
   it("fait echouer le run des que l'alias attendu manque, sur n'importe quelle ref", () => {
