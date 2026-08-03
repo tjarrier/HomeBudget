@@ -209,8 +209,13 @@ moitié n'a pas de filet : si la migration réussit mais que la promotion échou
 jour et l'ancien code tourne encore dessus — revenir à un état cohérent est alors une décision
 humaine, pas un `if` dans le workflow.
 
-**Une seule source pour `DATABASE_URL`.** Le secret d'environment GitHub est la source ;
-chaque déploiement la recopie dans le projet Vercel avant de construire. La migration et
+**Une seule source pour `DATABASE_URL`.** Le secret GitHub est la source ; chaque
+déploiement la recopie dans le projet Vercel avant de construire. Celui de la production
+est un secret **du dépôt** et non de l'environment `Production` : le workflow de
+sauvegarde, planifié, ne peut nommer aucun environment protégé par une revue sans rester
+en attente d'approbation chaque nuit (voir « Sauvegarde »). Il n'y a donc toujours qu'un
+exemplaire de cette valeur. `Preview` garde le sien, qui surcharge celui du dépôt — c'est
+ce qui empêche une preview de pointer sur la production. La migration et
 l'application ne peuvent donc plus viser deux bases différentes — par construction, et non
 par vérification. L'étape qui comparait les deux valeurs a été retirée parce qu'elle ne
 pouvait pas fonctionner : `DATABASE_URL` est marquée *Sensitive* côté Vercel, donc
@@ -234,6 +239,57 @@ Approuver le déploiement de production, ce n'est pas seulement publier du code 
 autoriser une migration sur la base réelle. La revue se place après le vert de la CI et
 avant l'écriture.
 
+## Sauvegarde
+
+**Spec :** `docs/superpowers/specs/2026-08-02-sauvegarde-restauration-prod-design.md`
+**Drills :** `docs/drills/`
+
+`sauvegarde.yml`, chaque nuit à 02:17 UTC et à la demande. Une seule instance Postgres,
+sur une offre gratuite, et tout l'historique du couple dedans — que le Sheet ne
+reconstituerait plus : il s'arrête au 12/07/2026.
+
+**Le dépôt est public, donc l'artefact d'un run est téléchargeable par n'importe qui.**
+Le dump est chiffré (`gpg --symmetric`, AES256) *avant* de toucher le disque du runner :
+le chiffrement est le dernier maillon du tube de `scripts/sauvegarder.sh`, pas une étape
+suivante qu'on pourrait oublier. Le chemin publié est le motif `homebudget-*.sql.gz.gpg`
+et non un nom de fichier, pour qu'un `.sql` ne puisse pas partir par erreur.
+
+**Rien n'est publié qui n'ait été restauré.** Chaque run restaure sa propre sauvegarde
+dans le Postgres vierge du service, puis compare une empreinte
+(`scripts/empreinte.sql` : le compte de lignes de *chaque* table de `public` et
+`drizzle`, énumérées et non listées, puis les sommes de `depense`). L'artefact ne part
+qu'à cette condition. « La commande est sortie en 0 » ne dit rien : un dump vide se
+restaure parfaitement. Les empreintes ne sont **jamais** affichées — elles portent des
+montants, et les logs d'un dépôt public se lisent sans compte.
+
+**`task db:restaurer FICHIER=…` joue exactement le script du workflow.** Une seule
+procédure, jamais deux : celle qu'on vérifie chaque nuit est celle qu'on tapera le jour
+où la production aura disparu. La seule différence est dans `gpg` — invite interactive
+sur le poste, `--passphrase-fd` depuis le secret dans le workflow.
+
+Trois choses à ne pas « corriger » :
+
+- **`drop schema public;` est en RESTRICT, jamais `cascade`.** `pg_dump --schema=public`
+  émet `CREATE SCHEMA public;` sans `IF NOT EXISTS`, et toute base neuve en a déjà un :
+  sans ce `drop`, la restauration meurt aussitôt. Sans `cascade`, Postgres le refuse dès
+  que le schéma contient un objet, et il est dans la même transaction que le reste —
+  visée sur une base peuplée, la restauration échoue sans rien toucher. Un `cascade` ici
+  transformerait la procédure en effacement silencieux.
+- **Le dump prend `drizzle` et `--extension=btree_gist`.** Sans le premier, la copie se
+  croit vierge et le prochain `db:migrate` rejoue les huit migrations. Sans le second,
+  l'extension manque : le journal restauré déclare `0001` appliquée, donc rien ne la
+  repose, et la première migration qui la supposerait échouerait sur la base de secours,
+  et sur elle seule.
+- **Pas de `--clean`.** Un dump lâché par erreur doit échouer bruyamment, pas écraser.
+
+Les scripts de `scripts/` sont vérifiés par `bash -n` dans la suite unitaire : rien
+d'autre ne les analyse, et une apostrophe dans le message d'un `${VAR:?…}` suffit à
+rendre un script invalide — le mot y est soumis au quoting. Constaté au premier drill.
+
+À savoir : GitHub **désactive** un workflow planifié après 60 jours sans activité sur le
+dépôt, avec un mail d'avertissement avant. Et il n'y a pas d'alerting à construire — un
+run planifié qui échoue envoie un mail à l'auteur.
+
 ## Commandes
 
 Le point d'entrée est `Taskfile.yml` (`task` seul liste tout). Il n'y a pas deux
@@ -254,6 +310,8 @@ Taskfile ajoute, ce sont les prérequis qu'un script npm ne sait pas exprimer.
     task db:up           Postgres local (un conteneur)
     task db:reset        détruit, remonte, migre et seede la base — DESTRUCTIF
     task db:down         arrête Postgres
+    task db:restaurer    FICHIER=… restaure une sauvegarde chiffrée en local
+    task db:empreinte    l'empreinte de la base locale, celle que compare le workflow
     task ci              rejoue localement la séquence exacte de la CI — DESTRUCTIF
 
 Deux garde-fous y sont encodés, et ce sont les seules raisons d'utiliser `task`

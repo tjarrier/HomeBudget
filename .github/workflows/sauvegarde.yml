@@ -1,0 +1,154 @@
+name: Sauvegarde de la production
+
+# Une seule instance Postgres, sur une offre gratuite, et tout l'historique
+# financier du couple dedans. Le contenu n'est pas reconstituable : le Sheet
+# d'origine s'arrete au 12/07/2026.
+#
+# Effet de bord bienvenu : un dump quotidien compte comme activite, donc le
+# projet Supabase gratuit ne se met plus en pause au bout d'une semaine.
+#
+# A savoir : GitHub DESACTIVE un workflow planifie apres 60 jours sans activite
+# sur le depot, avec un mail d'avertissement avant. Pas d'alerting a construire
+# en revanche — GitHub ecrit a l'auteur des qu'un run planifie echoue.
+on:
+  schedule:
+    # 02:17 UTC. La minute n'est pas ronde volontairement : GitHub retarde les
+    # crons de debut d'heure, que tout le monde demande en meme temps.
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sauvegarde
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sauvegarder:
+    runs-on: ubuntu-latest
+
+    # Ce job ne declare AUCUN environment, et c'est deliberé. L'environment
+    # `Production` exige un reviewer : un run planifie qui le nommerait resterait
+    # en attente d'approbation, puis expirerait. Une sauvegarde qui demande une
+    # intervention humaine chaque nuit n'est pas une sauvegarde.
+    #
+    # `DATABASE_URL` et `BACKUP_PASSPHRASE` sont donc des secrets du DEPOT, pas
+    # d'un environment. C'est ce qui garde une source unique pour `DATABASE_URL` :
+    # un second exemplaire dans un environment `Sauvegarde` finirait par vieillir,
+    # et on sauvegarderait une base qui n'est plus la production — sans que rien
+    # ne le dise. La revue humaine, elle, n'a pas bougé : elle est portee par
+    # l'environment que declarent les workflows de deploiement, pas par le secret.
+    #
+    # Contrepartie assumee : la valeur est lisible par tout workflow du depot.
+
+    # La copie. Le meme service que la CI, et rien de sensible dedans : elle vit
+    # et meurt avec le run.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: homebudget
+          POSTGRES_PASSWORD: homebudget
+          POSTGRES_DB: homebudget
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U homebudget"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+
+    env:
+      URL_COPIE: postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # `pg_dump` ne fonctionne pas a travers le pooler Supabase en mode
+      # transaction (port 6543) : il lui faut des fonctionnalites de session. La
+      # production est forcement joignable par le pooler — la connexion directe
+      # de Supabase est en IPv6 seul et les runners GitHub sont en IPv4.
+      #
+      # On derive donc le port au lieu d'ajouter un second secret : deux secrets
+      # pour une seule base finissent toujours par diverger. Si `DATABASE_URL`
+      # est deja en 5432, la substitution ne fait rien.
+      #
+      # `add-mask` n'est pas cosmetique : GitHub masque la valeur du secret, mais
+      # la valeur DERIVEE n'est plus ce secret. Sans ce masque, un port modifie
+      # suffirait a publier les identifiants de la production dans les logs d'un
+      # depot public.
+      - name: Deriver l'URL de production en mode session
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::DATABASE_URL est absente des secrets du depot. Rien a sauvegarder."
+            exit 1
+          fi
+          session=$(printf '%s' "$DATABASE_URL" | sed -E 's#(@[^/@]+):6543#\1:5432#')
+          echo "::add-mask::$session"
+          echo "URL_PROD=$session" >> "$GITHUB_ENV"
+          echo "FICHIER=homebudget-$(date -u +%F).sql.gz.gpg" >> "$GITHUB_ENV"
+
+      # Le depot est public, donc l'artefact d'un run est telechargeable par
+      # n'importe qui. Le chiffrement n'est pas une etape suivante qu'on pourrait
+      # oublier : il est le dernier maillon du tube du script, et rien d'autre
+      # que du chiffre ne touche jamais le disque du runner.
+      - name: Sauvegarder et chiffrer
+        env:
+          DATABASE_URL: ${{ env.URL_PROD }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: ./scripts/sauvegarder.sh "$FICHIER"
+
+      # Le coeur : on ne suppose jamais qu'un dump est restaurable, on le
+      # restaure. Le script est exactement celui que `task db:restaurer` joue sur
+      # le poste — la procedure verifiee chaque nuit est celle qu'on tapera le
+      # jour ou la production aura disparu.
+      - name: Restaurer dans le Postgres vierge du run
+        env:
+          DATABASE_URL: ${{ env.URL_COPIE }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: ./scripts/restaurer.sh "$FICHIER"
+
+      # « La commande est sortie en 0 » ne dit rien : un dump vide se restaure
+      # parfaitement. C'est la lecon du run de deploiement qui s'est declare vert
+      # sans rien ecrire.
+      #
+      # Les empreintes ne sont JAMAIS affichees : elles portent le compte des
+      # depenses et la somme des parts, et les logs d'un depot public se lisent
+      # sans compte. En cas d'ecart, le run donne le nombre de lignes qui
+      # divergent — de quoi savoir qu'il faut regarder, sans rien publier. Les
+      # deux fichiers restent dans le workspace du runner, que rien ne publie.
+      - name: Comparer l'empreinte de la production et de la copie
+        run: |
+          ./scripts/empreinte.sh "$URL_PROD" > empreinte-prod.csv
+          ./scripts/empreinte.sh "$URL_COPIE" > empreinte-copie.csv
+
+          if ! diff -q empreinte-prod.csv empreinte-copie.csv > /dev/null; then
+            ecarts=$(diff empreinte-prod.csv empreinte-copie.csv | grep -c '^[<>]' || true)
+            echo "::error::La copie restauree ne correspond pas a la production : $ecarts ligne(s) d'ecart. Les empreintes ne sont pas affichees (elles contiennent des montants) — rejoue \`scripts/empreinte.sh\` en local sur les deux bases. L'artefact n'est PAS publie."
+            exit 1
+          fi
+
+          {
+            echo "## Sauvegarde verifiee"
+            echo
+            echo "- Fichier : \`$FICHIER\` ($(du -h "$FICHIER" | cut -f1), chiffre AES256)"
+            echo "- Tables comparees : $(grep -cE '^(public|drizzle),' empreinte-prod.csv)"
+            echo "- Empreinte production et copie restauree : identiques"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Publie en dernier, et seulement si la comparaison est passee : ce qui
+      # atterrit ici a deja ete restaure une fois.
+      #
+      # Le chemin est un motif `.gpg` et non le nom du fichier : il devient
+      # impossible de publier un `.sql` ou un `.sql.gz` par erreur. 90 jours est
+      # le maximum offert par GitHub.
+      - name: Publier la sauvegarde
+        uses: actions/upload-artifact@v4
+        with:
+          name: sauvegarde-chiffree
+          path: homebudget-*.sql.gz.gpg
+          retention-days: 90
+          if-no-files-found: error
