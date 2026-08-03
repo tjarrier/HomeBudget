@@ -278,6 +278,18 @@ describe('deploy-preview.yml', () => {
     expect(etapes).toMatch(/grep -qxF "\$hostname"[\s\S]*?exit 1/)
   })
 
+  it('cherche les hotes du deploiement sans presupposer leur suffixe', () => {
+    // Le controle filtrait la sortie de `vercel inspect` sur `.vercel.app`. Le jour
+    // ou l'origine annoncee a Google est devenue un domaine a nous, il ne pouvait
+    // plus la contenir *par construction* : il a echoue sur un deploiement sain, et
+    // aurait echoue a chaque run suivant. Un filtre par suffixe ne survit pas a un
+    // changement de suffixe — il n'y en a plus.
+    const etapes = sansCommentaires(preview)
+
+    expect(etapes).not.toContain('.vercel.app')
+    expect(etapes).toContain("jq -r '.alias[]?'")
+  })
+
   it('refuse de continuer si VERCEL_PROJECT_ID ne designe pas le projet miroir', () => {
     // `--prod` dans le workflow de preview n'est correct que parce que le projet visé
     // n'est pas celui de la production : `home-budget-preview` n'a qu'une production,
