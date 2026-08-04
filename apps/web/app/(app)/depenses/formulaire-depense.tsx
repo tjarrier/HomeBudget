@@ -168,6 +168,23 @@ export function FormulaireDepense({
     if (etat) setMessageApercu(null)
   }, [etat])
 
+  // Le formulaire n'est jamais remonte apres un succes (meme position dans
+  // l'arbre, pas de `key`) : les champs CONTROLES survivent tels quels a la
+  // soumission, le vidage automatique de React 19 ne s'applique pas ici.
+  // Vider `montant` desarme un second clic — le champ est `required`, le
+  // navigateur refuse une soumission vide — et fait disparaitre l'apercu
+  // (effet ci-dessus, des que `montant` ou `description` est vide) : c'est
+  // le seul retour visuel de la reussite, pas un effet de bord. Sans ce
+  // vidage, un second clic redouble un reglement deja effectue : les parts
+  // sont figees pour toujours (snapshot on write) et rien ne permet de
+  // corriger ou d'annuler tant que l'issue #40 n'est pas livree.
+  useEffect(() => {
+    if (etat?.ok) {
+      setMontant('')
+      setDescription('')
+    }
+  }, [etat])
+
   function soumettreDepense(form: FormData) {
     posthog.capture('expense_submission_started', {
       expense_type: type,

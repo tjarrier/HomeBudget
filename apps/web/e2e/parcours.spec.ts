@@ -334,6 +334,12 @@ test.describe('parcours authentifies', () => {
    * dette. Tout test place apres lui qui lirait le solde lirait zero, et le
    * canari du seed ne serait plus lisible nulle part. Les parcours telephone qui
    * suivent ne touchent ni au solde ni aux depenses.
+   *
+   * Ca ne tient que par coincidence de nommage : Playwright ordonne les
+   * fichiers alphabetiquement (workers: 1), et `parcours.spec.ts` est
+   * justement le dernier fichier de la suite dans cet ordre. Un futur fichier
+   * trie apres lui (ex. `solde.spec.ts`, `regressions.spec.ts`) lirait un
+   * solde nul des son premier test.
    */
   test('regler les comptes met le solde a zero', async ({ page }) => {
     await page.goto('/')
