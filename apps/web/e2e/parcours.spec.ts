@@ -287,6 +287,99 @@ test.describe('parcours authentifies', () => {
     expect(await page.getByTestId('liste-depenses').textContent()).toBe(partsAvant)
   })
 
+  /**
+   * Le pre-remplissage seul, SANS ecrire (issue #26).
+   *
+   * Il lit le solde affiche, puis verifie que le formulaire propose EXACTEMENT
+   * ce montant-la. Aucun chiffre n'est grave dans le test : les ecritures des
+   * parcours precedents ont deja fait bouger le solde du seed.
+   */
+  test('regler les comptes pre-remplit un transfert du solde exact', async ({ page }) => {
+    await page.goto('/')
+    const solde = await soldeEnCentimes(page)
+    // Sans dette, il n'y a rien a pre-remplir et le test ne verifie rien.
+    expect(solde).toBeGreaterThan(0)
+
+    await page.goto('/depenses?regler=1')
+
+    // Les centimes sont recomposes A LA MAIN plutot qu'en important
+    // `parserEurosSaisis` : ce test doit pouvoir DETECTER une divergence de
+    // format, pas la confirmer par construction en rejouant la meme fonction.
+    const saisi = await page.locator('input[name="montant"]').inputValue()
+    // `\s` seul suffit : `formaterMontant` a deja remplace les espaces
+    // insecables d'Intl par des espaces ordinaires.
+    const [euros, centimes] = saisi.replace(/\s/g, '').split(',')
+    expect(Number(euros) * 100 + Number(centimes)).toBe(solde)
+
+    // Le payeur est le DEBITEUR — le piege documente de CLAUDE.md. Le seed part
+    // de « Liz doit 1 145,80 € a Thomas » et aucun parcours precedent n'inverse
+    // ce sens : Liz reste debitrice. La ligne de resume du formulaire replie dit
+    // le payeur et le type sans qu'on ait a deplier.
+    await expect(page.getByText(/payé par Liz · transfert/)).toBeVisible()
+
+    // La preuve du sens, avant toute ecriture, en CENTIMES : `<data value>` porte
+    // la valeur exacte, jamais l'euro formate. La totalite va au credit de Thomas.
+    await expect(page.getByTestId('apercu-liz')).toHaveAttribute('value', '0')
+    await expect(page.getByTestId('apercu-thomas')).toHaveAttribute('value', String(solde))
+
+    // La description est posee, sinon l'apercu ne se declencherait pas (il exige
+    // montant ET description) et le champ `required` bloquerait la validation.
+    await expect(page.locator('input[name="description"]')).toHaveValue('Règlement des comptes')
+  })
+
+  /**
+   * LE critere de l'issue #26 : « apres validation, le solde tombe a zero ».
+   *
+   * DERNIERE ECRITURE DU FICHIER, et ce n'est pas negociable : ce test solde la
+   * dette. Tout test place apres lui qui lirait le solde lirait zero, et le
+   * canari du seed ne serait plus lisible nulle part. Les parcours telephone qui
+   * suivent ne touchent ni au solde ni aux depenses.
+   *
+   * Ca ne tient que par coincidence de nommage : Playwright ordonne les
+   * fichiers alphabetiquement (workers: 1), et `parcours.spec.ts` est
+   * justement le dernier fichier de la suite dans cet ordre. Un futur fichier
+   * trie apres lui (ex. `solde.spec.ts`, `regressions.spec.ts`) lirait un
+   * solde nul des son premier test.
+   */
+  test('regler les comptes met le solde a zero', async ({ page }) => {
+    await page.goto('/')
+    const solde = await soldeEnCentimes(page)
+    expect(solde).toBeGreaterThan(0)
+
+    await page.getByRole('link', { name: 'Régler les comptes' }).click()
+    await expect(page).toHaveURL('/depenses?regler=1')
+
+    // Le sens du transfert, a l'ecran et en centimes, AVANT l'ecriture : la
+    // totalite au credit de Thomas, rien pour Liz qui verse. C'est cet apercu
+    // qui tient lieu de confirmation — il est calcule par la meme fonction que
+    // l'ecriture, donc il ne peut pas diverger d'elle.
+    await expect(page.getByTestId('apercu-liz')).toHaveAttribute('value', '0')
+    await expect(page.getByTestId('apercu-thomas')).toHaveAttribute('value', String(solde))
+
+    await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
+    await expect(page.getByTestId('liste-depenses')).toContainText('Règlement des comptes')
+
+    // Les champs sont CONTROLES : sans le desarmement de formulaire-depense.tsx,
+    // ils survivraient tels quels a la soumission. Vider `montant` est ce qui
+    // empeche un second clic — le champ est `required`, le navigateur refuse une
+    // soumission vide — et la disparition de l'apercu est le SEUL retour visuel,
+    // a l'ecran, que l'ecriture a eu lieu. Un reglement redouble serait
+    // irreversible : les parts sont figees pour toujours (snapshot on write) et
+    // rien ne permet de corriger ou d'annuler tant que l'issue #40 n'est pas livree.
+    await expect(page.locator('input[name="montant"]')).toHaveValue('')
+    await expect(page.getByTestId('apercu-parts')).toHaveCount(0)
+
+    await page.goto('/')
+    // NE PAS utiliser soldeEnCentimes() ici : a zero, le bandeau n'a plus de
+    // <data>. Cette phrase EST l'assertion exacte — `synthese()` ne rend
+    // 'a-jour' que si soldeThomas vaut exactement 0.
+    await expect(page.getByTestId('phrase-synthese')).toHaveText('Vous êtes à jour')
+
+    // Plus rien a regler : le bouton n'existe plus. Un bouton qui ne fait rien
+    // inviterait a creer un transfert de zero.
+    await expect(page.getByRole('link', { name: 'Régler les comptes' })).toHaveCount(0)
+  })
+
   // Le viewport par defaut de Chromium (1280x720) affiche le rail lateral : les
   // deux defauts de l'issue #13 n'y existent tout simplement pas. Ces trois
   // parcours-la n'ont donc de sens qu'a la taille d'un telephone.
