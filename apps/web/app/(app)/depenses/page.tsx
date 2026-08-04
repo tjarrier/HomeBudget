@@ -4,6 +4,7 @@ import { LigneDepense } from '@/components/ligne-depense'
 import { exigerSession } from '@/lib/session'
 import { listerDepenses } from '@homebudget/db'
 import { FormulaireDepense } from './formulaire-depense'
+import { FormulaireGeneration } from './formulaire-generation'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,8 +42,11 @@ export default async function Depenses() {
 
         {/* `sticky` : la saisie reste a portee quand l'historique s'allonge.
             Neutralise sous lg, ou les deux colonnes s'empilent. */}
-        <div className="lg:sticky lg:top-5">
+        <div className="flex flex-col gap-6 lg:sticky lg:top-5">
           <FormulaireDepense personne={session.personne} />
+          {/* Sous la saisie, et non au-dessus : on ouvre cet ecran pour saisir
+              une depense, pas pour generer un loyer une fois par mois. */}
+          <FormulaireGeneration personne={session.personne} />
         </div>
       </div>
     </>

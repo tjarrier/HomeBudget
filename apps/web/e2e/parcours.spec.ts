@@ -142,6 +142,47 @@ test.describe('parcours authentifies', () => {
     })
   }
 
+  /**
+   * La generation mensuelle, de bout en bout. Un seul passage, pas un par
+   * taille d'ecran : le second trouverait le mois deja genere et l'assertion
+   * « Charge générée » tomberait a juste titre.
+   *
+   * Place APRES les deux canaris et le parcours de saisie, comme toute ecriture.
+   */
+  test('generer la charge du mois, deux fois, ne l ecrit qu une fois', async ({ page }) => {
+    await page.goto('/')
+    const soldeAvant = await soldeEnCentimes(page)
+
+    await page.goto('/depenses')
+    await page.fill('input[name="mois"]', '2026-08')
+    await page.selectOption('#payeParGeneration', 'thomas')
+    await page.getByRole('button', { name: 'Générer la charge' }).click()
+
+    const resultat = page.getByTestId('resultat-generation')
+    await expect(resultat).toContainText('Charge générée')
+    // Le total des charges communes de la version en vigueur, et rien d'autre.
+    await expect(resultat).toContainText('1 073,59 €')
+
+    // Dans la liste, elle se distingue d'une saisie a la main (issue #24).
+    const liste = page.getByTestId('liste-depenses')
+    await expect(liste).toContainText('Loyer + charges août 2026')
+    await expect(liste).toContainText('générée')
+
+    await page.goto('/')
+    const soldeApres = await soldeEnCentimes(page)
+    expect(soldeApres).not.toBe(soldeAvant)
+
+    // Le second declenchement : l'ecran le DIT, et le solde ne bouge pas d'un
+    // centime. C'est le critere de l'issue #23, verifie a l'ecran.
+    await page.goto('/depenses')
+    await page.fill('input[name="mois"]', '2026-08')
+    await page.getByRole('button', { name: 'Générer la charge' }).click()
+    await expect(page.getByTestId('resultat-generation')).toContainText('déjà généré')
+
+    await page.goto('/')
+    expect(await soldeEnCentimes(page)).toBe(soldeApres)
+  })
+
   test.describe('borne haute de la date de depense (issue #29)', () => {
     // Calculee INDEPENDAMMENT de `dateMaxDepense` (le domaine) : ce test doit
     // rester capable de detecter une divergence entre les deux, pas la

@@ -24,6 +24,17 @@ const TYPES: readonly string[] = ['charge_fixe', 'courante', 'transfert']
 const MODES: readonly string[] = ['prorata', 'moitie', 'personnalise', 'transfert']
 
 /**
+ * Le payeur, valide a la frontiere. Extrait de `normaliser` parce que la
+ * generation mensuelle n'a pas de depense a normaliser — juste un mois et un
+ * payeur — mais a exactement le meme besoin : `payePar` finit en `Personne`
+ * par une assertion de type, que rien ne verifie a l'execution.
+ */
+export function personneSaisie(valeur: string): Personne {
+  if (!PERSONNES.includes(valeur)) throw new Error(`Payeur inconnu : ${valeur}`)
+  return valeur as Personne
+}
+
+/**
  * Validation de la frontiere : le navigateur peut envoyer n'importe quoi.
  * On convertit en centimes ICI, une fois — aucun flottant ne va plus loin.
  *
@@ -34,7 +45,7 @@ const MODES: readonly string[] = ['prorata', 'moitie', 'personnalise', 'transfer
  * ne peut pas afficher une repartition que l'ecriture refuserait.
  */
 export function normaliser(brut: SaisieBrute): SaisieDepense {
-  if (!PERSONNES.includes(brut.payePar)) throw new Error(`Payeur inconnu : ${brut.payePar}`)
+  const payePar = personneSaisie(brut.payePar)
   if (!TYPES.includes(brut.type)) throw new Error(`Type de dépense inconnu : ${brut.type}`)
   if (!MODES.includes(brut.mode)) throw new Error(`Mode de répartition inconnu : ${brut.mode}`)
   if (!brut.description.trim()) throw new Error('La description ne peut pas être vide.')
@@ -69,7 +80,7 @@ export function normaliser(brut: SaisieBrute): SaisieDepense {
     date: brut.date,
     description: brut.description.trim(),
     montant: parserEurosSaisis(brut.montant),
-    payePar: brut.payePar as Personne,
+    payePar,
     type: brut.type as TypeDepense,
     mode,
     // `exactOptionalPropertyTypes` interdit d'assigner `undefined` a une cle

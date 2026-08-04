@@ -24,6 +24,25 @@ export function formaterMontantSigne(c: Cents, avecSignePositif: boolean): strin
 }
 
 /**
+ * Aujourd'hui, en date ISO, d'apres l'horloge LOCALE du navigateur.
+ *
+ * `toISOString()` daterait en UTC : saisi a 23 h a Paris, le champ proposerait
+ * demain — et le 1er du mois a 1 h, le selecteur de mois proposerait le mois
+ * precedent. Un `<input type="date">` comme un `<input type="month">` attendent
+ * la date locale de celui qui saisit.
+ *
+ * Le pendant serveur est `aujourdhuiIso()` (packages/db), qui lit en UTC. Les
+ * deux peuvent differer de quelques heures : sans consequence sur une fenetre
+ * d'un an, et le serveur reste la seule autorite.
+ */
+export function aujourdhuiLocal(): string {
+  const maintenant = new Date()
+  const mois = String(maintenant.getMonth() + 1).padStart(2, '0')
+  const jour = String(maintenant.getDate()).padStart(2, '0')
+  return `${maintenant.getFullYear()}-${mois}-${jour}`
+}
+
+/**
  * `2026-07-05` -> `05/07/2026`. Decoupage de chaine, jamais `new Date()` :
  * un objet Date porte un fuseau et decalerait la date d'un jour.
  */

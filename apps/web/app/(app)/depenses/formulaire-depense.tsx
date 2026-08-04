@@ -12,18 +12,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { formaterDate } from '@/lib/format'
+import { aujourdhuiLocal, formaterDate } from '@/lib/format'
 import { type Personne, type TypeDepense, dateMaxDepense, modeParDefaut } from '@homebudget/domain'
 import { useActionState, useEffect, useState } from 'react'
-
-// `toISOString()` daterait en UTC : saisi a 23 h a Paris, le champ proposerait
-// demain. Un `<input type="date">` attend la date locale de celui qui saisit.
-const AUJOURDHUI = () => {
-  const maintenant = new Date()
-  const mois = String(maintenant.getMonth() + 1).padStart(2, '0')
-  const jour = String(maintenant.getDate()).padStart(2, '0')
-  return `${maintenant.getFullYear()}-${mois}-${jour}`
-}
 
 const LIBELLE_TYPE: Record<TypeDepense, string> = {
   courante: 'courante',
@@ -41,7 +32,7 @@ const LIBELLE_MODE: Record<string, string> = {
 export function FormulaireDepense({ personne }: { personne: Personne }) {
   const [etat, action, enCours] = useActionState(ajouterDepenseAction, null)
 
-  const [date, setDate] = useState(AUJOURDHUI)
+  const [date, setDate] = useState(aujourdhuiLocal)
   const [description, setDescription] = useState('')
   const [montant, setMontant] = useState('')
   // Pre-rempli avec la personne connectee : dans neuf cas sur dix, on saisit
@@ -80,15 +71,15 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
   // "Ajouter la depense" apparemment inerte. On refuse donc de replier tant
   // que la date depasse la borne, pour que l'erreur reste visible et focalisable.
   function replier() {
-    if (!date) setDate(AUJOURDHUI())
-    if (date > dateMaxDepense(AUJOURDHUI())) return
+    if (!date) setDate(aujourdhuiLocal())
+    if (date > dateMaxDepense(aujourdhuiLocal())) return
     setDetailsOuverts(false)
   }
 
   // La ligne de resume DIT TOUJOURS LA VERITE sur ce qui sera enregistre :
   // rien n'est derive d'un contexte fige, tout vient de l'etat courant.
   function construireResume(): string {
-    const dateTxt = date === AUJOURDHUI() ? "Aujourd'hui" : formaterDate(date)
+    const dateTxt = date === aujourdhuiLocal() ? "Aujourd'hui" : formaterDate(date)
     const payeurTxt = `payé par ${payePar === 'thomas' ? 'Thomas' : 'Liz'}`
     // Cas transfert : type et mode valent tous deux `transfert` — on n'affiche
     // qu'une fois `transfert`, jamais « transfert, transfert ».
@@ -212,13 +203,13 @@ export function FormulaireDepense({ personne }: { personne: Personne }) {
                 // le serveur reste la seule autorite (`verifierDatePlausible`,
                 // appelee par `calculerPartsPourSaisie`). La regle n'est pas
                 // dupliquee — c'est la MEME fonction du domaine des deux cotes,
-                // seule la lecture de l'horloge differe : `AUJOURDHUI()` ici en
+                // seule la lecture de l'horloge differe : `aujourdhuiLocal()` ici en
                 // LOCAL, `aujourdhuiIso()` cote serveur en UTC. Entre 0 h et 2 h
                 // a Paris, la borne du navigateur peut donc valoir un jour de
                 // plus que celle du serveur, qui refusera alors une date que le
                 // selecteur avait laisse choisir. Connu et sans danger dans ce
                 // sens : rien de faux ne s'ecrit, l'apercu explique le refus.
-                max={dateMaxDepense(AUJOURDHUI())}
+                max={dateMaxDepense(aujourdhuiLocal())}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />

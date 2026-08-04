@@ -33,6 +33,16 @@ export function LigneDepense({
             </>
           ) : null}
           <BadgeType type={depense.type} />
+          {/* La PROVENANCE, pas une categorie de plus : le badge dit ce qu'est
+              la depense, ce mot dit qui l'a ecrite. D'ou un mot en `text-faint`
+              plutot qu'une seconde pastille — et surtout pas une couleur, qui
+              coderait un sens que le libelle porte deja (DESIGN.md, regle 2). */}
+          {depense.genereAuto ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="text-faint">générée</span>
+            </>
+          ) : null}
           {/* Parts LUES, jamais recalculees a l'affichage. */}
           <span className="whitespace-nowrap">
             T <Montant cents={depense.parts.thomas} niveau="discret" /> / L{' '}
