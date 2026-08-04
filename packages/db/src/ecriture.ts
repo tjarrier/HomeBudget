@@ -8,6 +8,7 @@ import {
   type TypeDepense,
   type VersionConfig,
   calculerParts,
+  genererChargeFixe,
   ratioThomas,
   verifierDatePlausible,
   versionEnVigueurLe,
@@ -118,6 +119,83 @@ export async function ajouterDepense(saisie: SaisieDepense): Promise<Depense> {
   const ligne = lignes[0]
   if (!ligne) throw new Error("L'insertion de la depense n'a rien renvoye.")
   return depenseDepuisLigne(ligne)
+}
+
+export interface ChargeGeneree {
+  depense: Depense
+  /** `false` : le mois etait deja genere, rien n'a ete ecrit. */
+  creee: boolean
+}
+
+/**
+ * Ecrit la charge fixe d'un mois, une fois et une seule.
+ *
+ * Le montant, la date et les parts viennent tous de `genererChargeFixe` : cette
+ * fonction n'a AUCUNE opinion dessus. En particulier elle ne choisit pas la
+ * version — sur un mois de bascule, la charge est datee du jour de prise
+ * d'effet, et c'est le domaine qui le sait.
+ *
+ * L'idempotence est celle de l'index `depense_une_charge_generee_par_mois`
+ * (migration 0008), pas d'un `select` prealable : entre un `select` et un
+ * `insert`, deux clics simultanes passent tous les deux. `onConflictDoNothing`
+ * laisse la base trancher, et on relit la ligne qui a gagne.
+ */
+export async function genererChargeFixeDuMois(
+  /** ISO YYYY-MM. */
+  mois: string,
+  payePar: Personne,
+): Promise<ChargeGeneree> {
+  const versions = await listerVersions()
+  const brouillon = genererChargeFixe(versions, mois, payePar)
+
+  // Meme borne haute que la saisie manuelle (#29) : generer « 2036-07 » au lieu
+  // de « 2026-07 » ecrirait une charge figee pour toujours a dix ans de la.
+  // `genererChargeFixe` ne la tient pas — il trouverait la version courante,
+  // qui est ouverte, et generait sans broncher.
+  verifierDatePlausible(brouillon.date, aujourdhuiIso())
+
+  const lignes = await db
+    .insert(depense)
+    .values({
+      date: brouillon.date,
+      description: brouillon.description,
+      montantCents: brouillon.montant,
+      payePar: brouillon.payePar,
+      type: brouillon.type,
+      modeRepartition: brouillon.mode,
+      partThomasCents: brouillon.parts.thomas,
+      partLizCents: brouillon.parts.liz,
+      versionConfigId: brouillon.versionConfigId,
+      // La seule ecriture du projet qui pose ce drapeau. C'est lui qui met la
+      // ligne sous l'index d'unicite, et qui permettra a l'UI (#24) de la
+      // distinguer d'une saisie a la main.
+      genereAuto: true,
+      commentaire: null,
+    })
+    // Sans cible : la seule contrainte d'unicite que cette ligne puisse violer
+    // est l'index partiel du mois (la cle primaire est un uuid genere). Un CHECK
+    // ou un trigger, eux, continuent de jeter — on n'avale que le doublon.
+    .onConflictDoNothing()
+    .returning()
+
+  const creee = lignes[0]
+  if (creee) return { depense: depenseDepuisLigne(creee), creee: true }
+
+  // Rien insere : le mois etait deja genere. On relit par la MEME expression que
+  // l'index, pour ne pas avoir deux definitions de « le mois de cette date ».
+  const existantes = await db
+    .select()
+    .from(depense)
+    .where(
+      sql`${depense.genereAuto} and date_trunc('month', ${depense.date}::timestamp) = date_trunc('month', ${brouillon.date}::date::timestamp)`,
+    )
+  const existante = existantes[0]
+  if (!existante) {
+    throw new Error(
+      `Charge de ${mois} : l'insertion n'a rien ecrit et aucune charge generee n'existe pour ce mois.`,
+    )
+  }
+  return { depense: depenseDepuisLigne(existante), creee: false }
 }
 
 export interface SaisieVersion {

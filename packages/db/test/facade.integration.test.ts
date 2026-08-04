@@ -2,7 +2,7 @@ import { formaterEuros, genererChargeFixe, phraseSynthese, resumer } from '@home
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { db, pool } from '../src/client.js'
-import { ajouterDepense, creerVersion } from '../src/ecriture.js'
+import { ajouterDepense, creerVersion, genererChargeFixeDuMois } from '../src/ecriture.js'
 import { VERSIONS_INITIALES, importerDepenses } from '../src/import-sheet.js'
 import { listerDepenses, listerVersions } from '../src/lecture.js'
 import { depense } from '../src/schema.js'
@@ -349,32 +349,32 @@ describe('creerVersion', () => {
  * charge figee par la mauvaise version somme toujours au bon montant, donc seul
  * un ratio different la trahit.
  */
-describe('LE MOIS DE BASCULE — revision au 15 du mois', () => {
-  const V1 = {
-    libelle: 'v1 — loyer 785',
-    dateDebut: '2026-01-01',
-    salaireNetThomas: 300000,
-    salaireNetLiz: 100000,
-    chargesCommunes: [
-      { libelle: 'Loyer', montant: 78500 },
-      { libelle: 'Divers', montant: 10000 },
-    ],
-    chargesPersoThomas: [],
-    chargesPersoLiz: [],
-  }
-  const V2 = {
-    libelle: 'v2 — loyer 791, au 15 juillet',
-    dateDebut: '2026-07-15',
-    salaireNetThomas: 100000,
-    salaireNetLiz: 300000,
-    chargesCommunes: [
-      { libelle: 'Loyer', montant: 79100 },
-      { libelle: 'Divers', montant: 10000 },
-    ],
-    chargesPersoThomas: [],
-    chargesPersoLiz: [],
-  }
+const V1 = {
+  libelle: 'v1 — loyer 785',
+  dateDebut: '2026-01-01',
+  salaireNetThomas: 300000,
+  salaireNetLiz: 100000,
+  chargesCommunes: [
+    { libelle: 'Loyer', montant: 78500 },
+    { libelle: 'Divers', montant: 10000 },
+  ],
+  chargesPersoThomas: [],
+  chargesPersoLiz: [],
+}
+const V2 = {
+  libelle: 'v2 — loyer 791, au 15 juillet',
+  dateDebut: '2026-07-15',
+  salaireNetThomas: 100000,
+  salaireNetLiz: 300000,
+  chargesCommunes: [
+    { libelle: 'Loyer', montant: 79100 },
+    { libelle: 'Divers', montant: 10000 },
+  ],
+  chargesPersoThomas: [],
+  chargesPersoLiz: [],
+}
 
+describe('LE MOIS DE BASCULE — revision au 15 du mois', () => {
   /** Genere la charge du mois puis l'ECRIT — le brouillon ne prouve rien seul. */
   async function genererEtEcrire(mois: string) {
     const genere = genererChargeFixe(await listerVersions(), mois, 'thomas')
@@ -451,6 +451,104 @@ describe('LE MOIS DE BASCULE — revision au 15 du mois', () => {
     expect(mauvaise.versionConfigId).toBe(v1.id)
     // Le miroir exact des parts attendues : montant neuf, ratio ancien.
     expect(mauvaise.parts).toEqual({ thomas: 66825, liz: 22275 })
+  })
+})
+
+describe('genererChargeFixeDuMois — idempotence', () => {
+  it('ecrit la charge du mois, marquee genereAuto', async () => {
+    await creerVersion(V1)
+
+    const { depense: d, creee } = await genererChargeFixeDuMois('2026-05', 'thomas')
+
+    expect(creee).toBe(true)
+    expect(d.genereAuto).toBe(true) // la seule ecriture du projet qui le pose
+    expect(d.date).toBe('2026-05-01')
+    expect(d.montant).toBe(88500)
+    expect(d.parts).toEqual({ thomas: 66375, liz: 22125 })
+    expect(d.type).toBe('charge_fixe')
+  })
+
+  it('declenchee deux fois sur le meme mois, ne double pas les charges', async () => {
+    await creerVersion(V1)
+
+    const premier = await genererChargeFixeDuMois('2026-05', 'thomas')
+    const second = await genererChargeFixeDuMois('2026-05', 'thomas')
+
+    expect(second.creee).toBe(false)
+    // La MEME ligne, pas une copie : l'id vient de la base.
+    expect(second.depense.id).toBe(premier.depense.id)
+
+    const toutes = await listerDepenses()
+    expect(toutes).toHaveLength(1)
+    // Le critere de l'enonce : le solde ne bouge pas d'un centime.
+    expect(resumer(toutes).soldeThomas).toBe(resumer([premier.depense]).soldeThomas)
+  })
+
+  it('cinq declenchements de suite laissent une seule ligne', async () => {
+    await creerVersion(V1)
+
+    for (let i = 0; i < 5; i++) await genererChargeFixeDuMois('2026-05', 'thomas')
+
+    expect(await listerDepenses()).toHaveLength(1)
+  })
+
+  it('sur un mois de bascule, la seconde generation n ajoute pas de ligne au 1er', async () => {
+    // Le piege propre a l'index : la charge de juillet est datee du 15, pas du
+    // 1er. Une unicite posee sur la DATE laisserait passer une seconde ligne des
+    // que la date changerait. La cle est le mois.
+    await creerVersion(V1)
+    await creerVersion(V2)
+
+    const premier = await genererChargeFixeDuMois('2026-07', 'thomas')
+    expect(premier.depense.date).toBe('2026-07-15')
+
+    const second = await genererChargeFixeDuMois('2026-07', 'thomas')
+    expect(second.creee).toBe(false)
+    expect(second.depense.id).toBe(premier.depense.id)
+    expect(await listerDepenses()).toHaveLength(1)
+  })
+
+  it('genere des mois DIFFERENTS sans se bloquer elle-meme', async () => {
+    await creerVersion(V1)
+
+    await genererChargeFixeDuMois('2026-04', 'thomas')
+    await genererChargeFixeDuMois('2026-05', 'thomas')
+    await genererChargeFixeDuMois('2026-06', 'thomas')
+
+    expect((await listerDepenses()).map((d) => d.date)).toEqual([
+      '2026-06-01',
+      '2026-05-01',
+      '2026-04-01',
+    ])
+  })
+
+  it('ne gene pas une charge fixe saisie A LA MAIN le meme mois', async () => {
+    // L'index est PARTIEL. Une regularisation d'eau saisie en mai reste possible,
+    // sans quoi la generation confisquerait le type `charge_fixe` pour tout le mois.
+    await creerVersion(V1)
+    await genererChargeFixeDuMois('2026-05', 'thomas')
+
+    await ajouterDepense({
+      date: '2026-05-20',
+      description: 'Regularisation eau',
+      montant: 4200,
+      payePar: 'liz',
+      type: 'charge_fixe',
+      mode: 'prorata',
+    })
+
+    const toutes = await listerDepenses()
+    expect(toutes).toHaveLength(2)
+    expect(toutes.filter((d) => d.genereAuto)).toHaveLength(1)
+  })
+
+  it('refuse un mois trop lointain, avant toute ecriture', async () => {
+    // La coquille d'annee de #29 : « 2036-07 » au lieu de « 2026-07 ». La version
+    // courante est ouverte, donc le domaine generait sans broncher.
+    await creerVersion(V1)
+
+    await expect(genererChargeFixeDuMois('2036-07', 'thomas')).rejects.toThrow(/trop lointaine/i)
+    expect(await listerDepenses()).toHaveLength(0)
   })
 })
 
