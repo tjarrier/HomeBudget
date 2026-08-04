@@ -3,7 +3,7 @@
 import posthog from 'posthog-js'
 import { useEffect } from 'react'
 
-import { initializePostHog } from '@/components/posthog-provider'
+import { initializePostHog } from '@/components/posthog'
 
 export default function GlobalError({
   error,

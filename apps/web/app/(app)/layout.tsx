@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { Marque } from '@/components/marque'
 import { MenuCompte } from '@/components/menu-compte'
 import { NavPrincipale } from '@/components/nav-principale'
-import { PostHogIdentify } from '@/components/posthog-provider'
+import { PostHogIdentify } from '@/components/posthog'
 import { exigerSession } from '@/lib/session'
 
 /**
