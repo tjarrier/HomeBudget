@@ -287,6 +287,46 @@ test.describe('parcours authentifies', () => {
     expect(await page.getByTestId('liste-depenses').textContent()).toBe(partsAvant)
   })
 
+  /**
+   * Le pre-remplissage seul, SANS ecrire (issue #26).
+   *
+   * Il lit le solde affiche, puis verifie que le formulaire propose EXACTEMENT
+   * ce montant-la. Aucun chiffre n'est grave dans le test : les ecritures des
+   * parcours precedents ont deja fait bouger le solde du seed.
+   */
+  test('regler les comptes pre-remplit un transfert du solde exact', async ({ page }) => {
+    await page.goto('/')
+    const solde = await soldeEnCentimes(page)
+    // Sans dette, il n'y a rien a pre-remplir et le test ne verifie rien.
+    expect(solde).toBeGreaterThan(0)
+
+    await page.goto('/depenses?regler=1')
+
+    // Les centimes sont recomposes A LA MAIN plutot qu'en important
+    // `parserEurosSaisis` : ce test doit pouvoir DETECTER une divergence de
+    // format, pas la confirmer par construction en rejouant la meme fonction.
+    const saisi = await page.locator('input[name="montant"]').inputValue()
+    // `\s` seul suffit : `formaterMontant` a deja remplace les espaces
+    // insecables d'Intl par des espaces ordinaires.
+    const [euros, centimes] = saisi.replace(/\s/g, '').split(',')
+    expect(Number(euros) * 100 + Number(centimes)).toBe(solde)
+
+    // Le payeur est le DEBITEUR — le piege documente de CLAUDE.md. Le seed part
+    // de « Liz doit 1 145,80 € a Thomas » et aucun parcours precedent n'inverse
+    // ce sens : Liz reste debitrice. La ligne de resume du formulaire replie dit
+    // le payeur et le type sans qu'on ait a deplier.
+    await expect(page.getByText(/payé par Liz · transfert/)).toBeVisible()
+
+    // La preuve du sens, avant toute ecriture, en CENTIMES : `<data value>` porte
+    // la valeur exacte, jamais l'euro formate. La totalite va au credit de Thomas.
+    await expect(page.getByTestId('apercu-liz')).toHaveAttribute('value', '0')
+    await expect(page.getByTestId('apercu-thomas')).toHaveAttribute('value', String(solde))
+
+    // La description est posee, sinon l'apercu ne se declencherait pas (il exige
+    // montant ET description) et le champ `required` bloquerait la validation.
+    await expect(page.locator('input[name="description"]')).toHaveValue('Règlement des comptes')
+  })
+
   // Le viewport par defaut de Chromium (1280x720) affiche le rail lateral : les
   // deux defauts de l'issue #13 n'y existent tout simplement pas. Ces trois
   // parcours-la n'ont donc de sens qu'a la taille d'un telephone.

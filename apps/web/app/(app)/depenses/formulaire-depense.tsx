@@ -12,8 +12,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { aujourdhuiLocal, formaterDate } from '@/lib/format'
-import { type Personne, type TypeDepense, dateMaxDepense, modeParDefaut } from '@homebudget/domain'
+import { aujourdhuiLocal, formaterDate, montantPourSaisie } from '@/lib/format'
+import {
+  type Cents,
+  type Personne,
+  type TypeDepense,
+  dateMaxDepense,
+  modeParDefaut,
+} from '@homebudget/domain'
 import posthog from 'posthog-js'
 import { useActionState, useEffect, useState } from 'react'
 
@@ -30,18 +36,36 @@ const LIBELLE_MODE: Record<string, string> = {
   transfert: 'transfert',
 }
 
-export function FormulaireDepense({ personne }: { personne: Personne }) {
+export function FormulaireDepense({
+  personne,
+  reglement,
+}: {
+  personne: Personne
+  /**
+   * Pose par « Régler les comptes » (issue #26) : le solde courant et la
+   * personne qui le DOIT. `| undefined` explicite — `exactOptionalPropertyTypes`
+   * refuse qu'on passe `undefined` a un prop simplement optionnel.
+   */
+  reglement?: { montant: Cents; payePar: Personne } | undefined
+}) {
   const [etat, action, enCours] = useActionState(ajouterDepenseAction, null)
 
+  // Un reglement est un TRANSFERT : `type` et `mode` valent tous deux
+  // `transfert`, et `normaliser()` refuse toute combinaison croisee. La
+  // constante evite de repeter le ternaire sur les deux etats.
+  const typeInitial: TypeDepense = reglement ? 'transfert' : 'courante'
+
   const [date, setDate] = useState(aujourdhuiLocal)
-  const [description, setDescription] = useState('')
-  const [montant, setMontant] = useState('')
+  const [description, setDescription] = useState(reglement ? 'Règlement des comptes' : '')
+  const [montant, setMontant] = useState(reglement ? montantPourSaisie(reglement.montant) : '')
   // Pre-rempli avec la personne connectee : dans neuf cas sur dix, on saisit
-  // ce qu'on vient de payer soi-meme. Le champ reste modifiable.
-  const [payePar, setPayePar] = useState<string>(personne)
-  const [type, setType] = useState<TypeDepense>('courante')
+  // ce qu'on vient de payer soi-meme. Le champ reste modifiable. Un reglement
+  // impose le DEBITEUR : c'est lui qui verse, et l'inverser doublerait la
+  // dette au lieu de l'annuler (CLAUDE.md, « Le piege qui coute de l'argent »).
+  const [payePar, setPayePar] = useState<string>(reglement?.payePar ?? personne)
+  const [type, setType] = useState<TypeDepense>(typeInitial)
   // Le mode est PRE-SELECTIONNE d'apres le type, et reste modifiable.
-  const [mode, setMode] = useState<string>(modeParDefaut('courante'))
+  const [mode, setMode] = useState<string>(modeParDefaut(typeInitial))
   const [partThomas, setPartThomas] = useState('')
   const [partLiz, setPartLiz] = useState('')
 
