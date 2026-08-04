@@ -1,3 +1,4 @@
+export * from './charge-fixe.js'
 export * from './config-version.js'
 export * from './horizon-saisie.js'
 export * from './money.js'
