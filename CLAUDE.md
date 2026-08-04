@@ -78,6 +78,11 @@ invariants vivent dans des migrations **écrites à la main** :
 - `0007` — `CHECK personne_valide` sur `user.personne` : la base refuse physiquement
   toute valeur hors `thomas`/`liz`, tout en laissant la colonne nullable (Better Auth
   insère la ligne avant que le hook ne la remplisse).
+- `0008` — index unique **partiel** : une seule charge fixe *générée* par mois. C'est
+  lui qui rend `genererChargeFixeDuMois()` idempotente, et non un `select` préalable,
+  qui laisserait une fenêtre entre la lecture et l'écriture. La clé est le **mois** et
+  non la date, parce qu'un mois de bascule est daté du jour de prise d'effet. Partiel,
+  donc saisir deux charges fixes à la main le même mois reste permis.
 
 C'est là que se joue le projet. Une dépense rattachée à la config *courante* au lieu de
 celle *à sa date* produit des parts qui somment juste au mauvais ratio : le bug du Sheet,
