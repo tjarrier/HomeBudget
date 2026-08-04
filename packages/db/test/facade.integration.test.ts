@@ -1,4 +1,4 @@
-import { formaterEuros, phraseSynthese, resumer } from '@homebudget/domain'
+import { formaterEuros, genererChargeFixe, phraseSynthese, resumer } from '@homebudget/domain'
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { db, pool } from '../src/client.js'
@@ -332,6 +332,125 @@ describe('creerVersion', () => {
         chargesPersoLiz: [],
       }),
     ).rejects.toThrow(/anterieure ou egale/i)
+  })
+})
+
+/**
+ * L'usage principal du versioning, et le bug d'origine du Sheet : une revision
+ * de loyer AU MILIEU d'un mois. Tous les tests ci-dessus revisent au 1er ; le
+ * 15 est le seul cas ou le mois est coupe en deux, donc le seul ou la date de
+ * la charge generee change de version.
+ *
+ * Le domaine seul ne peut pas prouver ce qui compte ici : que Postgres ACCEPTE
+ * cette date. C'est le trigger `depense_dans_sa_version` (migration 0004) qui
+ * tranche, et il ne tourne qu'en base.
+ *
+ * Ratios volontairement INVERSES entre les deux versions (0,75 puis 0,25) : une
+ * charge figee par la mauvaise version somme toujours au bon montant, donc seul
+ * un ratio different la trahit.
+ */
+describe('LE MOIS DE BASCULE — revision au 15 du mois', () => {
+  const V1 = {
+    libelle: 'v1 — loyer 785',
+    dateDebut: '2026-01-01',
+    salaireNetThomas: 300000,
+    salaireNetLiz: 100000,
+    chargesCommunes: [
+      { libelle: 'Loyer', montant: 78500 },
+      { libelle: 'Divers', montant: 10000 },
+    ],
+    chargesPersoThomas: [],
+    chargesPersoLiz: [],
+  }
+  const V2 = {
+    libelle: 'v2 — loyer 791, au 15 juillet',
+    dateDebut: '2026-07-15',
+    salaireNetThomas: 100000,
+    salaireNetLiz: 300000,
+    chargesCommunes: [
+      { libelle: 'Loyer', montant: 79100 },
+      { libelle: 'Divers', montant: 10000 },
+    ],
+    chargesPersoThomas: [],
+    chargesPersoLiz: [],
+  }
+
+  /** Genere la charge du mois puis l'ECRIT — le brouillon ne prouve rien seul. */
+  async function genererEtEcrire(mois: string) {
+    const genere = genererChargeFixe(await listerVersions(), mois, 'thomas')
+    const ecrite = await ajouterDepense({
+      date: genere.date,
+      description: genere.description,
+      montant: genere.montant,
+      payePar: genere.payePar,
+      type: genere.type,
+      mode: genere.mode,
+    })
+    // `ajouterDepense` RE-RESOUT la version depuis la seule date. Si le domaine
+    // datait juillet du 01/07 en portant le montant de v2, l'ecriture le figerait
+    // sous v1 et ces deux egalites tomberaient. C'est tout l'objet du test.
+    expect(ecrite.parts).toEqual(genere.parts)
+    expect(ecrite.versionConfigId).toBe(genere.versionConfigId)
+    return { genere, ecrite }
+  }
+
+  it('prend le nouveau montant des le mois de bascule, et le passe ne bouge pas', async () => {
+    const v1 = await creerVersion(V1)
+
+    const mai = await genererEtEcrire('2026-05')
+    const juin = await genererEtEcrire('2026-06')
+    expect(mai.ecrite.date).toBe('2026-05-01')
+    expect(juin.ecrite.montant).toBe(88500)
+    expect(juin.ecrite.parts).toEqual({ thomas: 66375, liz: 22125 }) // ratio 0,75
+
+    // La revision arrive. v1 porte deja deux charges : seule sa CLOTURE reste
+    // permise (invariant I1), et c'est exactement ce que fait creerVersion.
+    const v2 = await creerVersion(V2)
+    expect((await listerVersions())[0]?.dateFin).toBe('2026-07-14')
+
+    // Cote GAUCHE de la bascule : rien de l'historique n'a bouge.
+    const apres = await listerDepenses()
+    // `listerDepenses` rend la plus recente d'abord.
+    expect(apres.map((d) => [d.date, d.montant, d.parts])).toEqual([
+      ['2026-06-01', 88500, { thomas: 66375, liz: 22125 }],
+      ['2026-05-01', 88500, { thomas: 66375, liz: 22125 }],
+    ])
+    expect(apres.every((d) => d.versionConfigId === v1.id)).toBe(true)
+
+    // Cote DROIT : juillet, coupe en deux, produit UNE ligne datee du 15 —
+    // le premier jour ou v2 s'applique — au nouveau montant et au nouveau ratio.
+    const juillet = await genererEtEcrire('2026-07')
+    expect(juillet.ecrite.date).toBe('2026-07-15')
+    expect(juillet.ecrite.montant).toBe(89100)
+    expect(juillet.ecrite.parts).toEqual({ thomas: 22275, liz: 66825 }) // ratio 0,25
+    expect(juillet.ecrite.versionConfigId).toBe(v2.id)
+
+    // Le mois suivant repart du 1er : le decalage ne survit pas a la bascule.
+    const aout = await genererEtEcrire('2026-08')
+    expect(aout.ecrite.date).toBe('2026-08-01')
+    expect(aout.ecrite.montant).toBe(89100)
+    expect(aout.ecrite.versionConfigId).toBe(v2.id)
+  })
+
+  it('la date decide de la version : datee du 01/07, la meme charge est figee par v1', async () => {
+    // Le piege que la decision de #22 evite, exerce plutot qu'affirme en
+    // commentaire. Les DEUX dates passent le trigger — c'est ce qui rend
+    // l'erreur silencieuse. Seules les parts different, et a l'envers.
+    const v1 = await creerVersion(V1)
+    await creerVersion(V2)
+
+    const mauvaise = await ajouterDepense({
+      date: '2026-07-01', // avant la prise d'effet : encore dans v1
+      description: 'Loyer + charges juillet 2026',
+      montant: 89100, // ... mais au montant de v2
+      payePar: 'thomas',
+      type: 'charge_fixe',
+      mode: 'prorata',
+    })
+
+    expect(mauvaise.versionConfigId).toBe(v1.id)
+    // Le miroir exact des parts attendues : montant neuf, ratio ancien.
+    expect(mauvaise.parts).toEqual({ thomas: 66825, liz: 22275 })
   })
 })
 
