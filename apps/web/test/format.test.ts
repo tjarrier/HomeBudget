@@ -7,6 +7,7 @@ import {
   formaterDate,
   formaterMontant,
   formaterMontantSigne,
+  montantPourSaisie,
 } from '../lib/format.js'
 
 describe('formaterMontant', () => {
@@ -17,6 +18,26 @@ describe('formaterMontant', () => {
     expect(formaterMontant(0)).toBe('0,00 €')
     expect(formaterMontant(-40000)).toBe('-400,00 €')
   })
+})
+
+describe('montantPourSaisie', () => {
+  it('rend le montant sans le symbole, a la forme du placeholder du formulaire', () => {
+    // Le placeholder du champ montant est « 1 110,58 » : c'est cette forme-la
+    // que le pre-remplissage doit prendre, pas « 1 145,80 € ».
+    expect(montantPourSaisie(114580)).toBe('1 145,80')
+    expect(montantPourSaisie(0)).toBe('0,00')
+    expect(montantPourSaisie(1)).toBe('0,01')
+  })
+
+  // LE test qui compte. Le montant pre-rempli repart au serveur par le meme
+  // chemin qu'une saisie a la main : s'il ne se reparse pas au centime pres,
+  // le reglement s'ecrit au mauvais montant et le solde ne tombe pas a zero.
+  it.each([0, 1, 50, 107359, 114580, 100000000])(
+    'fait l aller-retour par parserEurosSaisis sans perdre un centime (%i)',
+    (cents) => {
+      expect(parserEurosSaisis(montantPourSaisie(cents))).toBe(cents)
+    },
+  )
 })
 
 describe('formaterDate', () => {

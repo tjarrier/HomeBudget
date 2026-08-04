@@ -51,3 +51,16 @@ export function formaterDate(iso: string): string {
   if (!annee || !mois || !jour) throw new Error(`Date ISO invalide : ${iso}`)
   return `${jour}/${mois}/${annee}`
 }
+
+/**
+ * Un montant pret a etre pose dans un champ de saisie : `1 145,80`, sans le
+ * symbole — la forme exacte du `placeholder` du formulaire (`1 110,58`).
+ *
+ * `formaterMontant` a deja normalise les espaces insecables d'Intl, donc `\s`
+ * suffit a attraper celui qui precede l'euro. L'aller-retour par
+ * `parserEurosSaisis` est verrouille par un test : ce montant repart au serveur
+ * par le meme chemin qu'une saisie a la main.
+ */
+export function montantPourSaisie(c: Cents): string {
+  return formaterMontant(c).replace(/\s€$/, '')
+}
