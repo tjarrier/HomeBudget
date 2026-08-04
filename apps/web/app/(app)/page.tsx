@@ -5,6 +5,7 @@ import { Carte } from '@/components/carte'
 import { EntetePage } from '@/components/entete-page'
 import { LigneDepense } from '@/components/ligne-depense'
 import { Montant } from '@/components/montant'
+import { buttonVariants } from '@/components/ui/button'
 import { exigerSession } from '@/lib/session'
 import { listerDepenses } from '@homebudget/db'
 import { type Personne, type Resume, nomPersonne, resumer, synthese } from '@homebudget/domain'
@@ -88,6 +89,23 @@ export default async function TableauDeBord() {
           </span>
         </div>
       </section>
+
+      {/* Sous le bandeau, jamais dedans : `bg-emphasis` est le SEUL aplat sombre
+          du systeme et il est ecrit pour ne porter qu'une chose (DESIGN.md).
+          Aucune des deux variantes de Button n'y tient — `primaire` serait
+          slate-900 sur slate-900 — et DESIGN.md dit « deux variantes, pas plus ».
+          Ici, `discret` fonctionne tel quel et `min-h-11` vient avec.
+
+          Rien a regler, pas de bouton : un bouton inerte inviterait a creer un
+          transfert de zero. */}
+      {s.etat === 'dette' && (
+        <Link
+          href="/depenses?regler=1"
+          className={buttonVariants({ variant: 'discret', className: 'mt-5' })}
+        >
+          Régler les comptes
+        </Link>
+      )}
 
       <div className="mt-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <Chiffre libelle="Total dépensé" valeur={resume.totalDepenses} sous="Transferts exclus" />

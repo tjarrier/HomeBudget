@@ -327,6 +327,43 @@ test.describe('parcours authentifies', () => {
     await expect(page.locator('input[name="description"]')).toHaveValue('Règlement des comptes')
   })
 
+  /**
+   * LE critere de l'issue #26 : « apres validation, le solde tombe a zero ».
+   *
+   * DERNIERE ECRITURE DU FICHIER, et ce n'est pas negociable : ce test solde la
+   * dette. Tout test place apres lui qui lirait le solde lirait zero, et le
+   * canari du seed ne serait plus lisible nulle part. Les parcours telephone qui
+   * suivent ne touchent ni au solde ni aux depenses.
+   */
+  test('regler les comptes met le solde a zero', async ({ page }) => {
+    await page.goto('/')
+    const solde = await soldeEnCentimes(page)
+    expect(solde).toBeGreaterThan(0)
+
+    await page.getByRole('link', { name: 'Régler les comptes' }).click()
+    await expect(page).toHaveURL('/depenses?regler=1')
+
+    // Le sens du transfert, a l'ecran et en centimes, AVANT l'ecriture : la
+    // totalite au credit de Thomas, rien pour Liz qui verse. C'est cet apercu
+    // qui tient lieu de confirmation — il est calcule par la meme fonction que
+    // l'ecriture, donc il ne peut pas diverger d'elle.
+    await expect(page.getByTestId('apercu-liz')).toHaveAttribute('value', '0')
+    await expect(page.getByTestId('apercu-thomas')).toHaveAttribute('value', String(solde))
+
+    await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
+    await expect(page.getByTestId('liste-depenses')).toContainText('Règlement des comptes')
+
+    await page.goto('/')
+    // NE PAS utiliser soldeEnCentimes() ici : a zero, le bandeau n'a plus de
+    // <data>. Cette phrase EST l'assertion exacte — `synthese()` ne rend
+    // 'a-jour' que si soldeThomas vaut exactement 0.
+    await expect(page.getByTestId('phrase-synthese')).toHaveText('Vous êtes à jour')
+
+    // Plus rien a regler : le bouton n'existe plus. Un bouton qui ne fait rien
+    // inviterait a creer un transfert de zero.
+    await expect(page.getByRole('link', { name: 'Régler les comptes' })).toHaveCount(0)
+  })
+
   // Le viewport par defaut de Chromium (1280x720) affiche le rail lateral : les
   // deux defauts de l'issue #13 n'y existent tout simplement pas. Ces trois
   // parcours-la n'ont donc de sens qu'a la taille d'un telephone.
