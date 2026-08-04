@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { parserEurosSaisis } from '@homebudget/domain'
 import { describe, expect, it } from 'vitest'
-import { formaterDate, formaterMontant, formaterMontantSigne } from '../lib/format.js'
+import {
+  aujourdhuiLocal,
+  formaterDate,
+  formaterMontant,
+  formaterMontantSigne,
+} from '../lib/format.js'
 
 describe('formaterMontant', () => {
   it('rend des euros lisibles avec des espaces normaux', () => {
@@ -75,5 +80,21 @@ describe('formaterMontantSigne', () => {
 
   it('n affiche aucun signe a zero', () => {
     expect(formaterMontantSigne(0, true)).toBe('0,00 €')
+  })
+})
+
+describe('aujourdhuiLocal', () => {
+  it('rend une date ISO zero-paddee', () => {
+    expect(aujourdhuiLocal()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it("lit l'horloge LOCALE, jamais UTC", () => {
+    // Le piege : `toISOString()` daterait en UTC. Saisi a 23 h a Paris, le champ
+    // proposerait demain — et le 1er du mois a 1 h, le selecteur de mois
+    // proposerait le mois precedent. On recompose donc la date attendue depuis
+    // les accesseurs LOCAUX, sans jamais passer par toISOString().
+    const n = new Date()
+    const attendu = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+    expect(aujourdhuiLocal()).toBe(attendu)
   })
 })

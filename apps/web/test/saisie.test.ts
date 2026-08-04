@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type SaisieBrute, normaliser } from '../lib/saisie.js'
+import { type SaisieBrute, normaliser, personneSaisie } from '../lib/saisie.js'
 
 function saisie(surcharges: Partial<SaisieBrute>): SaisieBrute {
   return {
@@ -53,5 +53,19 @@ describe('normaliser — coherence de type et mode', () => {
     const s = normaliser(saisie({ type, mode, partThomas: '250,00', partLiz: '150,00' }))
     expect(s.type).toBe(type)
     expect(s.mode).toBe(mode)
+  })
+})
+
+describe('personneSaisie', () => {
+  it('accepte les deux seules personnes du projet', () => {
+    expect(personneSaisie('thomas')).toBe('thomas')
+    expect(personneSaisie('liz')).toBe('liz')
+  })
+
+  it.each(['Thomas', 'LIZ', 'bob', '', 'thomas '])('refuse « %s »', (valeur) => {
+    // La generation mensuelle passe ce champ droit dans une depense de loyer :
+    // un payeur devine a tort deplace la dette du montant entier. La casse et
+    // les espaces comptent — c'est une valeur d'enumeration, pas une saisie libre.
+    expect(() => personneSaisie(valeur)).toThrow(/Payeur inconnu/)
   })
 })

@@ -1,8 +1,13 @@
 'use server'
 
-import { type SaisieBrute, normaliser } from '@/lib/saisie'
+import { type SaisieBrute, normaliser, personneSaisie } from '@/lib/saisie'
 import { exigerSession } from '@/lib/session'
-import { ajouterDepense, calculerPartsPourSaisie, listerVersions } from '@homebudget/db'
+import {
+  ajouterDepense,
+  calculerPartsPourSaisie,
+  genererChargeFixeDuMois,
+  listerVersions,
+} from '@homebudget/db'
 import { type Cents, type Parts, totalChargesCommunes } from '@homebudget/domain'
 import { revalidatePath } from 'next/cache'
 import { type Resultat, enEchec } from './resultat'
@@ -64,6 +69,51 @@ export async function ajouterDepenseAction(
     revalidatePath('/')
     revalidatePath('/depenses')
     return { ok: true, valeur: null }
+  } catch (e) {
+    return enEchec(e)
+  }
+}
+
+export interface ChargeGenereeVue {
+  /** `false` : le mois etait deja genere. La ligne rendue est celle qui existait. */
+  creee: boolean
+  date: string
+  description: string
+  montant: Cents
+}
+
+/**
+ * Genere la charge fixe d'un mois.
+ *
+ * Aucune logique ici : le montant, la date et les parts viennent tous de
+ * `genererChargeFixeDuMois`, et l'idempotence de l'index de la migration 0008.
+ * Cette action valide le payeur, appelle, et rend de quoi ecrire une phrase.
+ *
+ * Elle renvoie la ligne meme quand elle n'a rien ecrit (`creee: false`) : sans
+ * cela, un second declenchement serait indiscernable d'un echec silencieux —
+ * la liste ne bouge pas, et l'ecran n'aurait rien a dire.
+ */
+export async function genererChargeFixeAction(
+  _precedent: Resultat<ChargeGenereeVue> | null,
+  form: FormData,
+): Promise<Resultat<ChargeGenereeVue>> {
+  await exigerSession()
+  try {
+    const { depense, creee } = await genererChargeFixeDuMois(
+      String(form.get('mois') ?? ''),
+      personneSaisie(String(form.get('payePar') ?? '')),
+    )
+    revalidatePath('/')
+    revalidatePath('/depenses')
+    return {
+      ok: true,
+      valeur: {
+        creee,
+        date: depense.date,
+        description: depense.description,
+        montant: depense.montant,
+      },
+    }
   } catch (e) {
     return enEchec(e)
   }
