@@ -359,6 +359,16 @@ test.describe('parcours authentifies', () => {
     await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
     await expect(page.getByTestId('liste-depenses')).toContainText('Règlement des comptes')
 
+    // Les champs sont CONTROLES : sans le desarmement de formulaire-depense.tsx,
+    // ils survivraient tels quels a la soumission. Vider `montant` est ce qui
+    // empeche un second clic — le champ est `required`, le navigateur refuse une
+    // soumission vide — et la disparition de l'apercu est le SEUL retour visuel,
+    // a l'ecran, que l'ecriture a eu lieu. Un reglement redouble serait
+    // irreversible : les parts sont figees pour toujours (snapshot on write) et
+    // rien ne permet de corriger ou d'annuler tant que l'issue #40 n'est pas livree.
+    await expect(page.locator('input[name="montant"]')).toHaveValue('')
+    await expect(page.getByTestId('apercu-parts')).toHaveCount(0)
+
     await page.goto('/')
     // NE PAS utiliser soldeEnCentimes() ici : a zero, le bandeau n'a plus de
     // <data>. Cette phrase EST l'assertion exacte — `synthese()` ne rend
