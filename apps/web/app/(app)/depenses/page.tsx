@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Carte } from '@/components/carte'
 import { EntetePage } from '@/components/entete-page'
 import { LigneDepense } from '@/components/ligne-depense'
+import { buttonVariants } from '@/components/ui/button'
 import { exigerSession } from '@/lib/session'
 import { listerDepenses, listerMoisDepenses, resumerDepenses } from '@homebudget/db'
 import { type Personne, synthese } from '@homebudget/domain'
@@ -152,9 +153,10 @@ export default async function Depenses({
                 n: String(limite + PALIER),
               })}`}
               data-testid="voir-plus"
-              // min-h-11 : le plancher tactile du projet. Pleine largeur, donc
-              // atteignable au pouce sans viser.
-              className="mt-2 flex min-h-11 items-center justify-center rounded-lg border border-subtle text-sm font-medium hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              // `discret` : DESIGN.md dit deux variantes, pas plus (voir le
+              // commentaire de app/(app)/page.tsx:96). `w-full` seul s'ajoute,
+              // pour occuper toute la largeur de la carte.
+              className={buttonVariants({ variant: 'discret', className: 'mt-2 w-full' })}
             >
               {/* Le reste est DANS le libelle : « Voir plus » sans chiffre
                   n'apprend rien sur ce qu'il reste a parcourir. */}
