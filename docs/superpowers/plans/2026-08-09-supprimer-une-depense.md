@@ -1,7 +1,5 @@
 # G1 — Supprimer une dépense : plan d'implémentation
 
-**État :** en cours
-
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Spec :** `docs/superpowers/specs/2026-08-09-supprimer-une-depense-design.md`
@@ -65,7 +63,7 @@ Vitest, Playwright.
 - Consomme : `db`, `depense` (`./client.js`, `./schema.js`), `eq` de `drizzle-orm` — déjà tous importés en tête de `ecriture.ts`.
 - Produit : `supprimerDepense(id: string): Promise<void>`. Jette `Error("Cette dépense n'existe plus.")` si aucune ligne n'est retirée. Réexportée automatiquement par `packages/db/src/index.ts` (`export * from './ecriture.js'`) — **rien à ajouter dans `index.ts`**.
 
-- [ ] **Step 1 : Écrire le test unitaire du garde d'identifiant**
+- [x] **Step 1 : Écrire le test unitaire du garde d'identifiant**
 
 En fin de `packages/db/test/ecriture.test.ts`. Ajoute `supprimerDepense` à l'import
 existant de `'../src/ecriture.js'` (il n'importe aujourd'hui que
@@ -88,7 +86,7 @@ describe('supprimerDepense — garde d identifiant', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer le test, vérifier qu'il échoue**
+- [x] **Step 2 : Lancer le test, vérifier qu'il échoue**
 
 ```bash
 pnpm --filter @homebudget/db exec vitest run test/ecriture.test.ts
@@ -97,7 +95,7 @@ pnpm --filter @homebudget/db exec vitest run test/ecriture.test.ts
 Attendu : ÉCHEC — `supprimerDepense` n'est pas exportée par `../src/ecriture.js`
 (erreur de type au chargement du module, ou `supprimerDepense is not a function`).
 
-- [ ] **Step 3 : Écrire `supprimerDepense`**
+- [x] **Step 3 : Écrire `supprimerDepense`**
 
 En fin de `packages/db/src/ecriture.ts` :
 
@@ -143,7 +141,7 @@ export async function supprimerDepense(id: string): Promise<void> {
 }
 ```
 
-- [ ] **Step 4 : Relancer le test unitaire**
+- [x] **Step 4 : Relancer le test unitaire**
 
 ```bash
 pnpm --filter @homebudget/db exec vitest run test/ecriture.test.ts
@@ -151,7 +149,7 @@ pnpm --filter @homebudget/db exec vitest run test/ecriture.test.ts
 
 Attendu : SUCCÈS.
 
-- [ ] **Step 5 : Extraire le seed du canari d'intégration dans un helper**
+- [x] **Step 5 : Extraire le seed du canari d'intégration dans un helper**
 
 Dans `packages/db/test/facade.integration.test.ts`, le bloc `describe('LE CANARI, vu
 par la facade')` (vers la ligne 670) contient ~45 lignes de mise en place que le
@@ -232,7 +230,7 @@ Postgres')` par :
 **Les trois assertions restent mot pour mot.** Si l'une d'elles change, tu as cassé le
 canari — recommence.
 
-- [ ] **Step 6 : Écrire les trois tests d'intégration**
+- [x] **Step 6 : Écrire les trois tests d'intégration**
 
 En fin de `packages/db/test/facade.integration.test.ts`. Ajoute `supprimerDepense` à
 l'import existant de `'../src/ecriture.js'`.
@@ -310,7 +308,7 @@ elle couvre donc `2026-08`. N'en écris pas une seconde.
 test tombera, et la réparation sera d'en déplacer le mois — pas de toucher à
 l'horizon.
 
-- [ ] **Step 7 : Lancer les tests d'intégration**
+- [x] **Step 7 : Lancer les tests d'intégration**
 
 ```bash
 task db:up
@@ -319,7 +317,7 @@ task test:integration
 
 Attendu : SUCCÈS, canari inclus (`rend exactement 114 580 centimes`).
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 
 ```bash
 git add packages/db/src/ecriture.ts packages/db/test/ecriture.test.ts \
@@ -339,7 +337,7 @@ git commit -m "feat(db): supprimerDepense, et le solde revient au centime"
 - Consomme : `supprimerDepense(id: string): Promise<void>` (Task 1), `exigerSession()`, `enEchec`, `revalidatePath` — tous déjà importés dans le fichier sauf `supprimerDepense`.
 - Produit : `supprimerDepenseAction(id: string): Promise<Resultat<null>>`, où `Resultat<T> = { ok: true; valeur: T } | { ok: false; message: string }`.
 
-- [ ] **Step 1 : Vérifier que la liste blanche refuse le nouvel import**
+- [x] **Step 1 : Vérifier que la liste blanche refuse le nouvel import**
 
 Ajoute `supprimerDepense` à l'import de `@homebudget/db` en tête de
 `apps/web/actions/depenses.ts` (sans encore écrire l'action), puis :
@@ -351,7 +349,7 @@ pnpm --filter @homebudget/web exec vitest run test/architecture.test.ts
 Attendu : ÉCHEC — `actions/depenses.ts : supprimerDepense`. C'est le filet qui
 fonctionne : on ne le contourne pas, on l'enregistre.
 
-- [ ] **Step 2 : Ouvrir la liste blanche**
+- [x] **Step 2 : Ouvrir la liste blanche**
 
 Dans `apps/web/test/architecture.test.ts`, ajoute `'supprimerDepense'` au tableau
 `FACADE_DB`, juste après `'ajouterDepense'` :
@@ -370,7 +368,7 @@ const FACADE_DB = [
 ]
 ```
 
-- [ ] **Step 3 : Écrire l'action**
+- [x] **Step 3 : Écrire l'action**
 
 En fin de `apps/web/actions/depenses.ts` :
 
@@ -399,7 +397,7 @@ export async function supprimerDepenseAction(id: string): Promise<Resultat<null>
 }
 ```
 
-- [ ] **Step 4 : Relancer les tests web**
+- [x] **Step 4 : Relancer les tests web**
 
 ```bash
 pnpm --filter @homebudget/web test
@@ -409,7 +407,7 @@ pnpm --filter @homebudget/web typecheck
 Attendu : SUCCÈS, y compris « chaque Server Action exige une session » — qui vérifie
 statiquement que le fichier appelle `exigerSession()`.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add apps/web/actions/depenses.ts apps/web/test/architecture.test.ts
@@ -430,7 +428,7 @@ git commit -m "feat(web): supprimerDepenseAction, et la facade s'ouvre d'un nom"
 - Produit : `<BoutonSupprimerDepense id description montant />` et la prop `supprimable?: boolean` de `<LigneDepense />` (défaut `false`).
 - Nom accessible du bouton, sur lequel s'appuie la Task 4 : `` Supprimer « ${description} » `` — guillemets français, **espaces ordinaires** (une espace insécable ne se comparerait pas à celle du test).
 
-- [ ] **Step 1 : Écrire le composant client**
+- [x] **Step 1 : Écrire le composant client**
 
 Crée `apps/web/components/bouton-supprimer-depense.tsx` :
 
@@ -504,7 +502,7 @@ export function BoutonSupprimerDepense({
 }
 ```
 
-- [ ] **Step 2 : Brancher `LigneDepense`**
+- [x] **Step 2 : Brancher `LigneDepense`**
 
 Dans `apps/web/components/ligne-depense.tsx` :
 
@@ -544,7 +542,7 @@ Complète le docstring du composant d'un paragraphe :
  * y est deja cote a cote pour resaisir.
 ```
 
-- [ ] **Step 3 : Activer la prop sur `/depenses` uniquement**
+- [x] **Step 3 : Activer la prop sur `/depenses` uniquement**
 
 Dans `apps/web/app/(app)/depenses/page.tsx`, ligne 53 :
 
@@ -555,7 +553,7 @@ Dans `apps/web/app/(app)/depenses/page.tsx`, ligne 53 :
 **Ne touche pas** à `apps/web/app/(app)/page.tsx:174` : le tableau de bord reste en
 lecture seule.
 
-- [ ] **Step 4 : Vérifier types, lint et suite unitaire**
+- [x] **Step 4 : Vérifier types, lint et suite unitaire**
 
 ```bash
 task verif
@@ -565,7 +563,7 @@ Attendu : SUCCÈS. `apps/web/test/cibles-tactiles.test.ts` ne couvre que les qua
 primitives de `components/ui/` — ce bouton n'en est pas une, c'est le balayage e2e
 de la Task 4 qui mesurera sa boîte réelle.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add apps/web/components/bouton-supprimer-depense.tsx \
@@ -583,7 +581,7 @@ git commit -m "feat(web): une croix par ligne d'historique, derriere un confirm"
 **Interfaces :**
 - Consomme : le helper `soldeEnCentimes(page)` déjà défini en tête du fichier (il lit l'attribut `value` du `<data>` de `phrase-synthese`, donc un entier de centimes) et le nom accessible `` Supprimer « … » `` de la Task 3.
 
-- [ ] **Step 1 : Écrire le test**
+- [x] **Step 1 : Écrire le test**
 
 Insère-le **après** le test `generer la charge du mois, deux fois, ne l ecrit qu une
 fois` et **avant** `creer une version ne change aucune depense passee`, à l'intérieur
@@ -644,7 +642,7 @@ dans son propre bloc :
   })
 ```
 
-- [ ] **Step 2 : Préparer l'environnement e2e du worktree**
+- [x] **Step 2 : Préparer l'environnement e2e du worktree**
 
 Ce dépôt est un worktree : les `.env` ne sont pas versionnés, et un conteneur
 `homebudget-db` du checkout principal peut occuper le port.
@@ -658,7 +656,7 @@ docker rm -f homebudget-db 2>/dev/null || true
 Vérifie que `.env` et `apps/web/.env.local` existent avant de continuer ; sans eux,
 la session Playwright ne s'ouvre pas et l'échec ne ressemble pas à sa cause.
 
-- [ ] **Step 3 : Lancer les parcours**
+- [x] **Step 3 : Lancer les parcours**
 
 ```bash
 task test:e2e:frais
@@ -667,7 +665,7 @@ task test:e2e:frais
 Attendu : SUCCÈS, tous parcours confondus — dont les deux canaris de lecture du seed,
 qui doivent rester **avant** toute écriture.
 
-- [ ] **Step 4 : Commit**
+- [x] **Step 4 : Commit**
 
 ```bash
 git add apps/web/e2e/parcours.spec.ts
@@ -681,7 +679,7 @@ git commit -m "test(e2e): supprimer une depense rend au solde sa valeur exacte"
 **Files :**
 - Modify: `docs/superpowers/plans/2026-08-09-supprimer-une-depense.md` (ce fichier)
 
-- [ ] **Step 1 : Vérification complète**
+- [x] **Step 1 : Vérification complète**
 
 ```bash
 task verif
@@ -690,7 +688,7 @@ task test:integration
 
 Attendu : SUCCÈS aux deux. Ne déclare rien de fini avant d'avoir lu les deux verdicts.
 
-- [ ] **Step 2 : Cocher toutes les cases de ce plan et retirer l'état**
+- [x] **Step 2 : Cocher toutes les cases de ce plan et retirer l'état**
 
 Coche chaque `- [ ]` en `- [x]`, **et supprime la ligne `**État :** en cours`** sous
 le titre. `apps/web/test/plans.test.ts` refuse un plan silencieux : sans le marqueur,
@@ -700,7 +698,7 @@ il exige zéro case vide. Relance :
 pnpm --filter @homebudget/web exec vitest run test/plans.test.ts
 ```
 
-- [ ] **Step 3 : Commit et PR**
+- [x] **Step 3 : Commit et PR**
 
 ```bash
 git add docs/superpowers/plans/2026-08-09-supprimer-une-depense.md
