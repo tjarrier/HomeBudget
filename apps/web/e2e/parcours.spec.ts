@@ -183,6 +183,50 @@ test.describe('parcours authentifies', () => {
     expect(await soldeEnCentimes(page)).toBe(soldeApres)
   })
 
+  test.describe('suppression d une depense (issue #40)', () => {
+    test.use(TELEPHONE)
+
+    /**
+     * L'issue #40, a l'ecran : saisir, supprimer, et retrouver le solde AU
+     * CENTIME. Un seul passage, sur le telephone — c'est l'ecran qui sert, et
+     * deux passages laisseraient la premiere depense derriere eux.
+     *
+     * `avant` est LU a l'execution, jamais la constante 114580 : les parcours
+     * qui precedent ont deja fait bouger le solde du seed. Meme motif que le
+     * test « regler les comptes » plus bas.
+     */
+    test('supprimer une depense rend au solde sa valeur exacte', async ({ page }) => {
+      await page.goto('/')
+      const avant = await soldeEnCentimes(page)
+
+      await page.goto('/depenses')
+      await page.getByRole('button', { name: 'Modifier' }).click()
+      const description = 'Coquille a supprimer'
+      await page.fill('input[name="date"]', '2026-07-11')
+      await page.fill('input[name="description"]', description)
+      await page.fill('input[name="montant"]', '40,00')
+      await page.selectOption('select[name="payePar"]', 'thomas')
+      await page.selectOption('select[name="type"]', 'courante')
+      await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
+      await expect(page.getByTestId('liste-depenses')).toContainText(description)
+
+      // Thomas a paye 40 € dont 20 € pour Liz : la dette de Liz monte de 20 €.
+      await page.goto('/')
+      expect(await soldeEnCentimes(page)).toBe(avant + 2000)
+
+      // Le `confirm()` natif : Playwright REJETTE les dialogues par defaut, donc
+      // sans ce handler le clic ne supprimerait rien et le test tomberait sur la
+      // derniere assertion, en accusant le serveur a tort.
+      await page.goto('/depenses')
+      page.once('dialog', (dialogue) => dialogue.accept())
+      await page.getByRole('button', { name: `Supprimer « ${description} »` }).click()
+      await expect(page.getByTestId('liste-depenses')).not.toContainText(description)
+
+      await page.goto('/')
+      expect(await soldeEnCentimes(page)).toBe(avant)
+    })
+  })
+
   test.describe('borne haute de la date de depense (issue #29)', () => {
     // Calculee INDEPENDAMMENT de `dateMaxDepense` (le domaine) : ce test doit
     // rester capable de detecter une divergence entre les deux, pas la
