@@ -71,6 +71,121 @@ describe('listerDepenses', () => {
   })
 })
 
+describe('listerDepenses — filtres', () => {
+  /**
+   * Quatre lignes posees exprès autour des bornes de juillet : le 30/06 et le
+   * 01/08 encadrent le mois au jour près. Un filtre pose sur l'ANNEE-MOIS de la
+   * date les exclut ; un filtre qui deborderait d'un jour les ferait entrer.
+   */
+  async function quatreDepenses(): Promise<void> {
+    await creerVersionSql('v1', '2026-01-01')
+    await ajouterDepense({
+      date: '2026-06-30',
+      description: 'Fin juin',
+      montant: 1000,
+      payePar: 'thomas',
+      type: 'courante',
+      mode: 'moitie',
+    })
+    await ajouterDepense({
+      date: '2026-07-01',
+      description: 'Debut juillet',
+      montant: 2000,
+      payePar: 'liz',
+      type: 'courante',
+      mode: 'moitie',
+    })
+    await ajouterDepense({
+      date: '2026-07-15',
+      description: 'Remboursement',
+      montant: 3000,
+      payePar: 'liz',
+      type: 'transfert',
+      mode: 'transfert',
+    })
+    await ajouterDepense({
+      date: '2026-08-01',
+      description: 'Debut aout',
+      montant: 4000,
+      payePar: 'thomas',
+      type: 'charge_fixe',
+      mode: 'prorata',
+    })
+  }
+
+  it('sans filtre, rend tout', async () => {
+    await quatreDepenses()
+
+    expect(await listerDepenses()).toHaveLength(4)
+    expect(await listerDepenses({})).toHaveLength(4)
+  })
+
+  it('mois : les bornes du mois, au jour pres', async () => {
+    await quatreDepenses()
+
+    const juillet = await listerDepenses({ mois: '2026-07' })
+
+    // Ordre conserve : la plus recente d'abord.
+    expect(juillet.map((d) => d.description)).toEqual(['Remboursement', 'Debut juillet'])
+  })
+
+  it('payePar : qui a avance l argent, pas qui est concerne', async () => {
+    await quatreDepenses()
+
+    const parLiz = await listerDepenses({ payePar: 'liz' })
+
+    expect(parLiz.map((d) => d.description)).toEqual(['Remboursement', 'Debut juillet'])
+    // Les deux lignes de Thomas concernent Liz elles aussi (elle y porte une
+    // part) : un filtre « les depenses de Liz » au sens large rendrait tout.
+    expect(parLiz).toHaveLength(2)
+  })
+
+  it('type : le type figé, jamais deduit du mode', async () => {
+    await quatreDepenses()
+
+    expect((await listerDepenses({ type: 'transfert' })).map((d) => d.description)).toEqual([
+      'Remboursement',
+    ])
+    expect((await listerDepenses({ type: 'charge_fixe' })).map((d) => d.description)).toEqual([
+      'Debut aout',
+    ])
+  })
+
+  it('plusieurs filtres se cumulent en ET', async () => {
+    await quatreDepenses()
+
+    const juilletCourantes = await listerDepenses({ mois: '2026-07', type: 'courante' })
+
+    expect(juilletCourantes.map((d) => d.description)).toEqual(['Debut juillet'])
+    expect(await listerDepenses({ mois: '2026-07', payePar: 'thomas' })).toEqual([])
+  })
+
+  it('un mois sans depense rend une liste vide, pas une erreur', async () => {
+    await quatreDepenses()
+
+    expect(await listerDepenses({ mois: '2026-09' })).toEqual([])
+  })
+
+  it('refuse un mois mal forme au lieu de rendre une liste vide', async () => {
+    // Silencieusement vide, le filtre mentirait : « aucune depense en 2026-13 »
+    // est vrai et inutile. La facade est la frontiere, elle valide.
+    await expect(listerDepenses({ mois: '2026-13' })).rejects.toThrow(/Mois ISO invalide/)
+    await expect(listerDepenses({ mois: '2026-7' })).rejects.toThrow(/Mois ISO invalide/)
+    await expect(listerDepenses({ mois: '2026-07-01' })).rejects.toThrow(/Mois ISO invalide/)
+  })
+
+  it('filtrer ne touche a aucune part : les memes lignes, en moins nombreuses', async () => {
+    // Regle 4 : la lecture ne recalcule jamais. Un filtre qui reprorratiserait
+    // le sous-ensemble retenu serait exactement le bug du Sheet.
+    await quatreDepenses()
+
+    const toutes = await listerDepenses()
+    const juillet = await listerDepenses({ mois: '2026-07' })
+
+    expect(juillet).toEqual(toutes.filter((d) => d.date.startsWith('2026-07')))
+  })
+})
+
 describe('ajouterDepense — I2, snapshot on write', () => {
   /**
    * Le piege central du projet, exerce explicitement. Deux versions aux ratios
