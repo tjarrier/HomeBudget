@@ -129,6 +129,8 @@ describe("apps/web n'accede jamais a la base directement", () => {
 const FACADE_DB = [
   'listerVersions',
   'listerDepenses',
+  'resumerDepenses',
+  'listerMoisDepenses',
   'ajouterDepense',
   'supprimerDepense',
   'creerVersion',
