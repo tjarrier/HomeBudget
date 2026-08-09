@@ -1,6 +1,7 @@
 import {
   type Depense,
   type Personne,
+  type Resume,
   type TypeDepense,
   type VersionConfig,
   assertMoisIsoValide,
@@ -55,6 +56,73 @@ export async function listerDepenses(filtres: FiltresDepenses = {}): Promise<Dep
   // le meme ensemble d'un appel a l'autre.
   const lignes = await (filtres.limite === undefined ? requete : requete.limit(filtres.limite))
   return lignes.map(depenseDepuisLigne)
+}
+
+/**
+ * Le meme resume que `resumer()` du domaine, mais plie par Postgres : neuf
+ * agregats au lieu de N lignes transportees.
+ *
+ * C'est une DEUXIEME implementation d'une regle de calcul, hors de
+ * `packages/domain`. Ce qui la rend tenable, et rien d'autre : un test la compare
+ * a `resumer(await listerDepenses())` champ pour champ, sur le seed reel. Le
+ * canari des 114 580 centimes passe par les deux chemins.
+ *
+ * La frontiere est nette : SQL fait le PLIAGE, jamais le SENS. Les deux soldes se
+ * derivent ici en TypeScript, comme dans `resumer()`, et `synthese()` /
+ * `phraseSynthese()` restent la seule facon de dire qui doit a qui.
+ *
+ * Regle 4 sauve : ces sommes portent sur des colonnes DEJA FIGEES a l'ecriture.
+ * Aucun ratio n'est applique, aucune part n'est recalculee. Un jour ou une
+ * expression ici multiplierait un montant par un ratio, ce serait le bug du Sheet.
+ *
+ * `limite` est volontairement IGNOREE : c'est une borne d'affichage. Un resume
+ * borne presenterait le solde des lignes visibles comme le solde du couple.
+ */
+export async function resumerDepenses(filtres: FiltresDepenses = {}): Promise<Resume> {
+  // `sum()` rend `numeric`, que le driver `pg` livre en CHAINE — et `null` sur un
+  // ensemble vide, jamais 0. `cents()` referme les deux : sans le `?? 0`, une base
+  // neuve rendrait un resume de NaN, et l'ecran afficherait « NaN € ».
+  const cents = (v: string | null) => Number(v ?? 0)
+
+  const [ligne] = await db
+    .select({
+      nombre: sql<string>`count(*)`,
+      totalDepenses: sql<
+        string | null
+      >`sum(${depense.montantCents}) filter (where ${depense.type} <> 'transfert')`,
+      totalTransferts: sql<
+        string | null
+      >`sum(${depense.montantCents}) filter (where ${depense.type} = 'transfert')`,
+      payeThomas: sql<
+        string | null
+      >`sum(${depense.montantCents}) filter (where ${depense.payePar} = 'thomas')`,
+      payeLiz: sql<
+        string | null
+      >`sum(${depense.montantCents}) filter (where ${depense.payePar} = 'liz')`,
+      duThomas: sql<string | null>`sum(${depense.partThomasCents})`,
+      duLiz: sql<string | null>`sum(${depense.partLizCents})`,
+    })
+    .from(depense)
+    .where(and(...conditions(filtres)))
+
+  const payeThomas = cents(ligne?.payeThomas ?? null)
+  const payeLiz = cents(ligne?.payeLiz ?? null)
+  const duThomas = cents(ligne?.duThomas ?? null)
+  const duLiz = cents(ligne?.duLiz ?? null)
+
+  return {
+    nombre: cents(ligne?.nombre ?? null),
+    totalDepenses: cents(ligne?.totalDepenses ?? null),
+    totalTransferts: cents(ligne?.totalTransferts ?? null),
+    payeThomas,
+    payeLiz,
+    duThomas,
+    duLiz,
+    // Les DEUX seules soustractions, et elles sont ici et non en SQL : une ligne
+    // de regle metier de plus a tenir en double serait une ligne de trop.
+    soldeThomas: payeThomas - duThomas,
+    soldeLiz: payeLiz - duLiz,
+  }
 }
 
 /**
