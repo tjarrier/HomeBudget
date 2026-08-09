@@ -48,7 +48,10 @@ async function quatreDepenses(): Promise<void> {
   await ajouterDepense({
     date: '2026-06-30',
     description: 'Fin juin',
-    montant: 1000,
+    // 1100 et non 1000 : payeThomas et payeLiz doivent rester DISTINCTS, sinon
+    // le test `resumerDepenses() toEqual resumer(listerDepenses())` passerait
+    // meme si 'thomas' et 'liz' etaient inverses dans les FILTER de la facade.
+    montant: 1100,
     payePar: 'thomas',
     type: 'courante',
     mode: 'moitie',
