@@ -9,7 +9,7 @@ import {
   supprimerDepense,
 } from '../src/ecriture.js'
 import { VERSIONS_INITIALES, importerDepenses } from '../src/import-sheet.js'
-import { listerDepenses, listerVersions } from '../src/lecture.js'
+import { listerDepenses, listerVersions, resumerDepenses } from '../src/lecture.js'
 import { depense } from '../src/schema.js'
 
 afterAll(async () => {
@@ -221,6 +221,36 @@ describe('listerDepenses — limite', () => {
   it('une limite plus grande que la base rend tout, sans erreur', async () => {
     const toutes = await listerDepenses()
     expect(await listerDepenses({ limite: 9999 })).toHaveLength(toutes.length)
+  })
+})
+
+describe('resumerDepenses', () => {
+  beforeEach(quatreDepenses)
+
+  it('rend EXACTEMENT ce que resumer() rend sur les memes lignes', async () => {
+    expect(await resumerDepenses()).toEqual(resumer(await listerDepenses()))
+  })
+
+  it('suit les memes filtres que la liste', async () => {
+    for (const filtres of [
+      { payePar: 'liz' as const },
+      { mois: '2026-07' },
+      { type: 'transfert' as const },
+    ]) {
+      expect(await resumerDepenses(filtres)).toEqual(resumer(await listerDepenses(filtres)))
+    }
+  })
+
+  it('IGNORE la limite : un resume borne serait un solde faux', async () => {
+    // La limite est une borne d'AFFICHAGE. Si elle se propageait a l'agregat,
+    // l'ecran afficherait le solde des 20 lignes visibles en le presentant comme
+    // le solde du couple — le bug que le projet existe pour ne plus avoir.
+    expect(await resumerDepenses({ limite: 1 })).toEqual(await resumerDepenses())
+  })
+
+  it('rend des zeros, jamais des NaN, sur une base vide', async () => {
+    await db.delete(depense)
+    expect(await resumerDepenses()).toEqual(resumer([]))
   })
 })
 
@@ -768,6 +798,20 @@ describe('LE CANARI, vu par la facade', () => {
     expect(r.soldeThomas).toBe(114580)
     expect(formaterEuros(r.soldeThomas).replace(/[\xa0 ]/g, ' ')).toBe('1 145,80 €')
     expect(phraseSynthese(r).replace(/[\xa0 ]/g, ' ')).toBe('Liz doit 1 145,80 € à Thomas')
+  })
+
+  it('rend le MEME canari par l agregat SQL que par le pliage du domaine', async () => {
+    // Le seul garde-fou de la deuxieme implementation de `resumer()`. Sans lui,
+    // l'agregat SQL derive en silence le premier jour ou `resumer()` change.
+    await importerLeSheetDansLaBase()
+
+    const parSQL = await resumerDepenses()
+
+    expect(parSQL).toEqual(resumer(await listerDepenses()))
+    expect(parSQL.soldeThomas).toBe(114580)
+    expect(phraseSynthese(parSQL).replace(/[\xa0\u202f]/g, ' ')).toBe(
+      'Liz doit 1 145,80 € à Thomas',
+    )
   })
 })
 
