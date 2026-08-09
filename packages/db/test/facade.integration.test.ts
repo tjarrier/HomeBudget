@@ -9,7 +9,12 @@ import {
   supprimerDepense,
 } from '../src/ecriture.js'
 import { VERSIONS_INITIALES, importerDepenses } from '../src/import-sheet.js'
-import { listerDepenses, listerVersions, resumerDepenses } from '../src/lecture.js'
+import {
+  listerDepenses,
+  listerMoisDepenses,
+  listerVersions,
+  resumerDepenses,
+} from '../src/lecture.js'
 import { depense } from '../src/schema.js'
 
 afterAll(async () => {
@@ -73,6 +78,31 @@ async function quatreDepenses(): Promise<void> {
     mode: 'prorata',
   })
 }
+
+describe('listerMoisDepenses', () => {
+  beforeEach(quatreDepenses)
+
+  it('rend les mois porteurs, sans doublon, du plus recent au plus ancien', async () => {
+    const mois = await listerMoisDepenses()
+
+    expect(mois).toEqual([...new Set(mois)])
+    expect([...mois].sort().reverse()).toEqual(mois)
+    expect(mois.every((m) => /^\d{4}-\d{2}$/.test(m))).toBe(true)
+  })
+
+  it('ne propose que des mois que le filtre sait retrouver', async () => {
+    // Le contrat du selecteur : chaque option offerte rend au moins une ligne.
+    // Un mois vide inviterait a un filtre dont on sait deja qu'il ne rendra rien.
+    for (const m of await listerMoisDepenses()) {
+      expect((await listerDepenses({ mois: m })).length).toBeGreaterThan(0)
+    }
+  })
+
+  it('rend une liste vide sur une base vide', async () => {
+    await db.delete(depense)
+    expect(await listerMoisDepenses()).toEqual([])
+  })
+})
 
 describe('listerVersions', () => {
   it('rend les versions de la plus ancienne a la plus recente, dates en chaines ISO', async () => {

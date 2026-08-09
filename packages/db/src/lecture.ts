@@ -126,6 +126,29 @@ export async function resumerDepenses(filtres: FiltresDepenses = {}): Promise<Re
 }
 
 /**
+ * Les mois qui portent au moins une depense, `YYYY-MM`, du plus recent au
+ * plus ancien. C'est ce que le selecteur de l'ecran des depenses propose.
+ *
+ * `date_trunc('month', …)` et non un `substring` : la MEME expression que
+ * `conditions()` et que l'index partiel de la migration 0008. Une seule
+ * definition de « le mois de cette date » dans le projet, donc le selecteur ne
+ * peut pas proposer un mois que le filtre ne saurait pas retrouver.
+ *
+ * Le format se fait en SQL (`to_char`) pour que la valeur arrive deja en chaine
+ * ISO : un `Date` cote TypeScript porterait un fuseau, et un mois de bascule
+ * repasserait au mois precedent.
+ */
+export async function listerMoisDepenses(): Promise<string[]> {
+  const lignes = await db
+    .selectDistinct({
+      mois: sql<string>`to_char(date_trunc('month', ${depense.date}::timestamp), 'YYYY-MM')`,
+    })
+    .from(depense)
+    .orderBy(sql`1 desc`)
+  return lignes.map((l) => l.mois)
+}
+
+/**
  * Criteres de selection. Absent = pas de filtre ; plusieurs = ET.
  *
  * `| undefined` explicite malgre le `?` : sous `exactOptionalPropertyTypes`, les
