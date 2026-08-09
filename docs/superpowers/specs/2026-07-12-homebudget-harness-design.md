@@ -155,7 +155,7 @@ Phrase de synthèse : si `solde_thomas > 0` → « Liz doit X € à Thomas », 
 
 **Dépenses** — liste filtrable (mois, personne, type). Formulaire guidé : `mode_repartition` pré-sélectionné selon le type mais modifiable, **aperçu en direct des parts avant validation**, et rappel explicite de la version de config appliquée (« Config en vigueur au 05/07/2026 : loyer 791 € »). Génération mensuelle de la charge fixe à partir de la version active — le mois de bascule prend automatiquement le nouveau montant, ce qui est tout l'intérêt du versioning.
 
-**Configuration** — timeline chronologique des versions. Action clé : « Créer une nouvelle version à partir du … » qui duplique la courante comme point de départ, clôture la précédente, et affiche un message de réassurance explicite : aucune dépense passée n'est impactée. L'édition d'une version passée est verrouillée par défaut.
+**Configuration** — timeline chronologique des versions. Action clé : « Créer une nouvelle version à partir du … » qui duplique la courante comme point de départ, clôture la précédente, et affiche un message de réassurance explicite : aucune dépense passée n'est impactée. Une version passée ne s'édite pas — il n'y a pas de déverrouillage, et il n'y en aura pas : le trigger append-only de `0001` (étendu à `DELETE` par `0002`) refuse toute écriture sur une version close. C'est la raison d'être du projet, pas un réglage.
 
 ## 8. Cas limites (§7 du PRD)
 
@@ -218,7 +218,7 @@ Après import du seed, le solde doit valoir **exactement 114 580 centimes — «
 
 **Hooks** — à chaque écriture de fichier : Biome (format + lint) puis `tsc --noEmit`. À l'arrêt de l'agent : les tests du domaine. Un agent ne peut pas laisser le repo cassé derrière lui.
 
-**Skills projet** — `/run` (lance l'app et la Supabase locale), `/verify` (exerce réellement le parcours modifié, pas seulement les tests), `/seed` (réinitialise la base au seed et vérifie l'invariant du solde).
+**Skills projet** — `/verify` (exerce réellement le parcours modifié, pas seulement les tests), `/seed` (réinitialise la base au seed et vérifie l'invariant du solde). Lancer l'app n'en demande pas un : `/run` est fourni par le harness, et `task dev` suffit.
 
 **CI** — GitHub Actions : lint, typecheck, tests unitaires, tests d'intégration, E2E. Bloquants sur `main`.
 
