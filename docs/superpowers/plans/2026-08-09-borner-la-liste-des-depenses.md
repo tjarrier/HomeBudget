@@ -1,7 +1,5 @@
 # Borner la liste des dépenses — plan d'implémentation
 
-**État :** en cours
-
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Borner en SQL toute lecture de dépenses, et rendre le formulaire de saisie joignable au téléphone sans traverser l'historique.
@@ -37,7 +35,7 @@
 - Consumes: rien.
 - Produces: `Resume.nombre: number` — le nombre de dépenses pliées. `resumer(depenses)` le remplit avec `depenses.length`. Consommé par les Tasks 3, 5 et 6.
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 Dans `packages/domain/test/solde.test.ts`, dans le `describe('resumer', …)` existant, ajouter :
 
@@ -53,12 +51,12 @@ Et dans le `it('gere une liste vide', …)` existant, ajouter la ligne :
     expect(r.nombre).toBe(0)
 ```
 
-- [ ] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
 
 Run: `task test:domain`
 Expected: FAIL — `expected undefined to be 2` sur le nouveau test.
 
-- [ ] **Step 3 : Implémenter**
+- [x] **Step 3 : Implémenter**
 
 Dans `packages/domain/src/solde.ts`, ajouter le champ EN TÊTE de l'interface :
 
@@ -86,12 +84,12 @@ Et dans `resumer()`, initialiser puis remplir :
   }
 ```
 
-- [ ] **Step 4 : Lancer toute la suite unitaire**
+- [x] **Step 4 : Lancer toute la suite unitaire**
 
 Run: `task test`
 Expected: PASS. `nombre` est un champ ajouté : aucun test existant ne compare un `Resume` entier. Si l'un le fait (`toEqual` sur un littéral), ajouter `nombre` à son attendu — ne jamais retirer le champ.
 
-- [ ] **Step 5 : Committer**
+- [x] **Step 5 : Committer**
 
 ```bash
 git add packages/domain/src/solde.ts packages/domain/test/solde.test.ts
@@ -112,14 +110,14 @@ git commit -m "feat(domain): un resume sait combien de lignes il plie"
 
 **Prérequis :** Postgres local. `task db:up` si le conteneur ne tourne pas.
 
-- [ ] **Step 1 : Sortir le jeu de données du bloc des filtres**
+- [x] **Step 1 : Sortir le jeu de données du bloc des filtres**
 
 Trois blocs vont s'en servir. Dans `packages/db/test/facade.integration.test.ts`, **déplacer** la fonction `quatreDepenses()` (déclarée aujourd'hui dans `describe('listerDepenses — filtres', …)`, avec son JSDoc) au niveau du module, juste après `creerVersionSql()`. Ne rien changer à son corps ni à ses appels : le `beforeEach` global tronque déjà les tables entre deux tests, donc les blocs restent indépendants.
 
 Run: `task test:integration`
 Expected: PASS — c'est un déplacement, rien d'autre.
 
-- [ ] **Step 2 : Écrire le test qui échoue**
+- [x] **Step 2 : Écrire le test qui échoue**
 
 À la suite du `describe('listerDepenses — filtres', …)`, ajouter :
 
@@ -158,12 +156,12 @@ describe('listerDepenses — limite', () => {
 })
 ```
 
-- [ ] **Step 3 : Lancer le test, vérifier qu'il échoue**
+- [x] **Step 3 : Lancer le test, vérifier qu'il échoue**
 
 Run: `task test:integration`
 Expected: FAIL — `limite` n'existe pas sur `FiltresDepenses` (erreur de type), et `bornees` a la longueur de la liste complète.
 
-- [ ] **Step 4 : Implémenter**
+- [x] **Step 4 : Implémenter**
 
 Dans `packages/db/src/lecture.ts`, ajouter le champ à `FiltresDepenses` :
 
@@ -206,12 +204,12 @@ export async function listerDepenses(filtres: FiltresDepenses = {}): Promise<Dep
 Mettre à jour le JSDoc de `listerDepenses` : la première ligne devient
 `Les depenses, de la plus recente a la plus ancienne. Sans filtre ni limite : toutes.`
 
-- [ ] **Step 5 : Lancer les tests d'intégration**
+- [x] **Step 5 : Lancer les tests d'intégration**
 
 Run: `task test:integration`
 Expected: PASS, y compris le canari des 114 580 centimes.
 
-- [ ] **Step 6 : Committer**
+- [x] **Step 6 : Committer**
 
 ```bash
 git add packages/db/src/lecture.ts packages/db/test/facade.integration.test.ts
@@ -230,7 +228,7 @@ git commit -m "feat(db): listerDepenses accepte une limite, et coupe la queue"
 - Consumes: `Resume` de la Task 1 (avec `nombre`), `FiltresDepenses` et `conditions()` de la Task 2.
 - Produces: `resumerDepenses(filtres?: FiltresDepenses): Promise<Resume>`. Consommé par les Tasks 5 et 6.
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 Dans `packages/db/test/facade.integration.test.ts` :
 
@@ -282,12 +280,12 @@ c) Le verrou du canari : dans `describe('LE CANARI, vu par la facade', …)`, aj
   })
 ```
 
-- [ ] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
 
 Run: `task test:integration`
 Expected: FAIL — `resumerDepenses is not a function` / erreur de type à l'import.
 
-- [ ] **Step 3 : Implémenter**
+- [x] **Step 3 : Implémenter**
 
 Dans `packages/db/src/lecture.ts`, ajouter `Resume` à l'import de `@homebudget/domain`, puis la fonction. `conditions()` est déjà défini plus bas dans le fichier — pose `resumerDepenses` juste après `listerDepenses`.
 
@@ -352,12 +350,12 @@ export async function resumerDepenses(filtres: FiltresDepenses = {}): Promise<Re
 }
 ```
 
-- [ ] **Step 4 : Lancer les tests d'intégration**
+- [x] **Step 4 : Lancer les tests d'intégration**
 
 Run: `task test:integration`
 Expected: PASS, dont les deux canaris.
 
-- [ ] **Step 5 : Committer**
+- [x] **Step 5 : Committer**
 
 ```bash
 git add packages/db/src/lecture.ts packages/db/test/facade.integration.test.ts
@@ -376,7 +374,7 @@ git commit -m "feat(db): resumerDepenses plie en SQL, et un test le tient a resu
 - Consumes: rien des tâches précédentes.
 - Produces: `listerMoisDepenses(): Promise<string[]>` — les mois `YYYY-MM` qui portent au moins une dépense, du plus récent au plus ancien, sans doublon. Consommé par la Task 6.
 
-- [ ] **Step 1 : Écrire le test qui échoue**
+- [x] **Step 1 : Écrire le test qui échoue**
 
 Ajouter `listerMoisDepenses` à l'import depuis `../src/lecture.js`, puis :
 
@@ -407,12 +405,12 @@ describe('listerMoisDepenses', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer le test, vérifier qu'il échoue**
+- [x] **Step 2 : Lancer le test, vérifier qu'il échoue**
 
 Run: `task test:integration`
 Expected: FAIL — `listerMoisDepenses is not a function`.
 
-- [ ] **Step 3 : Implémenter**
+- [x] **Step 3 : Implémenter**
 
 ```ts
 /**
@@ -439,12 +437,12 @@ export async function listerMoisDepenses(): Promise<string[]> {
 }
 ```
 
-- [ ] **Step 4 : Lancer les tests d'intégration**
+- [x] **Step 4 : Lancer les tests d'intégration**
 
 Run: `task test:integration`
 Expected: PASS.
 
-- [ ] **Step 5 : Committer**
+- [x] **Step 5 : Committer**
 
 ```bash
 git add packages/db/src/lecture.ts packages/db/test/facade.integration.test.ts
@@ -464,7 +462,7 @@ git commit -m "feat(db): listerMoisDepenses, la meme definition du mois que le f
 - Consumes: `resumerDepenses()` (Task 3), `listerDepenses({ limite })` (Task 2), `Resume.nombre` (Task 1).
 - Produces: rien pour les tâches suivantes.
 
-- [ ] **Step 1 : Ouvrir la liste blanche, et vérifier qu'elle échoue d'abord**
+- [x] **Step 1 : Ouvrir la liste blanche, et vérifier qu'elle échoue d'abord**
 
 Dans `apps/web/test/architecture.test.ts`, ajouter les deux noms à `FACADE_DB`, à la suite de `listerDepenses` :
 
@@ -482,7 +480,7 @@ const FACADE_DB = [
 Run: `pnpm --filter @homebudget/web test`
 Expected: PASS (la liste blanche autorise plus qu'elle ne voit ; rien ne les importe encore).
 
-- [ ] **Step 2 : Modifier le tableau de bord**
+- [x] **Step 2 : Modifier le tableau de bord**
 
 Dans `apps/web/app/(app)/page.tsx` :
 
@@ -503,7 +501,7 @@ Dans `apps/web/app/(app)/page.tsx` :
 - remplacer `depenses.slice(0, 5).map(…)` par `recentes.map(…)` ;
 - retirer `resumer` de l'import de `@homebudget/domain` s'il n'est plus utilisé (garder `Resume`, `Personne`, `nomPersonne`, `synthese`).
 
-- [ ] **Step 3 : Étendre CLAUDE.md**
+- [x] **Step 3 : Étendre CLAUDE.md**
 
 Dans `CLAUDE.md`, section « L'application web », premier point, la liste de la façade devient :
 
@@ -523,12 +521,12 @@ Et ajouter, juste après cette phrase :
   `resumer()` du domaine, champ pour champ, sur le seed réel.
 ```
 
-- [ ] **Step 4 : Vérifier**
+- [x] **Step 4 : Vérifier**
 
 Run: `task verif`
 Expected: PASS — lint, typecheck, tests unitaires dont `architecture.test.ts`.
 
-- [ ] **Step 5 : Committer**
+- [x] **Step 5 : Committer**
 
 ```bash
 git add apps/web/app/\(app\)/page.tsx apps/web/test/architecture.test.ts CLAUDE.md
@@ -547,7 +545,7 @@ git commit -m "feat(web): le tableau de bord lit un agregat, plus la table entie
 - Consumes: `resumerDepenses()`, `listerMoisDepenses()`, `listerDepenses({ …filtres, limite })`, `Resume.nombre`.
 - Produces: rien pour les tâches suivantes.
 
-- [ ] **Step 1 : Remplacer les lectures et poser la borne**
+- [x] **Step 1 : Remplacer les lectures et poser la borne**
 
 Dans `apps/web/app/(app)/depenses/page.tsx` :
 
@@ -622,7 +620,7 @@ d) le corps, à la place du bloc `const toutes = await listerDepenses()` … `co
 
 Le bloc `reglement` qui suit ne change pas (il lit déjà `s`).
 
-- [ ] **Step 2 : L'en-tête de la carte et le « Voir plus »**
+- [x] **Step 2 : L'en-tête de la carte et le « Voir plus »**
 
 `aside` de la `Carte` « Historique » devient :
 
@@ -666,7 +664,7 @@ Et **hors** du `<div data-testid="liste-depenses">`, juste après sa fermeture e
 
 Ajouter `import Link from 'next/link'` en tête du fichier.
 
-- [ ] **Step 3 : Le formulaire passe devant l'historique au téléphone**
+- [x] **Step 3 : Le formulaire passe devant l'historique au téléphone**
 
 Sur la `<div>` de la colonne de saisie, ajouter `max-lg:order-first` et étendre le commentaire :
 
@@ -681,14 +679,14 @@ Sur la `<div>` de la colonne de saisie, ajouter `max-lg:order-first` et étendre
         <div className="flex flex-col gap-6 max-lg:order-first lg:sticky lg:top-5">
 ```
 
-- [ ] **Step 4 : Vérifier**
+- [x] **Step 4 : Vérifier**
 
 Run: `task verif`
 Expected: PASS.
 
 Puis à l'œil, sur `task dev` : `/depenses` affiche 20 lignes et « Voir plus (14) » ; le clic mène à `?n=40` et affiche les 34 sans bouton ; `/depenses?payePar=liz` garde le filtre après un « Voir plus » ; `/depenses?n=999999` retombe à 20 lignes.
 
-- [ ] **Step 5 : Committer**
+- [x] **Step 5 : Committer**
 
 ```bash
 git add apps/web/app/\(app\)/depenses/page.tsx
@@ -708,7 +706,7 @@ git commit -m "feat(web): 20 lignes, un « Voir plus », et le formulaire d abor
 
 **Prérequis :** les `.env` du checkout principal doivent exister dans ce worktree, et aucun conteneur `homebudget-db` orphelin ne doit tourner.
 
-- [ ] **Step 1 : Réparer ce que la borne casse**
+- [x] **Step 1 : Réparer ce que la borne casse**
 
 Deux endroits lisent la liste comme si elle était complète :
 
@@ -741,7 +739,7 @@ Ne pas modifier `filtres.tsx` pour éviter ça : que la borne survive au filtre 
 
 b) Vérifier que le canari du solde et le parcours de suppression ne dépendent d'aucune ligne ancienne : ils lisent le bandeau du tableau de bord et des lignes qu'ils viennent d'écrire (donc les plus récentes, en tête). Aucun changement attendu — le confirmer en lançant la suite.
 
-- [ ] **Step 2 : Le parcours de la borne**
+- [x] **Step 2 : Le parcours de la borne**
 
 Ajouter, à la fin du fichier, un `describe` dédié. **Après** les canaris et les parcours d'écriture existants : il n'écrit rien, mais il lit des comptes que les écritures précédentes déplacent.
 
@@ -803,14 +801,14 @@ test.describe('borner l historique, sur un telephone', () => {
 })
 ```
 
-- [ ] **Step 3 : Lancer les parcours sur une base neuve**
+- [x] **Step 3 : Lancer les parcours sur une base neuve**
 
 Run: `task test:e2e:frais`
 Expected: PASS, dont les deux canaris du solde à 1 145,80 €.
 
 Si `toHaveCount(20)` échoue avec un compte plus élevé : les parcours antérieurs ont ajouté des lignes, ce qui ne change pas la borne — 20 reste 20. Si le compte est **inférieur** à 20, c'est la borne qui n'est pas appliquée : revenir à la Task 6.
 
-- [ ] **Step 4 : Committer**
+- [x] **Step 4 : Committer**
 
 ```bash
 git add apps/web/e2e/parcours.spec.ts
@@ -824,27 +822,24 @@ git commit -m "test(e2e): la liste s arrete a 20, et le formulaire vient d abord
 **Files:**
 - Modify: `docs/superpowers/plans/2026-08-09-borner-la-liste-des-depenses.md` (ce fichier)
 
-- [ ] **Step 1 : Cocher toutes les cases de ce plan et retirer la ligne `**État :** en cours`**
+- [x] **Step 1 : Cocher toutes les cases de ce plan et retirer la ligne `**État :** en cours`**
 
 `apps/web/test/plans.test.ts` refuse un plan silencieux : soit il déclare être en cours, soit ses cases sont cochées. Retirer la déclaration est le geste de clôture.
 
-- [ ] **Step 2 : La séquence complète de la CI, en local**
+- [x] **Step 2 : La séquence complète de la CI, en local**
 
 Run: `task ci`
 Expected: PASS de bout en bout. **DESTRUCTIF** — la base locale est réinitialisée.
 
-- [ ] **Step 3 : Committer et ouvrir la PR**
+- [x] **Step 3 : Committer**
 
 ```bash
 git add docs/superpowers/plans/2026-08-09-borner-la-liste-des-depenses.md
 git commit -m "docs(plans): G2 livre, cases cochees"
-git push -u origin g2-borner-la-liste-des-depenses
-gh pr create --title "G2 — Borner la liste des dépenses" --body "Closes #41
-
-Aucune lecture de l'application ne rend plus un nombre non borné de lignes.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)"
 ```
+
+Le push et l'ouverture de la PR reviennent à l'humain, après une dernière relecture de
+toute la branche — ce n'est pas ce commit de clôture qui les déclenche.
 
 ---
 
