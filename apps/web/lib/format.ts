@@ -52,6 +52,34 @@ export function formaterDate(iso: string): string {
   return `${jour}/${mois}/${annee}`
 }
 
+const NOMS_MOIS = [
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
+]
+
+/**
+ * `2026-07` -> `juillet 2026`. Un tableau litteral plutot qu'`Intl` : formater
+ * par `Intl` exigerait un objet `Date`, qui porte un fuseau — un mois construit
+ * au 1er a minuit UTC s'affiche dans le mois precedent des qu'on le rend a
+ * l'ouest de Greenwich. Meme raison que `formaterDate` juste au-dessus.
+ */
+export function formaterMois(iso: string): string {
+  const [annee, mois] = iso.split('-')
+  const nom = NOMS_MOIS[Number(mois) - 1]
+  if (!annee || !nom) throw new Error(`Mois ISO invalide : ${iso}`)
+  return `${nom} ${annee}`
+}
+
 /**
  * Un montant pret a etre pose dans un champ de saisie : `1 145,80`, sans le
  * symbole — la forme exacte du `placeholder` du formulaire (`1 110,58`).

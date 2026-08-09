@@ -47,16 +47,24 @@ export async function listerDepenses(filtres: FiltresDepenses = {}): Promise<Dep
   return lignes.map(depenseDepuisLigne)
 }
 
-/** Criteres de selection. Absent = pas de filtre ; plusieurs = ET. */
+/**
+ * Criteres de selection. Absent = pas de filtre ; plusieurs = ET.
+ *
+ * `| undefined` explicite malgre le `?` : sous `exactOptionalPropertyTypes`, les
+ * deux ne sont pas la meme chose. Un appelant qui derive ses filtres d'une URL
+ * ecrit naturellement `{ mois: valide(param) }` — la propriete est PRESENTE et
+ * vaut `undefined`. Sans cette union il devrait construire l'objet clef par clef
+ * pour dire exactement ce que `conditions()` fait deja : `undefined` ne filtre rien.
+ */
 export interface FiltresDepenses {
   /** ISO `YYYY-MM`. Le mois de la DATE de la depense, jamais celui de sa saisie. */
-  mois?: string
+  mois?: string | undefined
   /**
    * Qui a AVANCE l'argent. Ce n'est pas « les depenses qui concernent X » :
    * toute depense concerne les deux, chacun y porte une part (parfois nulle).
    */
-  payePar?: Personne
-  type?: TypeDepense
+  payePar?: Personne | undefined
+  type?: TypeDepense | undefined
 }
 
 /**

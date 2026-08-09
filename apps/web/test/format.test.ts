@@ -5,10 +5,26 @@ import { describe, expect, it } from 'vitest'
 import {
   aujourdhuiLocal,
   formaterDate,
+  formaterMois,
   formaterMontant,
   formaterMontantSigne,
   montantPourSaisie,
 } from '../lib/format.js'
+
+describe('formaterMois', () => {
+  it('nomme le mois d un `YYYY-MM`', () => {
+    expect(formaterMois('2026-07')).toBe('juillet 2026')
+    // Les deux bornes de l'annee : un decalage d'un cran dans le tableau des
+    // noms se verrait ici avant nulle part ailleurs.
+    expect(formaterMois('2026-01')).toBe('janvier 2026')
+    expect(formaterMois('2026-12')).toBe('décembre 2026')
+  })
+
+  it('jette plutot que de rendre « undefined 2026 »', () => {
+    expect(() => formaterMois('2026-13')).toThrow(/invalide/)
+    expect(() => formaterMois('2026')).toThrow(/invalide/)
+  })
+})
 
 describe('formaterMontant', () => {
   it('rend des euros lisibles avec des espaces normaux', () => {
