@@ -181,3 +181,21 @@ export function assertDateIsoValide(date: string): void {
     throw new Error(`Date ISO invalide : ${date}`)
   }
 }
+
+/**
+ * Valide `YYYY-MM` en reutilisant la validation calendaire des dates : le mois 13
+ * et l'annee 0000 sont deja des erreurs la-bas, ne les redecrivons pas ici.
+ *
+ * Le `catch` n'avale rien, il retraduit : `assertDateIsoValide` parlerait du
+ * « 2026-13-01 », un jour que l'appelant n'a jamais ecrit et qu'il ne peut pas
+ * corriger. Le message doit nommer ce qu'on lui a demande.
+ */
+export function assertMoisIsoValide(mois: string): void {
+  const invalide = new Error(`Mois ISO invalide : ${mois}. Attendu YYYY-MM.`)
+  if (!/^\d{4}-\d{2}$/.test(mois)) throw invalide
+  try {
+    assertDateIsoValide(`${mois}-01`)
+  } catch {
+    throw invalide
+  }
+}

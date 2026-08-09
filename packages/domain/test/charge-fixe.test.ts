@@ -111,7 +111,11 @@ describe('genererChargeFixe', () => {
   it('refuse un mois mal forme ou inexistant', () => {
     expect(() => genererChargeFixe(VERSIONS, '2026-7', 'thomas')).toThrow(/Mois ISO invalide/)
     expect(() => genererChargeFixe(VERSIONS, '2026-03-01', 'thomas')).toThrow(/Mois ISO invalide/)
-    expect(() => genererChargeFixe(VERSIONS, '2026-13', 'thomas')).toThrow(/Date ISO invalide/)
+    // Le message nomme le MOIS demande, pas le « 2026-13-01 » que la validation
+    // fabrique pour verifier le calendrier — l'appelant n'a jamais ecrit ce jour.
+    expect(() => genererChargeFixe(VERSIONS, '2026-13', 'thomas')).toThrow(
+      /Mois ISO invalide : 2026-13/,
+    )
   })
 
   it('refuse un mois anterieur a toute version', () => {
