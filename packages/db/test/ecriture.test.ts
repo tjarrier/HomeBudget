@@ -1,6 +1,6 @@
 import { type VersionConfig, dateMaxDepense } from '@homebudget/domain'
 import { describe, expect, it } from 'vitest'
-import { calculerPartsPourSaisie } from '../src/ecriture.js'
+import { calculerPartsPourSaisie, supprimerDepense } from '../src/ecriture.js'
 
 /**
  * `calculerPartsPourSaisie` est pure : `aujourdhui` est un parametre, jamais
@@ -52,5 +52,20 @@ describe('calculerPartsPourSaisie — frontiere haute avec horloge figee', () =>
     expect(() => calculerPartsPourSaisie(saisie(lendemain), [version], AUJOURDHUI)).toThrow(
       /trop lointaine/i,
     )
+  })
+})
+
+/**
+ * Le garde d'identifiant, verifiable SANS Docker : il jette avant de toucher au
+ * pool, donc ce test tient dans la suite unitaire.
+ *
+ * `supprimerDepense` est joignable depuis une Server Action, c'est-a-dire depuis
+ * un POST fabrique a la main. Sans ce garde, `db.delete(...)` transmet la chaine
+ * a Postgres, qui repond `invalid input syntax for type uuid: "..."` — un
+ * message de driver affiche tel quel a l'utilisateur par `enEchec`.
+ */
+describe('supprimerDepense — garde d identifiant', () => {
+  it('refuse un identifiant qui n est pas un uuid, sans requete', async () => {
+    await expect(supprimerDepense('pas-un-uuid')).rejects.toThrow("Cette dépense n'existe plus.")
   })
 })

@@ -2,7 +2,12 @@ import { formaterEuros, genererChargeFixe, phraseSynthese, resumer } from '@home
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { db, pool } from '../src/client.js'
-import { ajouterDepense, creerVersion, genererChargeFixeDuMois } from '../src/ecriture.js'
+import {
+  ajouterDepense,
+  creerVersion,
+  genererChargeFixeDuMois,
+  supprimerDepense,
+} from '../src/ecriture.js'
 import { VERSIONS_INITIALES, importerDepenses } from '../src/import-sheet.js'
 import { listerDepenses, listerVersions } from '../src/lecture.js'
 import { depense } from '../src/schema.js'
@@ -667,58 +672,130 @@ describe('genererChargeFixeDuMois — idempotence', () => {
   })
 })
 
+/**
+ * Rejoue les 33 lignes reelles du Sheet dans la base, versions comprises.
+ *
+ * Extrait du canari pour que le test de suppression parte du MEME etat : deux
+ * copies de cette mise en place divergeraient, et c'est precisement le solde de
+ * reference qui perdrait son sens.
+ */
+async function importerLeSheetDansLaBase(): Promise<void> {
+  const idsReels = new Map<string, string>()
+  for (const v of VERSIONS_INITIALES) {
+    const { rows } = await db.execute<{ id: string }>(sql`
+      select * from creer_version_config(
+        ${v.libelle}, ${v.dateDebut}::date, ${v.salaireNetThomas}, ${v.salaireNetLiz},
+        ${JSON.stringify(v.chargesCommunes)}::jsonb,
+        ${JSON.stringify(v.chargesPersoThomas)}::jsonb,
+        ${JSON.stringify(v.chargesPersoLiz)}::jsonb
+      )
+    `)
+    const ligne = rows[0]
+    if (!ligne) throw new Error('creer_version_config n a rien renvoye')
+    idsReels.set(v.id, ligne.id)
+  }
+
+  const csv = await import('node:fs').then((fs) =>
+    fs.readFileSync(
+      new URL('../../../docs/data/sheet-export-2026-07-12/depenses.csv', import.meta.url),
+      'utf-8',
+    ),
+  )
+
+  await db.insert(depense).values(
+    importerDepenses(csv, VERSIONS_INITIALES).map((d) => {
+      const versionId = idsReels.get(d.versionConfigId)
+      if (!versionId) throw new Error(`Version inconnue : ${d.versionConfigId}`)
+      return {
+        date: d.date,
+        description: d.description,
+        montantCents: d.montant,
+        payePar: d.payePar,
+        type: d.type,
+        modeRepartition: d.mode,
+        partThomasCents: d.parts.thomas,
+        partLizCents: d.parts.liz,
+        versionConfigId: versionId,
+        genereAuto: d.genereAuto,
+        commentaire: d.commentaire,
+      }
+    }),
+  )
+}
+
 describe('LE CANARI, vu par la facade', () => {
   it('rend exactement 114 580 centimes apres relecture depuis Postgres', async () => {
     // Le canari du plan 1 tourne sur des objets en memoire. Celui-ci fait
     // l'aller-retour complet par la base : si un mapper inverse deux colonnes,
     // le solde bouge et ce test tombe. Ne l'ajuste pas — trouve ce qui a casse.
-    const idsReels = new Map<string, string>()
-    for (const v of VERSIONS_INITIALES) {
-      const { rows } = await db.execute<{ id: string }>(sql`
-        select * from creer_version_config(
-          ${v.libelle}, ${v.dateDebut}::date, ${v.salaireNetThomas}, ${v.salaireNetLiz},
-          ${JSON.stringify(v.chargesCommunes)}::jsonb,
-          ${JSON.stringify(v.chargesPersoThomas)}::jsonb,
-          ${JSON.stringify(v.chargesPersoLiz)}::jsonb
-        )
-      `)
-      const ligne = rows[0]
-      if (!ligne) throw new Error('creer_version_config n a rien renvoye')
-      idsReels.set(v.id, ligne.id)
-    }
-
-    const csv = await import('node:fs').then((fs) =>
-      fs.readFileSync(
-        new URL('../../../docs/data/sheet-export-2026-07-12/depenses.csv', import.meta.url),
-        'utf-8',
-      ),
-    )
-
-    const depenses = importerDepenses(csv, VERSIONS_INITIALES)
-    await db.insert(depense).values(
-      depenses.map((d) => {
-        const versionId = idsReels.get(d.versionConfigId)
-        if (!versionId) throw new Error(`Version inconnue : ${d.versionConfigId}`)
-        return {
-          date: d.date,
-          description: d.description,
-          montantCents: d.montant,
-          payePar: d.payePar,
-          type: d.type,
-          modeRepartition: d.mode,
-          partThomasCents: d.parts.thomas,
-          partLizCents: d.parts.liz,
-          versionConfigId: versionId,
-          genereAuto: d.genereAuto,
-          commentaire: d.commentaire,
-        }
-      }),
-    )
+    await importerLeSheetDansLaBase()
 
     const r = resumer(await listerDepenses())
 
     expect(r.soldeThomas).toBe(114580)
     expect(formaterEuros(r.soldeThomas).replace(/[\xa0 ]/g, ' ')).toBe('1 145,80 €')
     expect(phraseSynthese(r).replace(/[\xa0 ]/g, ' ')).toBe('Liz doit 1 145,80 € à Thomas')
+  })
+})
+
+describe('supprimerDepense', () => {
+  /**
+   * LE VERROU DE L'ISSUE #40, au centime : le solde du seed reel, une depense de
+   * plus, puis sa suppression — et le solde doit revenir EXACTEMENT a 114 580.
+   *
+   * L'assertion du milieu n'est pas decorative. Sans elle, un `supprimerDepense`
+   * qui ne supprimerait rien ET un `ajouterDepense` qui n'ajouterait rien
+   * donneraient le meme vert.
+   */
+  it('rend au solde du seed sa valeur exacte', async () => {
+    await importerLeSheetDansLaBase()
+    expect(resumer(await listerDepenses()).soldeThomas).toBe(114580)
+
+    // Datee dans la derniere version du Sheet, sinon `versionEnVigueurLe` n'a
+    // aucune version a proposer. Payee par Liz : la dette bouge a coup sur.
+    const ajoutee = await ajouterDepense({
+      date: '2026-07-10',
+      description: 'Coquille de saisie',
+      montant: 5000,
+      payePar: 'liz',
+      type: 'courante',
+      mode: 'moitie',
+    })
+    expect(resumer(await listerDepenses()).soldeThomas).not.toBe(114580)
+
+    await supprimerDepense(ajoutee.id)
+
+    expect(resumer(await listerDepenses()).soldeThomas).toBe(114580)
+    expect(phraseSynthese(resumer(await listerDepenses())).replace(/[\xa0 ]/g, ' ')).toBe(
+      'Liz doit 1 145,80 € à Thomas',
+    )
+  })
+
+  /**
+   * Le chemin d'erreur, verrouille la ou il nait. « Zero ligne supprimee » doit
+   * se dire : c'est le double clic et le second telephone.
+   */
+  it('jette quand la depense n existe deja plus', async () => {
+    await expect(supprimerDepense('00000000-0000-4000-8000-000000000000')).rejects.toThrow(
+      "Cette dépense n'existe plus.",
+    )
+  })
+
+  /**
+   * La seule consequence non evidente de « toutes les depenses sont
+   * supprimables » : l'index partiel de la migration 0008 relache son unicite
+   * avec la ligne, donc le mois redevient generable. C'est ainsi qu'on repare
+   * une charge fixe generee au mauvais payeur.
+   */
+  it('rouvre le mois d une charge generee a la regeneration', async () => {
+    await creerVersion(V1)
+
+    const premiere = await genererChargeFixeDuMois('2026-08', 'thomas')
+    expect(premiere.creee).toBe(true)
+    expect((await genererChargeFixeDuMois('2026-08', 'thomas')).creee).toBe(false)
+
+    await supprimerDepense(premiere.depense.id)
+
+    expect((await genererChargeFixeDuMois('2026-08', 'liz')).creee).toBe(true)
   })
 })
