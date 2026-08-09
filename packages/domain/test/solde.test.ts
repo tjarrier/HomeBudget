@@ -80,6 +80,11 @@ describe('resumer', () => {
     const r = resumer([])
     expect(r.soldeThomas).toBe(0)
     expect(r.totalDepenses).toBe(0)
+    expect(r.nombre).toBe(0)
+  })
+
+  it('compte les lignes pliees', () => {
+    expect(resumer(depenses).nombre).toBe(2)
   })
 })
 

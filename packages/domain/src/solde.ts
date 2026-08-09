@@ -35,6 +35,13 @@ export function soldeDepense(d: Depense): Parts {
 }
 
 export interface Resume {
+  /**
+   * Combien de lignes ce resume plie. Il est DANS le resume, et non rendu a
+   * cote, parce que l'agregat SQL de `resumerDepenses()` doit rendre exactement
+   * les memes champs que `resumer()` : le test qui compare les deux couvre alors
+   * le compte comme le reste.
+   */
+  nombre: number
   /** Depenses reelles, transferts exclus. */
   totalDepenses: Cents
   /** Virements et remboursements : des mouvements de dette, pas des depenses. */
@@ -49,6 +56,7 @@ export interface Resume {
 
 export function resumer(depenses: Depense[]): Resume {
   const r: Resume = {
+    nombre: depenses.length,
     totalDepenses: 0,
     totalTransferts: 0,
     payeThomas: 0,
