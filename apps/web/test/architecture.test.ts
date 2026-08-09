@@ -207,6 +207,53 @@ describe("apps/web n'importe de packages/db que sa facade", () => {
   })
 })
 
+/**
+ * L'argument d'un appel `listerDepenses(...)` qui commence a `depart`, en
+ * comptant les parentheses pour trouver sa fermeture : un objet passe en
+ * argument (`{ ...filtres, limite }`) peut lui-meme contenir des parentheses
+ * (spread, appel imbrique), donc un `.indexOf(')')` naif se fermerait trop tot.
+ */
+function argumentDuPremierAppel(contenu: string, depart: number): string {
+  let profondeur = 1
+  let i = depart
+  while (i < contenu.length && profondeur > 0) {
+    if (contenu[i] === '(') profondeur++
+    else if (contenu[i] === ')') profondeur--
+    i++
+  }
+  return contenu.slice(depart, i - 1)
+}
+
+/**
+ * `listerDepenses()` accepte une `limite` mais rend TOUT par defaut — la
+ * facade ne borne rien par elle-meme, elle le permet seulement. CLAUDE.md
+ * affirme que `apps/web` la borne toujours ; ce test rend cette affirmation
+ * vraie plutot que declarative. Sans lui, un troisieme ecran pourrait charger
+ * la table entiere sans qu'aucune requete n'echoue et sans qu'aucun test
+ * existant ne le remarque.
+ */
+describe('listerDepenses() est toujours appelee avec une limite', () => {
+  it("ne s'appelle jamais nue, ni avec un objet sans `limite`", () => {
+    const fautifs: string[] = []
+    const motifAppel = /listerDepenses\s*\(/g
+
+    for (const dossier of DOSSIERS) {
+      for (const fichier of fichiersTs(dossier)) {
+        const contenu = readFileSync(fichier, 'utf-8')
+        for (const appel of contenu.matchAll(motifAppel)) {
+          const debut = appel.index + appel[0].length
+          const argument = argumentDuPremierAppel(contenu, debut)
+          if (!/\blimite\b/.test(argument)) {
+            fautifs.push(fichier.replace(RACINE, ''))
+          }
+        }
+      }
+    }
+
+    expect(fautifs).toEqual([])
+  })
+})
+
 describe('chaque Server Action exige une session', () => {
   it('appelle exigerSession() avant tout traitement', () => {
     // Une Server Action est un endpoint HTTP joignable sans charger la page.

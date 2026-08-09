@@ -105,11 +105,15 @@ que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
   `listerVersions`, `listerDepenses`, `resumerDepenses`, `listerMoisDepenses`,
   `ajouterDepense`, `supprimerDepense`, `creerVersion`, `calculerPartsPourSaisie`,
   `genererChargeFixeDuMois`.
-  Aucune de ces lectures ne rend un nombre non borné de lignes : `listerDepenses`
-  prend une `limite`, le solde est un agrégat SQL (`resumerDepenses`) et non un
-  pliage de toutes les lignes transportées. `resumerDepenses` est la **seule**
-  règle de calcul du projet écrite deux fois — un test d'intégration la compare à
-  `resumer()` du domaine, champ pour champ, sur le seed réel.
+  Toute lecture de *dépenses* dans `apps/web` passe une `limite` ou est un agrégat :
+  `listerDepenses` y est toujours appelée avec une `limite`, jamais nue — un test
+  statique le vérifie —, et le solde est un agrégat SQL (`resumerDepenses`), non un
+  pliage de toutes les lignes transportées. `listerVersions` et `listerMoisDepenses`
+  restent non bornées : une ligne par révision de config et par mois qui porte une
+  dépense, ce qui croît trop lentement pour justifier une borne.
+  `resumerDepenses` est la **seule** règle de calcul du projet écrite deux fois —
+  un test d'intégration la compare à `resumer()` du domaine, champ pour champ, sur
+  le seed réel.
   `apps/web/test/architecture.test.ts` le vérifie par **liste blanche** : tout nom
   importé de `@homebudget/db` hors de cette façade fait échouer le test — en
   particulier `db`, le client Drizzle brut, que `packages/db` réexporte.
