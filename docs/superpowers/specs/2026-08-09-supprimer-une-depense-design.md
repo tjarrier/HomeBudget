@@ -41,9 +41,15 @@ Ce qui a tranché :
   donc une migration — pour une traçabilité que personne n'a demandée sur un budget
   à deux.
 
-Ce qu'on perd, et qu'on assume : une ligne effacée ne laisse aucune trace. Le
-recours en cas de suppression regrettée est la sauvegarde de la nuit
-(`docs/superpowers/specs/2026-08-02-sauvegarde-restauration-prod-design.md`).
+Ce qu'on perd, et qu'on assume : une ligne effacée ne laisse aucune trace, et il
+n'y a **aucune annulation**. La sauvegarde de la nuit
+(`docs/superpowers/specs/2026-08-02-sauvegarde-restauration-prod-design.md`)
+n'est pas ce recours : `task db:restaurer` pose un `drop schema public` en
+`RESTRICT`, dans la même transaction que le reste — visé sur une base peuplée
+comme la nôtre, il échoue sans rien toucher (CLAUDE.md § Sauvegarde), et une
+restauration en place perdrait de toute façon tout ce qui a été écrit depuis
+02:17. Au mieux, restaurer dans une base annexe permet de *relire* la ligne
+perdue et de la resaisir à la main — jamais de la rendre.
 
 ## Le « Fini quand »
 
@@ -59,6 +65,12 @@ recours en cas de suppression regrettée est la sauvegarde de la nuit
 - La FK `on delete restrict` protège la version *depuis* la dépense, jamais l'inverse.
 - Le trigger `depense_dans_sa_version` (0004) porte sur `insert or update`. Un
   `DELETE` ne peut, par construction, pas sortir une ligne de sa plage.
+- Conséquence symétrique, sans risque : supprimer la dernière dépense figée sur
+  une version encore *ouverte* lui rend sa pleine mutabilité, le `exists (select
+  1 from depense …)` de `bloquer_modification_version_close` (0004) ne trouvant
+  plus rien au prochain `UPDATE` — une version *close*, elle, reste verrouillée
+  par `date_fin` quoi qu'il arrive, et aucune façade n'expose d'`UPDATE` de
+  `version_config`.
 
 **Aucune fonction dans `packages/domain`.** Supprimer n'est pas une règle de calcul :
 c'est le retrait d'un terme d'une somme. L'issue porte le label `domaine` ; il ne

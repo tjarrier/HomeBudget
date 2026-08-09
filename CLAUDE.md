@@ -22,7 +22,10 @@ faux, même s'il passe les tests et paraît plus simple.
 
 3. **Config append-only.** On ne modifie jamais une version de config passée. Une
    révision de loyer crée une *nouvelle* version qui clôture la précédente la
-   veille. C'est la raison d'être du projet.
+   veille. C'est la raison d'être du projet. Cette règle porte sur la *config*,
+   pas sur les dépenses : une version est une pièce d'archive dont dépendent des
+   parts figées ailleurs, une dépense ne porte rien et se supprime (issue #40,
+   `supprimerDepense`).
 
 4. **Snapshot on write.** Les parts d'une dépense sont figées à sa création,
    d'après la config en vigueur *à la date de la dépense*. Aucune lecture ne
@@ -99,7 +102,8 @@ que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
 
 - Elle n'importe ni `drizzle-orm`, ni `pg`, ni `client.ts`, et n'écrit aucune ligne de
   SQL. Son seul accès aux données est la façade de `packages/db` : `listerVersions`,
-  `listerDepenses`, `ajouterDepense`, `creerVersion`, `calculerPartsPourSaisie`.
+  `listerDepenses`, `ajouterDepense`, `supprimerDepense`, `creerVersion`,
+  `calculerPartsPourSaisie`, `genererChargeFixeDuMois`.
   `apps/web/test/architecture.test.ts` le vérifie par **liste blanche** : tout nom
   importé de `@homebudget/db` hors de cette façade fait échouer le test — en
   particulier `db`, le client Drizzle brut, que `packages/db` réexporte.

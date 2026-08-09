@@ -1,7 +1,7 @@
 'use client'
 
 import { supprimerDepenseAction } from '@/actions/depenses'
-import { formaterEuros } from '@homebudget/domain'
+import { type Cents, formaterEuros } from '@homebudget/domain'
 import { useState, useTransition } from 'react'
 
 /**
@@ -24,7 +24,7 @@ export function BoutonSupprimerDepense({
   id,
   description,
   montant,
-}: { id: string; description: string; montant: number }) {
+}: { id: string; description: string; montant: Cents }) {
   const [enCours, demarrer] = useTransition()
   const [erreur, setErreur] = useState<string | null>(null)
 
@@ -38,7 +38,7 @@ export function BoutonSupprimerDepense({
         // ICI parce que ce bouton ne passe pas par la primitive `Button` : il
         // n'a ni fond, ni bordure, ni `px-5`. `-mr-1.5` le ramene contre le
         // bord de la carte sans reduire sa cible.
-        className="-mr-1.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-lg leading-none text-faint transition-colors hover:bg-muted hover:text-body focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:opacity-50"
+        className="-mr-1.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-lg leading-none text-faint transition-colors hover:bg-muted hover:text-body focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none disabled:opacity-50"
         onClick={() => {
           if (!window.confirm(`Supprimer « ${description} » (${formaterEuros(montant)}) ?`)) return
           demarrer(async () => {
