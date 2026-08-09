@@ -1,6 +1,6 @@
 import {
   type VersionConfig,
-  assertDateIsoValide,
+  assertMoisIsoValide,
   ratioThomas,
   totalChargesCommunes,
   versionEnVigueurLe,
@@ -45,7 +45,8 @@ export function genererChargeFixe(
   mois: string,
   payePar: Personne,
 ): Omit<Depense, 'id'> {
-  const premierJour = `${moisValide(mois)}-01`
+  assertMoisIsoValide(mois)
+  const premierJour = `${mois}-01`
   // La DERNIERE version du mois : c'est elle qui porte le montant a jour.
   const version = versionEnVigueurLe(versions, dernierJourDuMois(mois))
   const date = version.dateDebut > premierJour ? version.dateDebut : premierJour
@@ -63,15 +64,6 @@ export function genererChargeFixe(
     genereAuto: true,
     commentaire: null,
   }
-}
-
-/** Valide `YYYY-MM` en reutilisant la validation calendaire des dates. */
-function moisValide(mois: string): string {
-  if (!/^\d{4}-\d{2}$/.test(mois)) {
-    throw new Error(`Mois ISO invalide : ${mois}. Attendu YYYY-MM.`)
-  }
-  assertDateIsoValide(`${mois}-01`)
-  return mois
 }
 
 /** `Date.UTC(a, m, 0)` = jour 0 du mois suivant, donc le dernier du mois vise. */
