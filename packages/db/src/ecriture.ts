@@ -240,3 +240,43 @@ export async function creerVersion(saisie: SaisieVersion): Promise<VersionConfig
   if (!relue) throw new Error("La version creee n'a pas ete retrouvee a la relecture.")
   return versionDepuisLigne(relue)
 }
+
+/**
+ * Le format d'un uuid v4, tel que Postgres l'accepte pour `depense.id`.
+ *
+ * Frontiere de confiance : cette fonction est joignable depuis une Server
+ * Action, donc depuis un POST fabrique a la main. Sans ce garde, une chaine
+ * quelconque descend jusqu'au driver, qui repond `invalid input syntax for type
+ * uuid` — un message de plomberie remonte tel quel a l'utilisateur par
+ * `enEchec`. Meme message que la ligne absente : dans les deux cas, la depense
+ * visee n'existe pas, et l'utilisateur n'a rien de plus a savoir.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Retire une depense. C'est la reponse a l'issue #40, et elle tient en une
+ * ligne de SQL : le solde revient a sa valeur d'avant PAR CONSTRUCTION, parce
+ * que `resumer()` est une somme sur les lignes presentes — retirer un terme
+ * rend exactement la somme precedente. Rien n'est recalcule, rien n'est
+ * compense, la regle 4 n'est pas concernee.
+ *
+ * L'append-only (regle 3) ne s'y oppose pas : c'est une regle de la CONFIG, qui
+ * existe parce qu'une version est une piece d'archive dont dependent des parts
+ * figees ailleurs. Une depense ne porte rien.
+ *
+ * JETTE quand aucune ligne n'est retiree. « Zero ligne supprimee » n'est pas un
+ * succes : c'est le double clic, le retour arriere, ou le second telephone qui a
+ * deja supprime la ligne. Un `void` muet ferait afficher « supprimee » sur une
+ * action qui n'a rien fait — la meme erreur que le `vercel env add` qui sortait
+ * en 0 sans rien ecrire.
+ */
+export async function supprimerDepense(id: string): Promise<void> {
+  if (!UUID.test(id)) throw new Error("Cette dépense n'existe plus.")
+
+  const supprimees = await db
+    .delete(depense)
+    .where(eq(depense.id, id))
+    .returning({ id: depense.id })
+
+  if (supprimees.length === 0) throw new Error("Cette dépense n'existe plus.")
+}
