@@ -33,7 +33,7 @@ Sans `code` dans le corps de l'`APIError`, Better Auth (`callback.mjs:154`, gard
 **Interfaces:**
 - Produces: `CODE_REFUS = 'acces_refuse'` et `CODE_COMPTE_INCOMPLET = 'compte_incomplet'` (exportés de `lib/codes-connexion.ts`) ; l'`APIError` levée par `avantCreationUtilisateur` pour une adresse refusée porte désormais `body.code === CODE_REFUS`.
 
-- [ ] **Step 1 : Créer le module des codes**
+- [x] **Step 1 : Créer le module des codes**
 
 Create `apps/web/lib/codes-connexion.ts` :
 
@@ -50,7 +50,7 @@ export const CODE_REFUS = 'acces_refuse'
 export const CODE_COMPTE_INCOMPLET = 'compte_incomplet'
 ```
 
-- [ ] **Step 2 : Écrire le test qui échoue (contrat du `code`)**
+- [x] **Step 2 : Écrire le test qui échoue (contrat du `code`)**
 
 Dans `apps/web/test/allowlist.test.ts`, ajouter en tête l'import du code :
 
@@ -76,12 +76,12 @@ Puis, dans le `describe('avantCreationUtilisateur — le hook Better Auth', ...)
   })
 ```
 
-- [ ] **Step 3 : Lancer le test et le voir échouer**
+- [x] **Step 3 : Lancer le test et le voir échouer**
 
 Run: `pnpm --filter web test allowlist -- -t "porte le code"`
 Expected: FAIL — `body.code` vaut `undefined` (le hook ne pose pas encore de `code`).
 
-- [ ] **Step 4 : Poser le `code` dans l'`APIError`**
+- [x] **Step 4 : Poser le `code` dans l'`APIError`**
 
 Dans `apps/web/lib/allowlist.ts`, ajouter l'import en tête (après les imports existants) :
 
@@ -108,12 +108,12 @@ par :
   }
 ```
 
-- [ ] **Step 5 : Lancer le test et le voir passer**
+- [x] **Step 5 : Lancer le test et le voir passer**
 
 Run: `pnpm --filter web test allowlist`
 Expected: PASS (les 11 tests existants + le nouveau).
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 
 ```bash
 git add apps/web/lib/codes-connexion.ts apps/web/lib/allowlist.ts apps/web/test/allowlist.test.ts
@@ -132,7 +132,7 @@ git commit -m "feat(web): le refus allowlist porte un code redirigeable, pas un 
 - Consumes: `CODE_REFUS`, `CODE_COMPTE_INCOMPLET` de `lib/codes-connexion.ts` (Task 1).
 - Produces: `messageConnexion(code: string | undefined): string | null`.
 
-- [ ] **Step 1 : Écrire le test qui échoue**
+- [x] **Step 1 : Écrire le test qui échoue**
 
 Create `apps/web/test/messages.test.ts` :
 
@@ -163,12 +163,12 @@ describe('messageConnexion', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer le test et le voir échouer**
+- [x] **Step 2 : Lancer le test et le voir échouer**
 
 Run: `pnpm --filter web test messages`
 Expected: FAIL — module `messages.ts` introuvable.
 
-- [ ] **Step 3 : Écrire la fonction**
+- [x] **Step 3 : Écrire la fonction**
 
 Create `apps/web/app/(auth)/login/messages.ts` :
 
@@ -197,12 +197,12 @@ export function messageConnexion(code: string | undefined): string | null {
 }
 ```
 
-- [ ] **Step 4 : Lancer le test et le voir passer**
+- [x] **Step 4 : Lancer le test et le voir passer**
 
 Run: `pnpm --filter web test messages`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add "apps/web/app/(auth)/login/messages.ts" apps/web/test/messages.test.ts
@@ -222,7 +222,7 @@ git commit -m "feat(web): mapping pur des codes d erreur de connexion vers un me
 **Interfaces:**
 - Consumes: `CODE_COMPTE_INCOMPLET` de `lib/codes-connexion.ts` (Task 1).
 
-- [ ] **Step 1 : Ajuster le test d'abord**
+- [x] **Step 1 : Ajuster le test d'abord**
 
 Dans `apps/web/test/session.test.ts`, ajouter l'import en tête :
 
@@ -253,12 +253,12 @@ devient
       expect(redirectMock).toHaveBeenCalledWith(`/login?error=${CODE_COMPTE_INCOMPLET}`)
 ```
 
-- [ ] **Step 2 : Lancer le test et le voir échouer**
+- [x] **Step 2 : Lancer le test et le voir échouer**
 
 Run: `pnpm --filter web test session`
 Expected: FAIL — `session.ts` redirige encore vers `/login?erreur=compte-incomplet`.
 
-- [ ] **Step 3 : Ajuster la redirection**
+- [x] **Step 3 : Ajuster la redirection**
 
 Dans `apps/web/lib/session.ts`, ajouter l'import en tête :
 
@@ -276,12 +276,12 @@ par
     redirect(`/login?error=${CODE_COMPTE_INCOMPLET}`)
 ```
 
-- [ ] **Step 4 : Lancer le test et le voir passer**
+- [x] **Step 4 : Lancer le test et le voir passer**
 
 Run: `pnpm --filter web test session`
 Expected: PASS (6 tests).
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add apps/web/lib/session.ts apps/web/test/session.test.ts
@@ -302,7 +302,7 @@ La page devient un Server Component qui lit `searchParams`. La seule part intera
 - Consumes: `messageConnexion` de `./messages` (Task 2) ; `Button` de `@/components/ui/button` ; `signIn` de `@/lib/auth-client`.
 - Produces: `BoutonGoogle` (composant client, sans props).
 
-- [ ] **Step 1 : Créer la feuille cliente**
+- [x] **Step 1 : Créer la feuille cliente**
 
 Create `apps/web/app/(auth)/login/bouton-google.tsx` :
 
@@ -335,7 +335,7 @@ export function BoutonGoogle() {
 }
 ```
 
-- [ ] **Step 2 : Remplacer la page**
+- [x] **Step 2 : Remplacer la page**
 
 Replace the entire content of `apps/web/app/(auth)/login/page.tsx` with :
 
@@ -409,17 +409,17 @@ export default async function Login({
 }
 ```
 
-- [ ] **Step 3 : Typecheck + garde-fous visuels**
+- [x] **Step 3 : Typecheck + garde-fous visuels**
 
 Run: `pnpm --filter web typecheck && pnpm --filter web test theme`
 Expected: PASS — types OK, et `theme.test.ts` vert (aucune couleur en dur : on n'a écrit que des tokens `bg-surface`, `bg-emphasis`, `bg-muted`, `border-subtle`, `text-body`, `text-on-emphasis`, `text-faint`).
 
-- [ ] **Step 4 : Vérifier à l'œil (facultatif mais recommandé)**
+- [x] **Step 4 : Vérifier à l'œil (facultatif mais recommandé)**
 
 Run: `task dev` puis ouvrir `http://localhost:3000/login` et `http://localhost:3000/login?error=acces_refuse`.
 Expected: sans paramètre, la carte affirmée (marque, wordmark, proposition de valeur, bouton, note de sécurité) sans encart ; avec `?error=acces_refuse`, l'encart neutre de refus apparaît sous la proposition de valeur.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add "apps/web/app/(auth)/login/bouton-google.tsx" "apps/web/app/(auth)/login/page.tsx"
@@ -435,7 +435,7 @@ Deux visites sans authentification, qui prouvent le critère de fin sans dépend
 **Files:**
 - Modify: `apps/web/e2e/parcours.spec.ts` (ajout après le premier test, avant `test.describe('parcours authentifies', ...)`)
 
-- [ ] **Step 1 : Ajouter les deux tests**
+- [x] **Step 1 : Ajouter les deux tests**
 
 Dans `apps/web/e2e/parcours.spec.ts`, juste après le test `'un visiteur sans session est renvoye vers /login'` (ligne 8) et avant `test.describe('parcours authentifies', ...)`, insérer :
 
@@ -458,14 +458,14 @@ test('une adresse refusee recoit un message comprehensible, pas une erreur brute
 })
 ```
 
-- [ ] **Step 2 : Lancer l'e2e sur base neuve**
+- [x] **Step 2 : Lancer l'e2e sur base neuve**
 
 Run: `task test:e2e:frais`
 Expected: PASS — tous les parcours, canari du solde inclus, plus les deux nouveaux états de l'écran de connexion.
 
 > Rappel worktree (voir memory) : copier les `.env` du checkout principal et purger le conteneur `homebudget-db` orphelin avant ce lancement si la base ne monte pas.
 
-- [ ] **Step 3 : Commit**
+- [x] **Step 3 : Commit**
 
 ```bash
 git add apps/web/e2e/parcours.spec.ts
@@ -476,12 +476,12 @@ git commit -m "test(web): verrouille les deux etats de l ecran de connexion (nu,
 
 ### Task 6 : Vérification finale
 
-- [ ] **Step 1 : La porte avant de conclure**
+- [x] **Step 1 : La porte avant de conclure**
 
 Run: `task verif`
 Expected: PASS — lint (Biome), typecheck du monorepo, tous les tests unitaires (dont `allowlist`, `messages`, `session`, `theme`, `architecture`).
 
-- [ ] **Step 2 : Cocher l'issue**
+- [x] **Step 2 : Cocher l'issue**
 
 Vérifier les deux critères de fin de l'issue #12 :
 - l'écran identifie l'application et son propos (wordmark + proposition de valeur) ✔

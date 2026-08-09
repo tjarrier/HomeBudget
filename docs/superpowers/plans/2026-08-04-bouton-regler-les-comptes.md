@@ -50,7 +50,7 @@
 - Consumes: `formaterMontant(c: Cents): string` et `type Cents`, déjà présents en tête de `lib/format.ts`.
 - Produces: `montantPourSaisie(c: Cents): string` — consommé par la tâche 2.
 
-- [ ] **Step 1: Écrire le test qui échoue**
+- [x] **Step 1: Écrire le test qui échoue**
 
 Dans `apps/web/test/format.test.ts`, ajouter ce `describe` **juste après** le `describe('formaterMontant', …)` existant. `parserEurosSaisis` est déjà importé en tête du fichier ; ajouter `montantPourSaisie` à l'import existant depuis `'../lib/format.js'` (liste alphabétique : après `formaterMontantSigne`).
 
@@ -76,7 +76,7 @@ describe('montantPourSaisie', () => {
 })
 ```
 
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 ```bash
 pnpm --filter @homebudget/web test format
@@ -84,7 +84,7 @@ pnpm --filter @homebudget/web test format
 
 Attendu : ÉCHEC. Le typecheck de vitest ne bloque pas, mais `montantPourSaisie is not a function` (ou une erreur d'import) fait tomber les deux `it`.
 
-- [ ] **Step 3: Écrire l'implémentation minimale**
+- [x] **Step 3: Écrire l'implémentation minimale**
 
 À la fin de `apps/web/lib/format.ts` :
 
@@ -103,7 +103,7 @@ export function montantPourSaisie(c: Cents): string {
 }
 ```
 
-- [ ] **Step 4: Lancer le test pour vérifier qu'il passe**
+- [x] **Step 4: Lancer le test pour vérifier qu'il passe**
 
 ```bash
 pnpm --filter @homebudget/web test format
@@ -111,7 +111,7 @@ pnpm --filter @homebudget/web test format
 
 Attendu : PASS, 8 assertions (3 de forme + 6 d'aller-retour, dans deux `it`).
 
-- [ ] **Step 5: Vérifier lint et types, puis committer**
+- [x] **Step 5: Vérifier lint et types, puis committer**
 
 ```bash
 task verif
@@ -142,7 +142,7 @@ La page `/depenses` appelle **déjà** `listerDepenses()`. Elle rejoue `resumer(
 - Consumes: `montantPourSaisie(c: Cents): string` (tâche 1) ; `synthese(r: Resume): Synthese` et `resumer(d: Depense[]): Resume` de `@homebudget/domain` ; `modeParDefaut(t: TypeDepense): ModeRepartition`, déjà importé par le formulaire.
 - Produces: le prop `reglement?: { montant: Cents; payePar: Personne } | undefined` de `FormulaireDepense`, et la route `/depenses?regler=1`. La tâche 3 y renvoie par un lien.
 
-- [ ] **Step 1: Écrire le test e2e qui échoue**
+- [x] **Step 1: Écrire le test e2e qui échoue**
 
 Dans `apps/web/e2e/parcours.spec.ts`, insérer ce test **juste après** le test `'creer une version ne change aucune depense passee'` (qui se termine ligne ~288) et **avant** le `test.describe('sur un telephone', …)`.
 
@@ -190,7 +190,7 @@ test('regler les comptes pre-remplit un transfert du solde exact', async ({ page
 })
 ```
 
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 ```bash
 task test:e2e:frais
@@ -198,7 +198,7 @@ task test:e2e:frais
 
 **Destructif** : réinitialise la base locale au seed avant de lancer Playwright. Attendu : ÉCHEC sur le nouveau test — le champ montant est vide, donc `saisi` vaut `''`, `Number('') * 100 + Number(undefined)` vaut `NaN` et l'assertion tombe. Les autres tests du fichier restent verts.
 
-- [ ] **Step 3: Ajouter le prop `reglement` au formulaire**
+- [x] **Step 3: Ajouter le prop `reglement` au formulaire**
 
 Dans `apps/web/app/(app)/depenses/formulaire-depense.tsx` :
 
@@ -257,7 +257,7 @@ export function FormulaireDepense({
 
 Le reste du composant est inchangé. **Ne pas ajouter d'`useEffect` de synchronisation** : un initialiseur `useState` ne court qu'au montage, et le lien de la tâche 3 vient d'une autre route, donc le composant se monte. Toute frappe suivante appartient à l'utilisateur.
 
-- [ ] **Step 4: Lire le drapeau dans la page des dépenses**
+- [x] **Step 4: Lire le drapeau dans la page des dépenses**
 
 Dans `apps/web/app/(app)/depenses/page.tsx` :
 
@@ -299,7 +299,7 @@ export default async function Depenses({
 <FormulaireDepense personne={session.personne} reglement={reglement} />
 ```
 
-- [ ] **Step 5: Vérifier lint, types et unitaires**
+- [x] **Step 5: Vérifier lint, types et unitaires**
 
 ```bash
 task verif
@@ -307,7 +307,7 @@ task verif
 
 Attendu : PASS. En particulier `apps/web/test/architecture.test.ts` reste vert — aucun nom nouveau n'est importé de `@homebudget/db`.
 
-- [ ] **Step 6: Relancer le test e2e pour vérifier qu'il passe**
+- [x] **Step 6: Relancer le test e2e pour vérifier qu'il passe**
 
 ```bash
 task test:e2e:frais
@@ -317,7 +317,7 @@ Attendu : PASS, y compris `'regler les comptes pre-remplit un transfert du solde
 
 Si `payé par Liz · transfert` est introuvable, vérifier que le `type` initial vaut bien `'transfert'` : la ligne de résumé n'affiche `transfert` qu'une fois quand type et mode valent tous deux `transfert` (`construireResume()`).
 
-- [ ] **Step 7: Committer**
+- [x] **Step 7: Committer**
 
 ```bash
 git add "apps/web/app/(app)/depenses/page.tsx" \
@@ -348,7 +348,7 @@ Refs #26"
 - Consumes: la route `/depenses?regler=1` (tâche 2) ; `buttonVariants` exporté par `apps/web/components/ui/button.tsx` ; `Link` de `next/link` et la variable `s` (`Synthese`), tous deux déjà présents dans `page.tsx`.
 - Produces: rien que d'autres tâches consomment. C'est le dernier maillon.
 
-- [ ] **Step 1: Écrire le test e2e qui échoue**
+- [x] **Step 1: Écrire le test e2e qui échoue**
 
 Dans `apps/web/e2e/parcours.spec.ts`, insérer ce test **juste après** celui de la tâche 2, et **avant** le `test.describe('sur un telephone', …)`.
 
@@ -393,7 +393,7 @@ test('regler les comptes met le solde a zero', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 ```bash
 task test:e2e:frais
@@ -401,7 +401,7 @@ task test:e2e:frais
 
 Attendu : ÉCHEC sur le nouveau test — `getByRole('link', { name: 'Régler les comptes' })` ne trouve rien et le clic expire. Les autres tests du fichier restent verts, y compris celui de la tâche 2.
 
-- [ ] **Step 3: Ajouter le bouton au tableau de bord**
+- [x] **Step 3: Ajouter le bouton au tableau de bord**
 
 Dans `apps/web/app/(app)/page.tsx` :
 
@@ -434,7 +434,7 @@ import { buttonVariants } from '@/components/ui/button'
 
 `buttonVariants` accepte `className` et le fusionne (c'est ce que fait déjà le composant `Button`). `s` est la `Synthese` calculée ligne 33 ; TypeScript restreint l'union, donc `s.etat === 'dette'` suffit — aucun accès à `s.montant` n'est nécessaire ici, le montant est recalculé par `/depenses`.
 
-- [ ] **Step 4: Vérifier lint, types et unitaires**
+- [x] **Step 4: Vérifier lint, types et unitaires**
 
 ```bash
 task verif
@@ -442,7 +442,7 @@ task verif
 
 Attendu : PASS.
 
-- [ ] **Step 5: Relancer les parcours e2e complets**
+- [x] **Step 5: Relancer les parcours e2e complets**
 
 ```bash
 task test:e2e:frais
@@ -452,7 +452,7 @@ Attendu : PASS sur tout le fichier, dans l'ordre. Vérifier en particulier que *
 
 `e2e/cibles-tactiles.spec.ts` couvre le nouveau lien sans qu'on ait rien à y inscrire (il mesure tout `a[href]` visible à 360px) et tourne **avant** `parcours.spec.ts` dans l'ordre alphabétique des fichiers, donc pendant que la dette existe encore et que le bouton est affiché.
 
-- [ ] **Step 6: Committer**
+- [x] **Step 6: Committer**
 
 ```bash
 git add "apps/web/app/(app)/page.tsx" apps/web/e2e/parcours.spec.ts

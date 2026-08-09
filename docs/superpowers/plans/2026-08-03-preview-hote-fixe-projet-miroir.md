@@ -41,7 +41,7 @@ Elle arrive **avant** `--prod`, et c'est volontaire : le filet est en place avan
 - Consumes: les helpers `sansCommentaires(contenu)`, `etape(contenu, nom)` et la constante `RACINE_DEPOT`, tous déjà dans `deploiement.test.ts`.
 - Produces: l'étape nommée exactement `Confirmer la cible`, et la variable de job `PROJET_ATTENDU`. La tâche 2 s'appuie sur l'existence de cette étape ; la tâche 4 s'appuie sur la valeur de `PROJET_ATTENDU`.
 
-- [ ] **Step 1: Écrire le test qui échoue**
+- [x] **Step 1: Écrire le test qui échoue**
 
 Dans `apps/web/test/deploiement.test.ts`, sous la constante `ALIGNEMENT` (l.90), ajouter :
 
@@ -84,7 +84,7 @@ Puis, dans `describe('deploy-preview.yml')`, ajouter ce test :
   })
 ```
 
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 ```bash
 pnpm --filter web test deploiement
@@ -92,7 +92,7 @@ pnpm --filter web test deploiement
 
 Attendu : ÉCHEC. `etape()` renvoie `''` quand le nom est absent, donc la première assertion échoue sur `expected '' to contain '/v9/projects/$VERCEL_PROJECT_ID'`.
 
-- [ ] **Step 3: Déclarer `PROJET_ATTENDU` dans le job**
+- [x] **Step 3: Déclarer `PROJET_ATTENDU` dans le job**
 
 Dans `.github/workflows/deploy-preview.yml`, bloc `env:` du job `deploy` :
 
@@ -108,7 +108,7 @@ Dans `.github/workflows/deploy-preview.yml`, bloc `env:` du job `deploy` :
       PROJET_ATTENDU: homebudget-preview
 ```
 
-- [ ] **Step 4: Ajouter l'étape, juste après « Installer la CLI Vercel »**
+- [x] **Step 4: Ajouter l'étape, juste après « Installer la CLI Vercel »**
 
 Elle se place avant `vercel pull` : c'est la première chose qui parle à Vercel.
 
@@ -145,7 +145,7 @@ Elle se place avant `vercel pull` : c'est la première chose qui parle à Vercel
           fi
 ```
 
-- [ ] **Step 5: Lancer le test pour vérifier qu'il passe**
+- [x] **Step 5: Lancer le test pour vérifier qu'il passe**
 
 ```bash
 pnpm --filter web test deploiement
@@ -153,17 +153,17 @@ pnpm --filter web test deploiement
 
 Attendu : SUCCÈS, y compris les tests existants — `not.toContain('--prod')` passe toujours, le workflow ne promeut encore rien.
 
-- [ ] **Step 6: Vérifier que le test peut échouer**
+- [x] **Step 6: Vérifier que le test peut échouer**
 
 Retirer temporairement la ligne `PROJET_ATTENDU: homebudget-preview` du YAML, relancer, constater l'échec, la remettre. Le dépôt a déjà eu un test qui passait alors que la garde n'était plus là : on ne fait pas confiance à un test qu'on n'a pas vu rougir.
 
-- [ ] **Step 7: Vérifier l'ensemble**
+- [x] **Step 7: Vérifier l'ensemble**
 
 ```bash
 task verif
 ```
 
-- [ ] **Step 8: Commit** — *demander l'accord de Thomas avant de lancer.*
+- [x] **Step 8: Commit** — *demander l'accord de Thomas avant de lancer.*
 
 ```bash
 git add .github/workflows/deploy-preview.yml apps/web/test/deploiement.test.ts
@@ -192,7 +192,7 @@ EOF
 - Consumes: l'étape `Confirmer la cible` et `PROJET_ATTENDU`, produits par la tâche 1.
 - Produces: rien que la tâche 3 consomme en code — la tâche 3 documente ce que celle-ci fait.
 
-- [ ] **Step 1: Écrire les tests qui échouent**
+- [x] **Step 1: Écrire les tests qui échouent**
 
 Dans `describe.each(WORKFLOWS_DE_DEPLOIEMENT)`, ajouter cet invariant — il vaut pour les deux workflows :
 
@@ -243,7 +243,7 @@ Dans `describe('deploy-preview.yml')`, **remplacer** le test `it('ne promeut jam
   })
 ```
 
-- [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
+- [x] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 ```bash
 pnpm --filter web test deploiement
@@ -251,7 +251,7 @@ pnpm --filter web test deploiement
 
 Attendu : le test `promeut sur le projet miroir` ÉCHOUE (`vercel build --prod` absent). L'invariant `aligne DATABASE_URL sur l'environnement` **passe déjà** — `preview`/`preview` s'accordent aujourd'hui : c'est un filet contre une désynchronisation future, pas un moteur de cette tâche. Le test `lit l'origine dans le fichier` passe aussi pour la même raison. Les deux seront revérifiés au Step 5.
 
-- [ ] **Step 3: Basculer le workflow**
+- [x] **Step 3: Basculer le workflow**
 
 Cinq remplacements dans `.github/workflows/deploy-preview.yml` :
 
@@ -286,7 +286,7 @@ Cinq remplacements dans `.github/workflows/deploy-preview.yml` :
 
 Et le nom de l'étape `Migrer la base de preview` ne change pas : c'est bien la base de preview qu'elle migre, le secret `DATABASE_URL` de l'environment `Preview` étant inchangé.
 
-- [ ] **Step 4: Corriger les commentaires devenus faux**
+- [x] **Step 4: Corriger les commentaires devenus faux**
 
 Ils décrivent l'alias d'auteur, mécanisme abandonné. Quatre endroits :
 
@@ -350,7 +350,7 @@ Ils décrivent l'alias d'auteur, mécanisme abandonné. Quatre endroits :
 
 Le filtre `grep -o '[a-z0-9.-]*\.vercel\.app'` ne change pas : l'hôte reste en `.vercel.app`.
 
-- [ ] **Step 5: Lancer les tests pour vérifier qu'ils passent**
+- [x] **Step 5: Lancer les tests pour vérifier qu'ils passent**
 
 ```bash
 pnpm --filter web test deploiement
@@ -358,20 +358,20 @@ pnpm --filter web test deploiement
 
 Attendu : SUCCÈS. Le test `construit, puis migre, puis promeut` doit toujours passer — `--prod` ne change pas les positions.
 
-- [ ] **Step 6: Vérifier que les deux filets peuvent échouer**
+- [x] **Step 6: Vérifier que les deux filets peuvent échouer**
 
 Ils étaient verts avant la bascule ; on ne les garde que si on les a vus rougir.
 
 1. Remplacer temporairement `target:["production"]` par `target:["preview"]`, relancer : l'invariant `aligne DATABASE_URL sur l'environnement Vercel qu'il tire` doit échouer. Rétablir.
 2. Remplacer temporairement `.vercel/.env.production.local` par `.vercel/.env.preview.local`, relancer : `lit l'origine dans le fichier que vercel pull a reellement ecrit` doit échouer. Rétablir.
 
-- [ ] **Step 7: Vérifier l'ensemble**
+- [x] **Step 7: Vérifier l'ensemble**
 
 ```bash
 task verif
 ```
 
-- [ ] **Step 8: Commit** — *demander l'accord de Thomas avant de lancer.*
+- [x] **Step 8: Commit** — *demander l'accord de Thomas avant de lancer.*
 
 ```bash
 git add .github/workflows/deploy-preview.yml apps/web/test/deploiement.test.ts
@@ -401,7 +401,7 @@ EOF
 - Consumes: rien.
 - Produces: rien. Aucun test ne lit ces fichiers ; la vérification est une relecture.
 
-- [ ] **Step 1: Réécrire les puces de `CLAUDE.md`**
+- [x] **Step 1: Réécrire les puces de `CLAUDE.md`**
 
 Remplacer les lignes 129 à 151 (de « **Cible Preview :** » jusqu'à « réenregistrer le redirect URI chez Google. ») par :
 
@@ -439,7 +439,7 @@ Remplacer les lignes 129 à 151 (de « **Cible Preview :** » jusqu'à « réenr
   Le domaine d'un projet ne dépend d'aucune de ces trois choses.
 ```
 
-- [ ] **Step 2: Réécrire la puce « Preview au merge » de `CLAUDE.md`**
+- [x] **Step 2: Réécrire la puce « Preview au merge » de `CLAUDE.md`**
 
 Remplacer les lignes 191-196 par :
 
@@ -455,7 +455,7 @@ Remplacer les lignes 191-196 par :
 
 Noter au passage la phrase corrigée : l'ancienne version affirmait que « le contrôle d'alias du workflow ne fait échouer le run que sur `main` », ce qui était déjà faux — le garde-fou `if [ "$REF" = "main" ]` a été retiré, et `deploiement.test.ts` interdit son retour.
 
-- [ ] **Step 3: Corriger `.env.example`**
+- [x] **Step 3: Corriger `.env.example`**
 
 Remplacer le commentaire de `BETTER_AUTH_URL` par :
 
@@ -467,7 +467,7 @@ Remplacer le commentaire de `BETTER_AUTH_URL` par :
 # deploiement. Voir CLAUDE.md.
 ```
 
-- [ ] **Step 4: Relire, et vérifier qu'aucune trace ne subsiste**
+- [x] **Step 4: Relire, et vérifier qu'aucune trace ne subsiste**
 
 ```bash
 grep -rn "alias d'auteur\|home-budget-tjarrier\|URL de branche\|l'URL de BRANCHE" CLAUDE.md .env.example .github/ apps/web/test/
@@ -475,13 +475,13 @@ grep -rn "alias d'auteur\|home-budget-tjarrier\|URL de branche\|l'URL de BRANCHE
 
 Attendu : les seules occurrences restantes sont **historiques et assumées** — la puce « Ce que la solution précédente coûtait » de `CLAUDE.md`, et les commentaires de `deploiement.test.ts` qui racontent pourquoi tel garde-fou a été retiré. Aucune ne doit décrire l'alias d'auteur comme la cible *actuelle*.
 
-- [ ] **Step 5: Vérifier l'ensemble**
+- [x] **Step 5: Vérifier l'ensemble**
 
 ```bash
 task verif
 ```
 
-- [ ] **Step 6: Commit** — *demander l'accord de Thomas avant de lancer.*
+- [x] **Step 6: Commit** — *demander l'accord de Thomas avant de lancer.*
 
 ```bash
 git add CLAUDE.md .env.example
@@ -511,13 +511,13 @@ Aucune ligne de code. À faire par Thomas, dans cet ordre — l'ordre compte : l
 - Consumes: `PROJET_ATTENDU: homebudget-preview` (tâche 1) — le nom du projet à créer doit correspondre au caractère près.
 - Produces: le domaine de production réellement attribué, dont la tâche 5 a besoin pour vérifier le tour OAuth.
 
-- [ ] **Step 1: Créer le projet Vercel `homebudget-preview`**
+- [x] **Step 1: Créer le projet Vercel `homebudget-preview`**
 
 Nom exact `homebudget-preview`. Lié au dépôt GitHub `tjarrier/HomeBudget`. **Root Directory `apps/web`** — sans lui, `vercel deploy --prebuilt` échoue net, et `vercel.json` ne serait pas lu. Framework Next.js. Réglage *Node.js Version* recopié depuis celui qu'affiche le projet de production.
 
 `apps/web/vercel.json` porte déjà `git.deploymentEnabled: false` : le nouveau projet ne déploiera rien tout seul, dès son premier fetch du dépôt.
 
-- [ ] **Step 2: Lire le domaine de production attribué**
+- [x] **Step 2: Lire le domaine de production attribué**
 
 Dans le dashboard du nouveau projet, onglet *Domains*, ou :
 
@@ -527,7 +527,7 @@ vercel project ls
 
 Attendu : `homebudget-preview.vercel.app`. Si le nom était pris globalement, ce sera `homebudget-preview-<scope>.vercel.app` — c'est cette valeur-là qu'on note, et elle seule. **Ne pas la reconstruire de tête.**
 
-- [ ] **Step 3: Poser les variables du projet miroir, en target Production**
+- [x] **Step 3: Poser les variables du projet miroir, en target Production**
 
 Six variables, dans *Settings → Environment Variables* du projet `homebudget-preview`, toutes cochées **Production** uniquement :
 
@@ -544,7 +544,7 @@ Six variables, dans *Settings → Environment Variables* du projet `homebudget-p
 
 **Ne pas poser `DATABASE_URL` :** le workflow l'écrit à chaque run depuis le secret GitHub, et c'est la seule source.
 
-- [ ] **Step 4: Enregistrer le redirect URI chez Google**
+- [x] **Step 4: Enregistrer le redirect URI chez Google**
 
 Google Cloud Console, client OAuth du projet, *Authorized redirect URIs*. Ajouter :
 
@@ -554,13 +554,13 @@ Google Cloud Console, client OAuth du projet, *Authorized redirect URIs*. Ajoute
 
 Garder `http://localhost:3000/api/auth/callback/google` (dev local) **et** l'URI de l'alias d'auteur `https://home-budget-tjarrier-tjarriers-projects.vercel.app/api/auth/callback/google`, jusqu'à la tâche 5.
 
-- [ ] **Step 5: Supprimer les variables de target `Preview` du projet de production**
+- [x] **Step 5: Supprimer les variables de target `Preview` du projet de production**
 
 Dans le projet Vercel **de production**, retirer toute variable cochée `Preview` — elles ne servent plus.
 
 Ce n'est pas du ménage. Sans `BETTER_AUTH_URL` en Preview, un déploiement de preview qui atterrirait par erreur sur le projet de production échouerait au build : `origineAuth()` lève plutôt que de retomber sur `localhost`. Un second garde-fou, gratuit.
 
-- [ ] **Step 6: Poser le secret `VERCEL_PROJECT_ID` dans l'environment GitHub `Preview`**
+- [x] **Step 6: Poser le secret `VERCEL_PROJECT_ID` dans l'environment GitHub `Preview`**
 
 *Settings → Environments → Preview → Environment secrets*. Nom exact `VERCEL_PROJECT_ID`, valeur = l'ID du projet `homebudget-preview` (dashboard Vercel, *Settings → General → Project ID*).
 
@@ -579,23 +579,23 @@ Après merge dans `main`. Rien ici ne se déduit : chaque case se cocher après 
 **Interfaces:**
 - Consumes: tout ce qui précède, et le domaine noté à la tâche 4 Step 2.
 
-- [ ] **Step 1: Lancer le workflow et lire son résumé**
+- [x] **Step 1: Lancer le workflow et lire son résumé**
 
 Le merge dans `main` le déclenche. Sinon, `workflow_dispatch` sur `main`.
 
 Dans le résumé du run, vérifier que l'**origine annoncée à Google** et les **hôtes attribués** contiennent tous deux le domaine noté à la tâche 4. C'est ce que le contrôle final vérifie, mais on le lit soi-même une fois.
 
-- [ ] **Step 2: Un tour de connexion Google complet, sur les deux comptes**
+- [x] **Step 2: Un tour de connexion Google complet, sur les deux comptes**
 
 Ouvrir le domaine de preview, se connecter avec le compte de Thomas, se déconnecter, puis avec celui de Liz. Aucun écran d'authentification **Vercel** ne doit apparaître : un déploiement de production n'est pas derrière le SSO.
 
 Si un tour échoue en `redirect_uri_mismatch`, c'est le Step 4 de la tâche 4 : l'URI enregistrée ne correspond pas au caractère près.
 
-- [ ] **Step 3: Le canari, à l'écran**
+- [x] **Step 3: Le canari, à l'écran**
 
 Sur le domaine de preview, vérifier que le solde affiché est **1 145,80 €** (« Liz doit 1 145,80 € à Thomas »). Si la base de recette a déjà reçu des saisies de test, ce montant aura bougé : dans ce cas, vérifier plutôt que les montants sont cohérents avec ce que la preview contenait avant, et non un jeu de données inconnu — un solde inattendu ici voudrait dire que la preview parle à la mauvaise base.
 
-- [ ] **Step 4: Vérifier que la garde échoue vraiment**
+- [x] **Step 4: Vérifier que la garde échoue vraiment**
 
 Le test le plus important de ce plan, et le seul qui ne se joue qu'en réel.
 
@@ -606,15 +606,15 @@ Le test le plus important de ce plan, et le seul qui ne se joue qu'en réel.
 
 Sans ce test, la garde est une hypothèse. Le dépôt a déjà cru une étape verte qui ne faisait rien.
 
-- [ ] **Step 5: Vérifier que la production n'a pas bougé**
+- [x] **Step 5: Vérifier que la production n'a pas bougé**
 
 Ouvrir l'hôte de production : il sert toujours la dernière version taggée. Et dans le projet Vercel de production, `DATABASE_URL` (target Production) est intacte — c'est ce que la garde protège.
 
-- [ ] **Step 6: Retirer l'ancienne URI chez Google**
+- [x] **Step 6: Retirer l'ancienne URI chez Google**
 
 Seulement maintenant, et seulement si les Steps 1 à 5 sont tous verts : supprimer `https://home-budget-tjarrier-tjarriers-projects.vercel.app/api/auth/callback/google` des *Authorized redirect URIs*.
 
-- [ ] **Step 7: Refermer l'issue #55**
+- [x] **Step 7: Refermer l'issue #55**
 
 Son corps décrit une zone DNS OVH et deux domaines personnalisés dont rien n'a été retenu. Y poster un commentaire qui dit ce qui a été fait à la place et pourquoi le chemin du domaine personnalisé était fermé, en pointant vers la spec — puis la fermer. Sinon elle décrira éternellement un plan qu'on n'a pas suivi.
 

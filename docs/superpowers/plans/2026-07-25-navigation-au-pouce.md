@@ -45,7 +45,7 @@ Ce dépôt est un **worktree** : les fichiers `.env` ne sont pas suivis par git 
 pas été copiés. Les tests Playwright en ont besoin (`BETTER_AUTH_SECRET` pour signer le
 cookie de session, `DATABASE_URL` pour insérer l'utilisateur de test).
 
-- [ ] **Copier les `.env` depuis le checkout principal**
+- [x] **Copier les `.env` depuis le checkout principal**
 
 ```bash
 cd /home/thomas_jarrier/Workspace/Personal/HomeBudget/.claude/worktrees/issue-13-navigation-au-pouce
@@ -53,7 +53,7 @@ cp /home/thomas_jarrier/Workspace/Personal/HomeBudget/.env .env
 cp /home/thomas_jarrier/Workspace/Personal/HomeBudget/apps/web/.env.local apps/web/.env.local
 ```
 
-- [ ] **Vérifier que Postgres répond**
+- [x] **Vérifier que Postgres répond**
 
 ```bash
 docker compose exec -T postgres pg_isready -U homebudget
@@ -97,7 +97,7 @@ raison de ne pas pousser avant la fin.
   un `<nav aria-label="Navigation principale">` et un `<button>` dont le nom accessible
   vaut exactement `Compte` sous 768 px, puis un `<button>` nommé `Se déconnecter`.
 
-- [ ] **Étape 1 : Écrire les deux tests**
+- [x] **Étape 1 : Écrire les deux tests**
 
 Les ajouter **à la fin** du `describe('parcours authentifies')`, après le dernier test
 existant, juste avant l'accolade fermante du `describe`. En dernier parce que le second
@@ -130,7 +130,7 @@ l'ordre de réexécution, alors même que `ouvrirSession()` les protège déjà.
   })
 ```
 
-- [ ] **Étape 2 : Construire l'application, puis lancer les deux tests**
+- [x] **Étape 2 : Construire l'application, puis lancer les deux tests**
 
 ```bash
 task build
@@ -146,7 +146,7 @@ Attendu : **2 failed**.
 Si Playwright meurt sur « Executable doesn't exist », lancer d'abord
 `pnpm --filter @homebudget/web exec playwright install chromium`.
 
-- [ ] **Étape 3 : Committer les tests rouges**
+- [x] **Étape 3 : Committer les tests rouges**
 
 ```bash
 git add apps/web/e2e/parcours.spec.ts
@@ -168,7 +168,7 @@ deux endroits différents de la coque mobile.
 - Produit : `export function Marque(): JSX.Element` — aucune prop, aucun style de
   position. Le positionnement (marges, `md:hidden`) appartient à l'appelant.
 
-- [ ] **Étape 1 : Créer le composant**
+- [x] **Étape 1 : Créer le composant**
 
 Le contenu est copié à l'identique de `layout.tsx`, à une exception près : le
 `max-md:sr-only` sur « Thomas & Liz » disparaît. Il existait parce que le bandeau
@@ -203,7 +203,7 @@ export function Marque() {
 }
 ```
 
-- [ ] **Étape 2 : L'utiliser dans le layout**
+- [x] **Étape 2 : L'utiliser dans le layout**
 
 Dans `apps/web/app/(app)/layout.tsx`, remplacer le `<div className="flex items-center gap-2.5 md:px-2 md:pt-1 md:pb-5">…</div>`
 (lignes 21 à 32) par :
@@ -220,7 +220,7 @@ Et ajouter l'import en tête, dans l'ordre alphabétique des chemins :
 import { Marque } from '@/components/marque'
 ```
 
-- [ ] **Étape 3 : Vérifier**
+- [x] **Étape 3 : Vérifier**
 
 ```bash
 task verif
@@ -229,7 +229,7 @@ task verif
 Attendu : lint, typecheck et les tests unitaires passent. `theme.test.ts` en particulier
 doit rester vert — `marque.tsx` n'écrit que des tokens.
 
-- [ ] **Étape 4 : Committer**
+- [x] **Étape 4 : Committer**
 
 ```bash
 git add apps/web/components/marque.tsx "apps/web/app/(app)/layout.tsx"
@@ -251,7 +251,7 @@ git commit -m "refactor(web): extraire Marque du layout"
   Sous 768 px, il porte `flex-1` : il occupe les trois quarts de la barre, la cellule
   « Compte » de la tâche 4 prend le quart restant.
 
-- [ ] **Étape 1 : Créer `nav-principale.tsx`**
+- [x] **Étape 1 : Créer `nav-principale.tsx`**
 
 Les trois icônes SVG sont recopiées **à l'identique** de `nav-laterale.tsx` — ce sont des
 `<path>` inline, le projet n'utilise pas `lucide-react`.
@@ -375,7 +375,7 @@ export function NavPrincipale() {
 }
 ```
 
-- [ ] **Étape 2 : Supprimer l'ancien composant et basculer le layout**
+- [x] **Étape 2 : Supprimer l'ancien composant et basculer le layout**
 
 ```bash
 git rm apps/web/components/nav-laterale.tsx
@@ -386,7 +386,7 @@ Dans `apps/web/app/(app)/layout.tsx` : remplacer l'import
 `import { NavPrincipale } from '@/components/nav-principale'`, et l'usage
 `<NavLaterale />` par `<NavPrincipale />`.
 
-- [ ] **Étape 3 : Vérifier**
+- [x] **Étape 3 : Vérifier**
 
 ```bash
 task verif
@@ -395,7 +395,7 @@ task verif
 Attendu : vert. Si le typecheck signale `nav-laterale` introuvable, c'est qu'une
 référence subsiste — la trouver avec `grep -rn "NavLaterale\|nav-laterale" apps/web --exclude-dir=node_modules`.
 
-- [ ] **Étape 4 : Committer**
+- [x] **Étape 4 : Committer**
 
 ```bash
 git add -A apps/web/components "apps/web/app/(app)/layout.tsx"
@@ -423,7 +423,7 @@ Le cœur de l'issue : un seul chemin de déconnexion, visible aux deux tailles.
   personne au-dessus, plus un `<dialog>` contenant un `<button>` nommé `Se déconnecter`.
   Sous 768 px le déclencheur occupe `w-1/4` de la barre.
 
-- [ ] **Étape 1 : Ajouter le token `--overlay`**
+- [x] **Étape 1 : Ajouter le token `--overlay`**
 
 Le `::backdrop` a besoin d'une couleur, et le markup n'a pas le droit d'en écrire une.
 Dans `apps/web/app/globals.css`, à l'intérieur du bloc `@theme inline`, à la suite des
@@ -441,7 +441,7 @@ Puis dans le bloc `:root`, à la suite de `--muted` :
   --overlay: color-mix(in oklab, var(--slate-900) 45%, transparent);
 ```
 
-- [ ] **Étape 2 : Créer `menu-compte.tsx`**
+- [x] **Étape 2 : Créer `menu-compte.tsx`**
 
 ```tsx
 'use client'
@@ -556,7 +556,7 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
 }
 ```
 
-- [ ] **Étape 3 : Supprimer l'ancien composant et basculer le layout**
+- [x] **Étape 3 : Supprimer l'ancien composant et basculer le layout**
 
 ```bash
 git rm apps/web/components/pied-profil.tsx
@@ -568,7 +568,7 @@ Dans `apps/web/app/(app)/layout.tsx` : remplacer l'import
 `<PiedProfil personne={session.personne} nom={session.nom} />` par
 `<MenuCompte personne={session.personne} nom={session.nom} />`.
 
-- [ ] **Étape 4 : Vérifier, et traiter le cas Biome**
+- [x] **Étape 4 : Vérifier, et traiter le cas Biome**
 
 ```bash
 task verif
@@ -585,7 +585,7 @@ suppression ciblée juste au-dessus de l'attribut, et rien de plus large :
 
 Ne pas désactiver la règle dans `biome.json` : la suppression reste locale et lisible.
 
-- [ ] **Étape 5 : Committer**
+- [x] **Étape 5 : Committer**
 
 ```bash
 git add -A apps/web/components apps/web/app "apps/web/app/(app)/layout.tsx"
@@ -605,7 +605,7 @@ git commit -m "feat(web): MenuCompte, une seule sortie de session visible aux de
   `exigerSession()` de `@/lib/session` — qui renvoie `{ userId, personne, nom }` et
   **doit rester la première ligne du composant**.
 
-- [ ] **Étape 1 : Déclarer `viewport-fit=cover`**
+- [x] **Étape 1 : Déclarer `viewport-fit=cover`**
 
 Dans `apps/web/app/layout.tsx`, remplacer la ligne
 `export const metadata: Metadata = { title: 'HomeBudget' }` par :
@@ -631,7 +631,7 @@ Et étendre l'import de types en tête de fichier :
 import type { Metadata, Viewport } from 'next'
 ```
 
-- [ ] **Étape 2 : Réécrire la coque**
+- [x] **Étape 2 : Réécrire la coque**
 
 Remplacer intégralement le corps de `apps/web/app/(app)/layout.tsx` :
 
@@ -690,7 +690,7 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
 }
 ```
 
-- [ ] **Étape 3 : Lancer les deux tests de la tâche 1**
+- [x] **Étape 3 : Lancer les deux tests de la tâche 1**
 
 ```bash
 task build
@@ -707,7 +707,7 @@ Si « la navigation est dans la moitie basse » échoue avec un `y` de l'ordre d
 barre n'est pas sortie du flux — vérifier que `max-md:fixed` et `max-md:bottom-0` sont
 bien tous deux présents sur l'`<aside>`.
 
-- [ ] **Étape 4 : Vérifier le reste**
+- [x] **Étape 4 : Vérifier le reste**
 
 ```bash
 task verif
@@ -715,7 +715,7 @@ task verif
 
 Attendu : vert.
 
-- [ ] **Étape 5 : Committer**
+- [x] **Étape 5 : Committer**
 
 ```bash
 git add apps/web/app
@@ -732,7 +732,7 @@ git commit -m "feat(web): la navigation descend sous le pouce sur telephone"
 `DESIGN.md` est la source de vérité du système visuel et décrit ce que le code fait
 *aujourd'hui* : il ne peut pas rester en retard d'un commit.
 
-- [ ] **Étape 1 : La table des tokens**
+- [x] **Étape 1 : La table des tokens**
 
 Dans la table de la section « L'échelle et ses alias », après la ligne `bg-muted`,
 insérer :
@@ -741,7 +741,7 @@ insérer :
 | `backdrop:bg-overlay` | `--overlay` | slate-900 à 45 % | le voile du `<dialog>` de compte. **Le seul voile du produit.** |
 ```
 
-- [ ] **Étape 2 : Les composants produit**
+- [x] **Étape 2 : Les composants produit**
 
 Dans la section « Les composants produit », remplacer les deux dernières entrées
 (`NavLaterale` et `PiedProfil`) par :
@@ -765,7 +765,7 @@ Dans la section « Les composants produit », remplacer les deux dernières entr
   focus, `Escape`, inertisation de l'arrière-plan et `::backdrop`, sans une ligne de JS.
 ```
 
-- [ ] **Étape 3 : La coque, dans la section accessibilité**
+- [x] **Étape 3 : La coque, dans la section accessibilité**
 
 À la fin de la liste « Accessibilité — les planchers tenus à la source », ajouter :
 
@@ -779,7 +779,7 @@ Dans la section « Les composants produit », remplacer les deux dernières entr
   la moitié basse, et on peut s'y déconnecter.
 ```
 
-- [ ] **Étape 4 : La porte complète**
+- [x] **Étape 4 : La porte complète**
 
 ```bash
 task verif
@@ -796,14 +796,14 @@ ajuster : c'est qu'une des quatre règles du `CLAUDE.md` a été violée. Aucune
 touche au domaine ni à la base, donc un canari rouge signalerait une erreur de manipulation
 (base non réinitialisée, `.env` pointant ailleurs), pas un défaut du code.
 
-- [ ] **Étape 5 : Committer**
+- [x] **Étape 5 : Committer**
 
 ```bash
 git add DESIGN.md
 git commit -m "docs(web): DESIGN.md suit la coque mobile et MenuCompte"
 ```
 
-- [ ] **Étape 6 : Relire la branche d'un œil neuf**
+- [x] **Étape 6 : Relire la branche d'un œil neuf**
 
 ```bash
 git log --oneline main..HEAD

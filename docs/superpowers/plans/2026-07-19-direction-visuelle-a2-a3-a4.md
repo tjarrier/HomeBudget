@@ -70,7 +70,7 @@
 - Consumes: rien.
 - Produces: les variables CSS `--background`, `--foreground`, `--muted`, `--muted-foreground`, `--border`, `--primary`, `--primary-foreground`, `--ring`, `--destructive`, `--radius` ; les utilitaires Tailwind `font-sans` (Inter) et `font-heading` (Instrument Serif). Toutes les tâches suivantes en dépendent.
 
-- [ ] **Step 1: Écrire le test de garde qui échoue**
+- [x] **Step 1: Écrire le test de garde qui échoue**
 
 Créer `apps/web/test/theme.test.ts` :
 
@@ -124,12 +124,12 @@ describe('globals.css ne garde rien du theme shadcn par defaut', () => {
 })
 ```
 
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
 Run: `pnpm --filter @homebudget/web test -- theme`
 Expected: FAIL — quatre assertions rouges (le bloc `.dark`, les `--chart-*`, les valeurs par défaut, les polices absentes).
 
-- [ ] **Step 3: Réécrire `globals.css`**
+- [x] **Step 3: Réécrire `globals.css`**
 
 Remplacer l'intégralité de `apps/web/app/globals.css` par :
 
@@ -190,7 +190,7 @@ Remplacer l'intégralité de `apps/web/app/globals.css` par :
 }
 ```
 
-- [ ] **Step 4: Charger les polices dans `app/layout.tsx`**
+- [x] **Step 4: Charger les polices dans `app/layout.tsx`**
 
 Remplacer l'intégralité de `apps/web/app/layout.tsx` par :
 
@@ -227,19 +227,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-- [ ] **Step 5: Lancer le test pour vérifier qu'il passe**
+- [x] **Step 5: Lancer le test pour vérifier qu'il passe**
 
 Run: `pnpm --filter @homebudget/web test -- theme`
 Expected: PASS — 4 tests verts.
 
-- [ ] **Step 6: Vérifier que rien d'autre n'a cassé**
+- [x] **Step 6: Vérifier que rien d'autre n'a cassé**
 
 Run: `task verif`
 Expected: lint, typecheck et tous les tests unitaires verts.
 
 À savoir : à ce stade, **l'écran ne change quasiment pas**. Aucune page n'utilise encore les tokens — c'est la tâche 8 et les suivantes qui le règlent. Ce n'est pas un bug.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/app/globals.css apps/web/app/layout.tsx apps/web/test/theme.test.ts
@@ -263,7 +263,7 @@ Refs #5"
 - Consumes: les tokens de la tâche 1.
 - Produces: `Button` (props de `@base-ui/react/button` + `variant?: 'primaire' | 'discret'`), `Input` (props de `<input>`), `Label` (props de `<label>`), `Select` (props de `<select>` — élément **natif**, `<option>` en enfants). Les tâches 5 à 7 les consomment.
 
-- [ ] **Step 1: Supprimer les deux conteneurs**
+- [x] **Step 1: Supprimer les deux conteneurs**
 
 ```bash
 git rm apps/web/components/ui/card.tsx apps/web/components/ui/table.tsx
@@ -271,7 +271,7 @@ git rm apps/web/components/ui/card.tsx apps/web/components/ui/table.tsx
 
 `Card` est un contour, soit exactement ce que la direction retire ; `Table` est ce que l'issue B2 démonte. Aucun fichier ne les importe (vérifiable : `grep -rn "components/ui/\(card\|table\)" apps/web` ne renvoie rien).
 
-- [ ] **Step 2: Réécrire `button.tsx`**
+- [x] **Step 2: Réécrire `button.tsx`**
 
 ```tsx
 import { Button as ButtonPrimitive } from '@base-ui/react/button'
@@ -313,7 +313,7 @@ function Button({
 export { Button, buttonVariants }
 ```
 
-- [ ] **Step 3: Réécrire `input.tsx`**
+- [x] **Step 3: Réécrire `input.tsx`**
 
 ```tsx
 import { Input as InputPrimitive } from '@base-ui/react/input'
@@ -341,7 +341,7 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
 export { Input }
 ```
 
-- [ ] **Step 4: Réécrire `label.tsx`**
+- [x] **Step 4: Réécrire `label.tsx`**
 
 ```tsx
 'use client'
@@ -366,7 +366,7 @@ function Label({ className, ...props }: React.ComponentProps<'label'>) {
 export { Label }
 ```
 
-- [ ] **Step 5: Remplacer `select.tsx` par un select natif stylé**
+- [x] **Step 5: Remplacer `select.tsx` par un select natif stylé**
 
 Remplacer l'intégralité du fichier — le composant généré était le Select **composé** de Base UI (`Portal` + `Positioner` + `Popup`), c'est-à-dire un popup en JS, pas un contrôle de formulaire :
 
@@ -404,12 +404,12 @@ function Select({ className, ...props }: React.ComponentProps<'select'>) {
 export { Select }
 ```
 
-- [ ] **Step 6: Vérifier**
+- [x] **Step 6: Vérifier**
 
 Run: `task verif`
 Expected: tout vert. `architecture.test.ts` doit rester vert — le nouveau `select.tsx` ne contient plus l'import `Select … from '@base-ui/react/select'` qui motivait son commentaire sur les faux positifs, et aucune ligne hors import n'associe « select » et « from ».
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A apps/web/components/ui
@@ -438,7 +438,7 @@ Refs #6"
 
   Les tâches 6 et 7 les consomment.
 
-- [ ] **Step 1: Créer `apps/web/components/section.tsx`**
+- [x] **Step 1: Créer `apps/web/components/section.tsx`**
 
 ```tsx
 import type { ReactNode } from 'react'
@@ -473,7 +473,7 @@ export function Section({
 }
 ```
 
-- [ ] **Step 2: Créer `apps/web/components/ligne.tsx`**
+- [x] **Step 2: Créer `apps/web/components/ligne.tsx`**
 
 ```tsx
 import type { ReactNode } from 'react'
@@ -527,12 +527,12 @@ export function Ligne({
 }
 ```
 
-- [ ] **Step 3: Vérifier**
+- [x] **Step 3: Vérifier**
 
 Run: `task verif`
 Expected: tout vert.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web/components/section.tsx apps/web/components/ligne.tsx
@@ -555,7 +555,7 @@ Refs #6"
 - Consumes: `formaterMontant(c: Cents): string` (déjà présent dans le même fichier).
 - Produces: `formaterMontantSigne(c: Cents, avecSignePositif: boolean): string`. La tâche 5 la consomme.
 
-- [ ] **Step 1: Écrire les tests qui échouent**
+- [x] **Step 1: Écrire les tests qui échouent**
 
 Ajouter à la fin de `apps/web/test/format.test.ts` :
 
@@ -591,12 +591,12 @@ describe('formaterMontantSigne', () => {
 
 Compléter l'import en tête de fichier pour inclure `formaterMontantSigne`.
 
-- [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
+- [x] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 Run: `pnpm --filter @homebudget/web test -- format`
 Expected: FAIL — `formaterMontantSigne is not a function`.
 
-- [ ] **Step 3: Implémenter**
+- [x] **Step 3: Implémenter**
 
 Ajouter à `apps/web/lib/format.ts` :
 
@@ -620,12 +620,12 @@ export function formaterMontantSigne(c: Cents, avecSignePositif: boolean): strin
 }
 ```
 
-- [ ] **Step 4: Lancer les tests pour vérifier qu'ils passent**
+- [x] **Step 4: Lancer les tests pour vérifier qu'ils passent**
 
 Run: `pnpm --filter @homebudget/web test -- format`
 Expected: PASS — les 5 nouveaux cas verts, les cas existants inchangés.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/lib/format.ts apps/web/test/format.test.ts
@@ -647,7 +647,7 @@ Refs #7"
 - Consumes: `formaterMontantSigne()` (tâche 4), `Cents` de `@homebudget/domain`, `cn` de `@/lib/utils`.
 - Produces: `Montant({ cents: Cents, niveau: 'heros' | 'notable' | 'discret', signe?: boolean, className?: string })`. Les tâches 6 et 7 le consomment.
 
-- [ ] **Step 1: Créer `apps/web/components/montant.tsx`**
+- [x] **Step 1: Créer `apps/web/components/montant.tsx`**
 
 ```tsx
 import { formaterMontantSigne } from '@/lib/format'
@@ -695,14 +695,14 @@ export function Montant({
 }
 ```
 
-- [ ] **Step 2: Vérifier**
+- [x] **Step 2: Vérifier**
 
 Run: `task verif`
 Expected: tout vert.
 
 Note : il n'y a pas de test unitaire pour ce composant, et c'est délibéré. `apps/web` n'a ni jsdom ni Testing Library, et `vitest.config.ts` n'inclut que `test/**/*.test.ts`. Toute la logique testable a été extraite en tâche 4 ; ce qui reste ici est du mapping de classes, couvert par les parcours Playwright de la tâche 6.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/web/components/montant.tsx
@@ -730,7 +730,7 @@ Refs #7"
 
   La tâche 7 les consomme. Les deux modules sont déjà réexportés par `src/index.ts` (barrel en `export *`) : aucune ligne à y ajouter.
 
-- [ ] **Step 1: Écrire les tests qui échouent**
+- [x] **Step 1: Écrire les tests qui échouent**
 
 Ajouter à `packages/domain/test/solde.test.ts`, après le bloc `describe('phraseSynthese', …)` :
 
@@ -774,12 +774,12 @@ describe('synthese', () => {
 
 Compléter l'import en tête de fichier pour inclure `synthese`.
 
-- [ ] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
+- [x] **Step 2: Lancer les tests pour vérifier qu'ils échouent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Expected: FAIL — `synthese is not a function`. Les trois tests de `phraseSynthese` doivent, eux, être **verts** : ils décrivent l'état actuel et ne doivent jamais rougir dans cette tâche.
 
-- [ ] **Step 3: Ajouter `nomPersonne()` à `types.ts`**
+- [x] **Step 3: Ajouter `nomPersonne()` à `types.ts`**
 
 Ajouter à la fin de `packages/domain/src/types.ts` :
 
@@ -793,7 +793,7 @@ export function nomPersonne(p: Personne): string {
 }
 ```
 
-- [ ] **Step 4: Réécrire la fin de `solde.ts`**
+- [x] **Step 4: Réécrire la fin de `solde.ts`**
 
 Remplacer la fonction `phraseSynthese` existante par :
 
@@ -832,17 +832,17 @@ export function phraseSynthese(r: Resume): string {
 
 Compléter l'import en tête de `solde.ts` : `import { type ModeRepartition, type Parts, type Personne, type TypeDepense, nomPersonne } from './types.js'` — `nomPersonne` est une valeur, elle ne peut pas rester dans un `import type`.
 
-- [ ] **Step 5: Lancer les tests pour vérifier qu'ils passent**
+- [x] **Step 5: Lancer les tests pour vérifier qu'ils passent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Expected: PASS — les 3 nouveaux cas de `synthese` verts, **et les 3 cas de `phraseSynthese` toujours verts sans modification**. Si l'un d'eux rougit, la réécriture a changé la sortie : corriger `phraseSynthese`, jamais le test.
 
-- [ ] **Step 6: Vérifier que le canari tient**
+- [x] **Step 6: Vérifier que le canari tient**
 
 Run: `pnpm --filter @homebudget/db test`
 Expected: PASS — `import-sheet.test.ts` affiche toujours `Liz doit 1 145,80 € à Thomas` et le solde vaut 114 580.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/domain/src/types.ts packages/domain/src/solde.ts packages/domain/test/solde.test.ts
@@ -867,7 +867,7 @@ Refs #7"
 - Consumes: `Montant` (tâche 5), `Section` (tâche 3), `synthese`/`nomPersonne` (tâche 6).
 - Produces: rien pour les tâches suivantes.
 
-- [ ] **Step 1: Réécrire `app/(app)/page.tsx`**
+- [x] **Step 1: Réécrire `app/(app)/page.tsx`**
 
 ```tsx
 import { Montant } from '@/components/montant'
@@ -962,7 +962,7 @@ function Chiffre({
 }
 ```
 
-- [ ] **Step 2: Réécrire `app/(app)/layout.tsx`**
+- [x] **Step 2: Réécrire `app/(app)/layout.tsx`**
 
 ```tsx
 import { exigerSession } from '@/lib/session'
@@ -995,7 +995,7 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
 
 Note : la navigation au pouce et le bouton de déconnexion sont l'objet de l'issue B6. Cette tâche ne fait que détokeniser l'existant.
 
-- [ ] **Step 3: Mettre à jour les deux assertions e2e exactes**
+- [x] **Step 3: Mettre à jour les deux assertions e2e exactes**
 
 Dans `apps/web/e2e/parcours.spec.ts`, remplacer la ligne 31 :
 
@@ -1018,17 +1018,17 @@ Et la ligne 51 :
 
 Les lignes 56 et 72 (lecture de `textContent` puis comparaison avant/après) restent **inchangées** : le `data-testid="phrase-synthese"` est conservé sur le bloc composé, elles continuent donc de fonctionner.
 
-- [ ] **Step 4: Vérifier les tests unitaires**
+- [x] **Step 4: Vérifier les tests unitaires**
 
 Run: `task verif`
 Expected: tout vert.
 
-- [ ] **Step 5: Vérifier les parcours e2e**
+- [x] **Step 5: Vérifier les parcours e2e**
 
 Run: `task test:e2e:frais`
 Expected: les trois parcours verts. La commande est **destructive** : elle réinitialise la base locale avant de lancer Playwright.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add "apps/web/app/(app)/page.tsx" "apps/web/app/(app)/layout.tsx" apps/web/e2e/parcours.spec.ts
@@ -1052,7 +1052,7 @@ Refs #7"
 - Consumes: `Montant`, `Section`, `Ligne`, `nomPersonne`.
 - Produces: rien.
 
-- [ ] **Step 1: Réécrire `app/(app)/depenses/page.tsx`**
+- [x] **Step 1: Réécrire `app/(app)/depenses/page.tsx`**
 
 ```tsx
 import { Ligne } from '@/components/ligne'
@@ -1108,12 +1108,12 @@ export default async function Depenses() {
 
 La constante locale `LIBELLE_PERSONNE` disparaît : `nomPersonne()` du domaine la remplace, de sorte que les deux libellés ne puissent pas diverger.
 
-- [ ] **Step 2: Vérifier**
+- [x] **Step 2: Vérifier**
 
 Run: `task verif`
 Expected: tout vert.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add "apps/web/app/(app)/depenses/page.tsx"
@@ -1133,7 +1133,7 @@ Refs #6, #7"
 - Consumes: `Montant`, `Section`, `Ligne`.
 - Produces: rien.
 
-- [ ] **Step 1: Réécrire `app/(app)/config/page.tsx`**
+- [x] **Step 1: Réécrire `app/(app)/config/page.tsx`**
 
 ```tsx
 import { Montant } from '@/components/montant'
@@ -1213,12 +1213,12 @@ export default async function Config() {
 
 Note : le pourcentage n'est **pas** un montant — il ne passe donc pas par `Montant`, qui n'accepte que des `Cents`.
 
-- [ ] **Step 2: Vérifier**
+- [x] **Step 2: Vérifier**
 
 Run: `task verif`
 Expected: tout vert.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add "apps/web/app/(app)/config/page.tsx"
@@ -1247,7 +1247,7 @@ Refs #6, #7"
 - boutons `Ajouter la dépense` et `Créer la version`
 - `data-testid` : `apercu-parts`, `apercu-thomas`, `apercu-liz`, `message-erreur-apercu`, `message-erreur-envoi`
 
-- [ ] **Step 1: Migrer `formulaire-depense.tsx`**
+- [x] **Step 1: Migrer `formulaire-depense.tsx`**
 
 Remplacer chaque `<input className="rounded-md border border-slate-300 p-2" />` par `<Input />`, chaque `<select className="…">` par `<Select>`, et le `<button type="submit">` final par `<Button type="submit">`. Chaque `<label className="flex flex-col gap-1 text-sm">Texte<input …/></label>` devient :
 
@@ -1311,27 +1311,27 @@ Le bloc d'aperçu passe aux tokens et à `Montant` :
 
 Les deux messages d'erreur passent de `text-red-700` à `text-destructive`.
 
-- [ ] **Step 2: Vérifier l'aperçu en e2e avant d'aller plus loin**
+- [x] **Step 2: Vérifier l'aperçu en e2e avant d'aller plus loin**
 
 Run: `task test:e2e:frais`
 Expected: les trois parcours verts. Le parcours 2 assère `getByTestId('apercu-thomas')` avec `toHaveText('25,00 €')` : le `<span>` porteur du testid enveloppe désormais un `<data>`, mais `toHaveText` lit le texte rendu — l'assertion tient. Si elle échoue, c'est que `Montant` a été inséré au mauvais niveau.
 
-- [ ] **Step 3: Migrer `formulaire-version.tsx`**
+- [x] **Step 3: Migrer `formulaire-version.tsx`**
 
 Même traitement : `Input`, `Select`, `Label`, `Button`, suppression du cadre `rounded-xl border border-slate-200 bg-white p-4`. L'encart d'avertissement passe de `bg-emerald-50 text-emerald-900` — seule touche de couleur de l'app aujourd'hui — à `bg-muted text-foreground` : aucune couleur ne code un sens.
 
 **Ne pas toucher** : `enEuros()` et `enLignes()`, qui pré-remplissent des champs éditables. Ce n'est pas de l'affichage ; A4 ne les concerne pas. Les trois `<textarea>` gardent leur `font-mono text-xs` mais passent au fond `bg-muted` et au filet inférieur, comme `Input`.
 
-- [ ] **Step 4: Migrer `app/(auth)/login/page.tsx`**
+- [x] **Step 4: Migrer `app/(auth)/login/page.tsx`**
 
 Remplacer le `<button className="rounded-md bg-slate-900 px-5 py-3 text-white">` par `<Button>`, et le `h1 text-2xl font-semibold` par `font-heading text-[1.75rem]`. Le soin de la première impression est l'objet de l'issue B5 : cette tâche ne fait que détokeniser.
 
-- [ ] **Step 5: Vérifier**
+- [x] **Step 5: Vérifier**
 
 Run: `task verif`
 Expected: tout vert.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add "apps/web/app/(app)/depenses/formulaire-depense.tsx" "apps/web/app/(app)/config/formulaire-version.tsx" "apps/web/app/(auth)/login/page.tsx"
@@ -1354,7 +1354,7 @@ Refs #6, #7"
 - Consumes: tout ce qui précède.
 - Produces: le verrou qui rend A2 vraie — « changer un token se répercute partout ».
 
-- [ ] **Step 1: Écrire le test qui échoue**
+- [x] **Step 1: Écrire le test qui échoue**
 
 Ajouter à `apps/web/test/theme.test.ts`. **Les deux `import` vont en tête de fichier**, fusionnés avec ceux qui s'y trouvent déjà — Biome réorganise les imports et refusera un `import` placé au milieu du fichier :
 
@@ -1423,12 +1423,12 @@ describe('aucune couleur ne court-circuite les tokens', () => {
 })
 ```
 
-- [ ] **Step 2: Lancer le test**
+- [x] **Step 2: Lancer le test**
 
 Run: `pnpm --filter @homebudget/web test -- theme`
 Expected: PASS si les tâches 7 à 10 ont tout migré. **En cas d'échec, le test nomme les fichiers fautifs** : les corriger, ne jamais assouplir le motif.
 
-- [ ] **Step 3: Vérification complète**
+- [x] **Step 3: Vérification complète**
 
 Run: `task verif`
 Expected: lint, typecheck, tous les tests unitaires verts.
@@ -1436,12 +1436,12 @@ Expected: lint, typecheck, tous les tests unitaires verts.
 Run: `task test:e2e:frais`
 Expected: les trois parcours verts, canari `1 145,80 €` compris.
 
-- [ ] **Step 4: Vérifier de visu**
+- [x] **Step 4: Vérifier de visu**
 
 Run: `task dev` puis ouvrir `http://localhost:3000` en viewport 360px et en large.
 Attendu : le solde domine le tableau de bord ; aucune bordure ne fait le tour d'un bloc ; la liste des dépenses s'empile sous 640px et s'aligne en colonnes au-delà ; aucun scroll horizontal.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/test/theme.test.ts
