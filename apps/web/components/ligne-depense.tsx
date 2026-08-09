@@ -1,5 +1,6 @@
 import { Avatar } from '@/components/avatar'
 import { BadgeType } from '@/components/badge'
+import { BoutonSupprimerDepense } from '@/components/bouton-supprimer-depense'
 import { Montant } from '@/components/montant'
 import { formaterDate } from '@/lib/format'
 import type { Depense } from '@homebudget/domain'
@@ -13,13 +14,18 @@ import { nomPersonne } from '@homebudget/domain'
  * depense ne bougent plus jamais apres sa saisie. Le parcours Playwright
  * compare precisement ce texte avant et apres la creation d'une version de
  * config — le retirer rendrait ce test vide de sens.
+ *
+ * `supprimable` est OPT-IN (issue #40) : seul l'historique de `/depenses`
+ * l'active, parce que c'est l'ecran de la correction — le formulaire de saisie
+ * y est deja cote a cote pour resaisir.
  */
 export function LigneDepense({
   depense,
   avecPayeur = true,
-}: { depense: Depense; avecPayeur?: boolean }) {
+  supprimable = false,
+}: { depense: Depense; avecPayeur?: boolean; supprimable?: boolean }) {
   return (
-    <li className="flex items-center gap-3.5 border-t border-subtle py-3 first:border-t-0">
+    <li className="flex flex-wrap items-center gap-3.5 border-t border-subtle py-3 first:border-t-0">
       <Avatar personne={depense.payePar} taille="sm" decoratif={avecPayeur} />
 
       <div className="min-w-0 flex-1">
@@ -52,6 +58,17 @@ export function LigneDepense({
       </div>
 
       <Montant cents={depense.montant} niveau="courant" className="whitespace-nowrap" />
+
+      {/* Opt-in, jamais par defaut : le tableau de bord affiche les memes
+          lignes, et on y vient LIRE un solde. Un appelant futur n'herite pas
+          d'un bouton de suppression sans l'avoir demande. */}
+      {supprimable ? (
+        <BoutonSupprimerDepense
+          id={depense.id}
+          description={depense.description}
+          montant={depense.montant}
+        />
+      ) : null}
     </li>
   )
 }

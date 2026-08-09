@@ -50,7 +50,7 @@ export default async function Depenses({
             ) : (
               <ul>
                 {depenses.map((d) => (
-                  <LigneDepense key={d.id} depense={d} />
+                  <LigneDepense key={d.id} depense={d} supprimable />
                 ))}
               </ul>
             )}
