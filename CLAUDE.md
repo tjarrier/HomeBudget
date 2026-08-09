@@ -101,9 +101,15 @@ que rien d'autre n'attraperait. La base le refuse maintenant physiquement.
 `apps/web` est une application Next.js (App Router). Elle est **UI seulement** :
 
 - Elle n'importe ni `drizzle-orm`, ni `pg`, ni `client.ts`, et n'écrit aucune ligne de
-  SQL. Son seul accès aux données est la façade de `packages/db` : `listerVersions`,
-  `listerDepenses`, `ajouterDepense`, `supprimerDepense`, `creerVersion`,
-  `calculerPartsPourSaisie`, `genererChargeFixeDuMois`.
+  SQL. Son seul accès aux données est la façade de `packages/db` :
+  `listerVersions`, `listerDepenses`, `resumerDepenses`, `listerMoisDepenses`,
+  `ajouterDepense`, `supprimerDepense`, `creerVersion`, `calculerPartsPourSaisie`,
+  `genererChargeFixeDuMois`.
+  Aucune de ces lectures ne rend un nombre non borné de lignes : `listerDepenses`
+  prend une `limite`, le solde est un agrégat SQL (`resumerDepenses`) et non un
+  pliage de toutes les lignes transportées. `resumerDepenses` est la **seule**
+  règle de calcul du projet écrite deux fois — un test d'intégration la compare à
+  `resumer()` du domaine, champ pour champ, sur le seed réel.
   `apps/web/test/architecture.test.ts` le vérifie par **liste blanche** : tout nom
   importé de `@homebudget/db` hors de cette façade fait échouer le test — en
   particulier `db`, le client Drizzle brut, que `packages/db` réexporte.

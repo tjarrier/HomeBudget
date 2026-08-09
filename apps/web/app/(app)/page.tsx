@@ -7,8 +7,8 @@ import { LigneDepense } from '@/components/ligne-depense'
 import { Montant } from '@/components/montant'
 import { buttonVariants } from '@/components/ui/button'
 import { exigerSession } from '@/lib/session'
-import { listerDepenses } from '@homebudget/db'
-import { type Personne, type Resume, nomPersonne, resumer, synthese } from '@homebudget/domain'
+import { listerDepenses, resumerDepenses } from '@homebudget/db'
+import { type Personne, type Resume, nomPersonne, synthese } from '@homebudget/domain'
 
 // Le tableau de bord doit refleter la derniere ecriture, jamais un cache de build.
 export const dynamic = 'force-dynamic'
@@ -27,10 +27,11 @@ export default async function TableauDeBord() {
   // expose le solde : la garde vit ici, le layout n'est que la profondeur.
   await exigerSession()
 
-  // Les lignes sont lues telles quelles ; le calcul est fait par le domaine, ici,
-  // en TypeScript. Aucun SELECT n'additionne de solde.
-  const depenses = await listerDepenses()
-  const resume: Resume = resumer(depenses)
+  // Deux lectures BORNEES, jamais la table entiere : le solde est un agregat que
+  // Postgres plie, et l'apercu ne descend que cinq lignes. Le pliage est le meme
+  // que `resumer()` — un test d'integration les compare champ pour champ.
+  const resume: Resume = await resumerDepenses()
+  const recentes = await listerDepenses({ limite: 5 })
   const s = synthese(resume)
 
   const totalPaye = resume.payeThomas + resume.payeLiz
@@ -85,7 +86,7 @@ export default async function TableauDeBord() {
               : `Solde en faveur de ${nomPersonne(s.crediteur)}`}
           </span>
           <span>
-            Sur {depenses.length} {depenses.length > 1 ? 'dépenses' : 'dépense'}
+            Sur {resume.nombre} {resume.nombre > 1 ? 'dépenses' : 'dépense'}
           </span>
         </div>
       </section>
@@ -166,11 +167,11 @@ export default async function TableauDeBord() {
             </Link>
           }
         >
-          {depenses.length === 0 ? (
+          {recentes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucune dépense pour le moment.</p>
           ) : (
             <ul>
-              {depenses.slice(0, 5).map((d) => (
+              {recentes.map((d) => (
                 <LigneDepense key={d.id} depense={d} avecPayeur={false} />
               ))}
             </ul>
