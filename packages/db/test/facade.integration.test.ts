@@ -33,6 +33,47 @@ async function creerVersionSql(libelle: string, dateDebut: string): Promise<{ id
   return version
 }
 
+/**
+ * Quatre lignes posees exprès autour des bornes de juillet : le 30/06 et le
+ * 01/08 encadrent le mois au jour près. Un filtre pose sur l'ANNEE-MOIS de la
+ * date les exclut ; un filtre qui deborderait d'un jour les ferait entrer.
+ */
+async function quatreDepenses(): Promise<void> {
+  await creerVersionSql('v1', '2026-01-01')
+  await ajouterDepense({
+    date: '2026-06-30',
+    description: 'Fin juin',
+    montant: 1000,
+    payePar: 'thomas',
+    type: 'courante',
+    mode: 'moitie',
+  })
+  await ajouterDepense({
+    date: '2026-07-01',
+    description: 'Debut juillet',
+    montant: 2000,
+    payePar: 'liz',
+    type: 'courante',
+    mode: 'moitie',
+  })
+  await ajouterDepense({
+    date: '2026-07-15',
+    description: 'Remboursement',
+    montant: 3000,
+    payePar: 'liz',
+    type: 'transfert',
+    mode: 'transfert',
+  })
+  await ajouterDepense({
+    date: '2026-08-01',
+    description: 'Debut aout',
+    montant: 4000,
+    payePar: 'thomas',
+    type: 'charge_fixe',
+    mode: 'prorata',
+  })
+}
+
 describe('listerVersions', () => {
   it('rend les versions de la plus ancienne a la plus recente, dates en chaines ISO', async () => {
     await creerVersionSql('v1', '2025-07-01')
@@ -77,47 +118,6 @@ describe('listerDepenses', () => {
 })
 
 describe('listerDepenses — filtres', () => {
-  /**
-   * Quatre lignes posees exprès autour des bornes de juillet : le 30/06 et le
-   * 01/08 encadrent le mois au jour près. Un filtre pose sur l'ANNEE-MOIS de la
-   * date les exclut ; un filtre qui deborderait d'un jour les ferait entrer.
-   */
-  async function quatreDepenses(): Promise<void> {
-    await creerVersionSql('v1', '2026-01-01')
-    await ajouterDepense({
-      date: '2026-06-30',
-      description: 'Fin juin',
-      montant: 1000,
-      payePar: 'thomas',
-      type: 'courante',
-      mode: 'moitie',
-    })
-    await ajouterDepense({
-      date: '2026-07-01',
-      description: 'Debut juillet',
-      montant: 2000,
-      payePar: 'liz',
-      type: 'courante',
-      mode: 'moitie',
-    })
-    await ajouterDepense({
-      date: '2026-07-15',
-      description: 'Remboursement',
-      montant: 3000,
-      payePar: 'liz',
-      type: 'transfert',
-      mode: 'transfert',
-    })
-    await ajouterDepense({
-      date: '2026-08-01',
-      description: 'Debut aout',
-      montant: 4000,
-      payePar: 'thomas',
-      type: 'charge_fixe',
-      mode: 'prorata',
-    })
-  }
-
   it('sans filtre, rend tout', async () => {
     await quatreDepenses()
 
@@ -188,6 +188,39 @@ describe('listerDepenses — filtres', () => {
     const juillet = await listerDepenses({ mois: '2026-07' })
 
     expect(juillet).toEqual(toutes.filter((d) => d.date.startsWith('2026-07')))
+  })
+})
+
+describe('listerDepenses — limite', () => {
+  beforeEach(quatreDepenses)
+
+  it('rend les N PLUS RECENTES, pas N au hasard', async () => {
+    const toutes = await listerDepenses()
+    expect(toutes.length).toBeGreaterThan(2)
+
+    const bornees = await listerDepenses({ limite: 2 })
+
+    expect(bornees).toHaveLength(2)
+    // Le prefixe exact de la liste complete : la borne coupe la queue, elle ne
+    // rebat pas les cartes. C'est ce qui rend « Voir plus » cumulatif honnete —
+    // les lignes deja vues ne bougent pas quand la borne monte.
+    expect(bornees.map((d) => d.id)).toEqual(toutes.slice(0, 2).map((d) => d.id))
+  })
+
+  it('se cumule avec un filtre', async () => {
+    const deLiz = await listerDepenses({ payePar: 'liz' })
+    expect(deLiz.length).toBeGreaterThan(1)
+
+    const bornees = await listerDepenses({ payePar: 'liz', limite: 1 })
+
+    expect(bornees).toHaveLength(1)
+    expect(bornees[0]?.payePar).toBe('liz')
+    expect(bornees[0]?.id).toBe(deLiz[0]?.id)
+  })
+
+  it('une limite plus grande que la base rend tout, sans erreur', async () => {
+    const toutes = await listerDepenses()
+    expect(await listerDepenses({ limite: 9999 })).toHaveLength(toutes.length)
   })
 })
 

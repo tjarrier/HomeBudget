@@ -22,7 +22,7 @@ export async function listerVersions(): Promise<VersionConfig[]> {
 }
 
 /**
- * Les depenses, de la plus recente a la plus ancienne. Sans filtre : toutes.
+ * Les depenses, de la plus recente a la plus ancienne. Sans filtre ni limite : toutes.
  * Renvoie les lignes telles quelles : aucun agregat, aucune somme SQL. Le resume
  * du tableau de bord est `resumer()` du domaine, applique a ce tableau.
  *
@@ -39,11 +39,21 @@ export async function listerVersions(): Promise<VersionConfig[]> {
  * nouvelle version de config) deviendrait flaky.
  */
 export async function listerDepenses(filtres: FiltresDepenses = {}): Promise<Depense[]> {
-  const lignes = await db
+  // `$dynamic()` parce que `.limit()` n'est pas conditionnel autrement : Drizzle
+  // fige le type du builder des qu'on chaine, et `.limit(undefined)` emet
+  // `LIMIT NULL`.
+  const requete = db
     .select()
     .from(depense)
     .where(and(...conditions(filtres)))
     .orderBy(desc(depense.date), desc(depense.createdAt), desc(depense.id))
+    .$dynamic()
+
+  // Le tri est DEJA total (date, createdAt, id) — il l'etait pour la stabilite
+  // entre deux lectures, il devient ici la condition pour qu'une borne veuille
+  // dire quelque chose : sans ordre total, « les 20 premieres » ne designe pas
+  // le meme ensemble d'un appel a l'autre.
+  const lignes = await (filtres.limite === undefined ? requete : requete.limit(filtres.limite))
   return lignes.map(depenseDepuisLigne)
 }
 
@@ -65,6 +75,15 @@ export interface FiltresDepenses {
    */
   payePar?: Personne | undefined
   type?: TypeDepense | undefined
+  /**
+   * Combien de lignes AU PLUS, en partant de la plus recente. Absent = toutes.
+   *
+   * Pas de `decalage` en face : « Voir plus » est CUMULATIF (`?n=40` demande les
+   * 40 premieres, jamais la deuxieme page de 20), donc rien dans le produit n'a
+   * d'offset a passer. Une borne qu'on n'utilise pas est une borne qu'on ne
+   * teste pas.
+   */
+  limite?: number | undefined
 }
 
 /**
