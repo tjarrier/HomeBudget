@@ -328,6 +328,53 @@ test.describe('parcours authentifies', () => {
   })
 
   /**
+   * Issue #28 — filtrer en UN geste, depuis un telephone.
+   *
+   * Place ICI, et pas plus bas : le second test lit le solde a regler, que le
+   * reglement qui suit met a zero. Aucun des deux n'ecrit quoi que ce soit.
+   */
+  test.describe('filtrer l historique, sur un telephone', () => {
+    test.use(TELEPHONE)
+
+    test('un choix dans un selecteur suffit, sans bouton a valider', async ({ page }) => {
+      await page.goto('/depenses')
+      const lignes = page.getByTestId('liste-depenses').getByRole('listitem')
+      const total = await lignes.count()
+      expect(total).toBeGreaterThan(1)
+
+      // Le seul geste est le choix : aucun clic sur « Appliquer » entre les deux
+      // assertions. C'est le critere de l'issue.
+      await page.selectOption('#filtrePayePar', 'liz')
+      await expect(page).toHaveURL('/depenses?payePar=liz')
+      // Assertion qui REESSAIE : la navigation est douce, la liste revient du
+      // serveur. Une ligne restante hors filtre la ferait echouer.
+      await expect(lignes.filter({ hasNotText: 'payé par Liz' })).toHaveCount(0)
+      expect(await lignes.count()).toBeLessThan(total)
+
+      // Le mois S'AJOUTE au payeur, il ne le remplace pas.
+      await page.selectOption('#filtreMois', '2026-07')
+      await expect(page).toHaveURL('/depenses?payePar=liz&mois=2026-07')
+      await expect(lignes.filter({ hasNotText: 'payé par Liz' })).toHaveCount(0)
+      await expect(lignes.filter({ hasNotText: '/07/2026' })).toHaveCount(0)
+      expect(await lignes.count()).toBeGreaterThan(0)
+    })
+
+    test('un filtre ne change pas le montant du reglement', async ({ page }) => {
+      await page.goto('/')
+      const solde = await soldeEnCentimes(page)
+      expect(solde).toBeGreaterThan(0)
+
+      // Le solde se calcule sur TOUTES les depenses, jamais sur le sous-ensemble
+      // affiche : un reglement partiel pre-rempli comme s'il soldait tout se
+      // virerait sans que rien a l'ecran ne le dise.
+      await page.goto('/depenses?regler=1&mois=2026-08')
+      const saisi = await page.locator('input[name="montant"]').inputValue()
+      const [euros, centimes] = saisi.replace(/\s/g, '').split(',')
+      expect(Number(euros) * 100 + Number(centimes)).toBe(solde)
+    })
+  })
+
+  /**
    * LE critere de l'issue #26 : « apres validation, le solde tombe a zero ».
    *
    * DERNIERE ECRITURE DU FICHIER, et ce n'est pas negociable : ce test solde la
