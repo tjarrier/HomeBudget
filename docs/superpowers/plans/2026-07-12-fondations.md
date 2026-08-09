@@ -81,7 +81,7 @@ Fonde le dépôt et les garde-fous. Tout le reste en dépend.
 - Consumes: rien.
 - Produces: les scripts pnpm `test`, `test:domain`, `typecheck`, `lint`, `format`, utilisés par toutes les tâches suivantes et par la CI.
 
-- [ ] **Step 1 : Initialiser le workspace pnpm**
+- [x] **Step 1 : Initialiser le workspace pnpm**
 
 `pnpm-workspace.yaml` :
 ```yaml
@@ -129,7 +129,7 @@ dist/
 coverage/
 ```
 
-- [ ] **Step 2 : TypeScript strict et Biome**
+- [x] **Step 2 : TypeScript strict et Biome**
 
 `tsconfig.base.json` :
 ```json
@@ -172,7 +172,7 @@ coverage/
 }
 ```
 
-- [ ] **Step 3 : Créer le paquet domaine (vide mais buildable)**
+- [x] **Step 3 : Créer le paquet domaine (vide mais buildable)**
 
 `packages/domain/package.json` :
 ```json
@@ -223,7 +223,7 @@ export {}
 }
 ```
 
-- [ ] **Step 4 : Installer et vérifier que la chaîne tourne**
+- [x] **Step 4 : Installer et vérifier que la chaîne tourne**
 
 ```bash
 pnpm install
@@ -232,7 +232,7 @@ pnpm lint
 ```
 Attendu : les trois commandes passent sans erreur. `pnpm test` ne trouve encore aucun test — normal.
 
-- [ ] **Step 5 : Écrire le hook de qualité**
+- [x] **Step 5 : Écrire le hook de qualité**
 
 `.claude/hooks/verifier-fichier.sh` :
 ```bash
@@ -290,7 +290,7 @@ chmod +x .claude/hooks/verifier-fichier.sh
 
 Le hook rend le code 2 quand le typecheck échoue : Claude Code renvoie alors le message à l'agent, qui doit réparer avant de continuer. Un agent ne peut pas laisser le dépôt cassé.
 
-- [ ] **Step 6 : Écrire CLAUDE.md**
+- [x] **Step 6 : Écrire CLAUDE.md**
 
 `CLAUDE.md` :
 ```markdown
@@ -395,7 +395,7 @@ vérifie que le solde vaut **exactement 114 580 centimes** (« Liz doit 1 145,80
 Ne l'ajuste pas pour le faire passer : trouve ce qui a cassé.
 ```
 
-- [ ] **Step 7 : Commit**
+- [x] **Step 7 : Commit**
 
 ```bash
 git add -A
@@ -423,7 +423,7 @@ git commit -m "chore: squelette du monorepo et harness IA
   - `function formaterEuros(c: Cents): string`
   - `function repartirAuRatio(montant: Cents, ratioPremier: number): [Cents, Cents]`
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 `packages/domain/test/money.test.ts` :
 ```ts
@@ -509,12 +509,12 @@ describe('repartirAuRatio', () => {
 })
 ```
 
-- [ ] **Step 2 : Vérifier que les tests échouent**
+- [x] **Step 2 : Vérifier que les tests échouent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : ÉCHEC — `Failed to resolve import "../src/money.js"`.
 
-- [ ] **Step 3 : Implémenter**
+- [x] **Step 3 : Implémenter**
 
 `packages/domain/src/money.ts` :
 ```ts
@@ -571,12 +571,12 @@ function assertEntier(c: Cents): void {
 }
 ```
 
-- [ ] **Step 4 : Vérifier que les tests passent**
+- [x] **Step 4 : Vérifier que les tests passent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : PASS, 12 tests.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add packages/domain
@@ -601,7 +601,7 @@ git commit -m "feat(domain): arithmetique en centimes, somme des parts exacte pa
   - `function calculerParts(entree: EntreeRepartition): Parts`
   - `function modeParDefaut(type: TypeDepense): ModeRepartition`
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 `packages/domain/test/repartition.test.ts` :
 ```ts
@@ -735,12 +735,12 @@ describe('modeParDefaut', () => {
 })
 ```
 
-- [ ] **Step 2 : Vérifier que les tests échouent**
+- [x] **Step 2 : Vérifier que les tests échouent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : ÉCHEC — `Failed to resolve import "../src/repartition.js"`.
 
-- [ ] **Step 3 : Implémenter**
+- [x] **Step 3 : Implémenter**
 
 `packages/domain/src/types.ts` :
 ```ts
@@ -835,12 +835,12 @@ export * from './repartition.js'
 export * from './types.js'
 ```
 
-- [ ] **Step 4 : Vérifier que les tests passent**
+- [x] **Step 4 : Vérifier que les tests passent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : PASS. Le test « quand Liz verse 400 EUR, la part de Liz vaut 0 » est le verrou du signe.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add packages/domain
@@ -870,7 +870,7 @@ Le cœur de l'invariant I1.
   - `function verifierContinuite(versions: VersionConfig[]): void`
   - `function cloturerEtAjouter(versions: VersionConfig[], nouvelle: VersionConfig): VersionConfig[]`
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 `packages/domain/test/config-version.test.ts` :
 ```ts
@@ -1055,12 +1055,12 @@ describe('cloturerEtAjouter (append-only)', () => {
 })
 ```
 
-- [ ] **Step 2 : Vérifier que les tests échouent**
+- [x] **Step 2 : Vérifier que les tests échouent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : ÉCHEC — module introuvable.
 
-- [ ] **Step 3 : Implémenter**
+- [x] **Step 3 : Implémenter**
 
 `packages/domain/src/config-version.ts` :
 ```ts
@@ -1207,12 +1207,12 @@ export function veilleDe(date: string): string {
 
 Note sur `verifierContinuite` : le test « refuse deux versions ouvertes » passe par la garde `ouvertes.length > 1`, atteinte avant la boucle.
 
-- [ ] **Step 4 : Vérifier que les tests passent**
+- [x] **Step 4 : Vérifier que les tests passent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : PASS. Les tests de bornes (`2026-06-30` → v1, `2026-07-01` → v2) et de bissextilité sont les plus importants.
 
-- [ ] **Step 5 : Exporter et commiter**
+- [x] **Step 5 : Exporter et commiter**
 
 `packages/domain/src/index.ts` :
 ```ts
@@ -1245,7 +1245,7 @@ git commit -m "feat(domain): config versionnee effective-dated, append-only"
   - `function resumer(depenses: Depense[]): Resume`
   - `function phraseSynthese(r: Resume): string`
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 `packages/domain/test/solde.test.ts` :
 ```ts
@@ -1353,12 +1353,12 @@ describe('phraseSynthese', () => {
 })
 ```
 
-- [ ] **Step 2 : Vérifier que les tests échouent**
+- [x] **Step 2 : Vérifier que les tests échouent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : ÉCHEC — module introuvable.
 
-- [ ] **Step 3 : Implémenter**
+- [x] **Step 3 : Implémenter**
 
 `packages/domain/src/solde.ts` :
 ```ts
@@ -1446,12 +1446,12 @@ export function phraseSynthese(r: Resume): string {
 
 Note : `totalDepenses` exclut les transferts, contrairement au Sheet qui les additionnait à tout. Un virement n'est pas une dépense, c'est un mouvement de dette. Le solde, lui, est identique — c'est ce qui compte pour le canari.
 
-- [ ] **Step 4 : Vérifier que les tests passent**
+- [x] **Step 4 : Vérifier que les tests passent**
 
 Run: `pnpm --filter @homebudget/domain test`
 Attendu : PASS.
 
-- [ ] **Step 5 : Exporter et commiter**
+- [x] **Step 5 : Exporter et commiter**
 
 Ajouter à `packages/domain/src/index.ts` :
 ```ts
@@ -1481,7 +1481,7 @@ La tâche qui prouve que tout ce qui précède est juste.
   - `const VERSIONS_INITIALES: VersionConfig[]` (v1 et v2, tirées du Sheet)
   - `function importerDepenses(csv: string, versions: VersionConfig[]): Depense[]`
 
-- [ ] **Step 1 : Créer le paquet `db`**
+- [x] **Step 1 : Créer le paquet `db`**
 
 `packages/db/package.json` (les dépendances Postgres arrivent à la Task 7, quand la base existe) :
 ```json
@@ -1530,7 +1530,7 @@ export default defineConfig({
 
 Puis : `pnpm install`
 
-- [ ] **Step 2 : Écrire le test qui échoue — le canari**
+- [x] **Step 2 : Écrire le test qui échoue — le canari**
 
 `packages/db/test/import-sheet.test.ts` :
 ```ts
@@ -1632,12 +1632,12 @@ describe('LE CANARI — non-regression du solde', () => {
 })
 ```
 
-- [ ] **Step 3 : Vérifier que le test échoue**
+- [x] **Step 3 : Vérifier que le test échoue**
 
 Run: `pnpm --filter @homebudget/db test`
 Attendu : ÉCHEC — `Failed to resolve import "../src/import-sheet.js"`.
 
-- [ ] **Step 4 : Implémenter l'import**
+- [x] **Step 4 : Implémenter l'import**
 
 `packages/db/src/import-sheet.ts` :
 ```ts
@@ -1860,14 +1860,14 @@ function decouper(ligne: string): string[] {
 export * from './import-sheet.js'
 ```
 
-- [ ] **Step 5 : Vérifier que le canari passe**
+- [x] **Step 5 : Vérifier que le canari passe**
 
 Run: `pnpm --filter @homebudget/db test`
 Attendu : PASS, dont `LE CANARI — non-regression du solde › Liz doit exactement 1 145,80 EUR a Thomas`.
 
 Si le canari échoue, ne modifie pas le chiffre attendu. Vérifie dans l'ordre : le signe des transferts, le double arrondi, un flottant qui a survécu.
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 
 ```bash
 git add packages/db tsconfig.json
@@ -1898,7 +1898,7 @@ Ce que le domaine garantit par convention, la base le garantit par contrainte.
   - `packages/db/src/client.ts` : `db` (client Drizzle) et `pool`
   - la fonction SQL `creer_version_config()`
 
-- [ ] **Step 1 : Postgres en local**
+- [x] **Step 1 : Postgres en local**
 
 `docker-compose.yml` (racine) :
 ```yaml
@@ -1934,7 +1934,7 @@ Un seul conteneur. Pas de PostgREST, pas de Studio, pas de Kong : on n'en utilis
 "db:reset": "docker compose down -v && docker compose up -d --wait && pnpm --filter @homebudget/db db:migrate && pnpm --filter @homebudget/db db:seed"
 ```
 
-- [ ] **Step 2 : Déclarer le schéma en Drizzle**
+- [x] **Step 2 : Déclarer le schéma en Drizzle**
 
 `packages/db/src/schema.ts` :
 ```ts
@@ -2062,7 +2062,7 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 3 : Générer la migration des tables**
+- [x] **Step 3 : Générer la migration des tables**
 
 ```bash
 pnpm --filter @homebudget/db db:generate
@@ -2070,7 +2070,7 @@ pnpm --filter @homebudget/db db:generate
 
 Produit `packages/db/drizzle/0000_<nom>.sql` : les enums, les deux tables, les CHECK, les index. **Lis-le** avant de continuer — c'est du SQL qui part en production.
 
-- [ ] **Step 4 : Écrire les invariants à la main**
+- [x] **Step 4 : Écrire les invariants à la main**
 
 Drizzle ne sait exprimer ni `EXCLUDE USING gist`, ni un trigger, ni une fonction plpgsql. On crée donc une migration vide et on la remplit :
 
@@ -2165,7 +2165,7 @@ end;
 $$;
 ```
 
-- [ ] **Step 5 : Écrire le test d'intégration**
+- [x] **Step 5 : Écrire le test d'intégration**
 
 Ce test exige Docker. Il est séparé de la suite unitaire, qui doit rester exécutable partout.
 
@@ -2322,7 +2322,7 @@ export default defineConfig({
 
 Deux configurations, une seule raison : `pnpm test` (donc la CI) ne doit jamais dépendre de Docker. La suite unitaire tourne partout en une seconde ; l'intégration s'invoque explicitement.
 
-- [ ] **Step 6 : Lancer Postgres et vérifier**
+- [x] **Step 6 : Lancer Postgres et vérifier**
 
 ```bash
 pnpm install
@@ -2335,7 +2335,7 @@ Aucune variable d'environnement à passer : `client.ts` retombe sur le Postgres 
 
 Attendu : PASS, 6 tests. Le test « refuse de modifier une version close » est le plus important — il prouve que l'append-only n'est pas une politesse mais une loi.
 
-- [ ] **Step 7 : Commit**
+- [x] **Step 7 : Commit**
 
 ```bash
 git add packages/db docker-compose.yml package.json
@@ -2362,7 +2362,7 @@ push est interdit, il les supprimerait."
 - Consumes: `VERSIONS_INITIALES`, `importerDepenses` (Task 6), le schéma (Task 7).
 - Produces: `pnpm --filter @homebudget/db db:seed`.
 
-- [ ] **Step 1 : Écrire le script de seed**
+- [x] **Step 1 : Écrire le script de seed**
 
 `packages/db/src/seed.ts` :
 ```ts
@@ -2473,7 +2473,7 @@ main().catch(async (e: Error) => {
 
 Le seed est transactionnel et se contrôle lui-même : si le solde relu depuis la base n'est pas 114 580 centimes, le `throw` annule tout. La base reste vide plutôt que fausse.
 
-- [ ] **Step 2 : Lancer le seed**
+- [x] **Step 2 : Lancer le seed**
 
 ```bash
 pnpm db:reset   # detruit le volume, remonte Postgres, migre, seede
@@ -2485,7 +2485,7 @@ Liz doit 1 145,80 € à Thomas
 Solde conforme a la reprise du Sheet.
 ```
 
-- [ ] **Step 3 : Commit**
+- [x] **Step 3 : Commit**
 
 ```bash
 git add packages/db
@@ -2506,7 +2506,7 @@ Le harness devient exécutable en dehors de la machine de Thomas.
 - Consumes: les scripts pnpm (Task 1), le seed (Task 8).
 - Produces: rien de consommé par du code.
 
-- [ ] **Step 1 : Écrire la CI**
+- [x] **Step 1 : Écrire la CI**
 
 `.github/workflows/ci.yml` :
 ```yaml
@@ -2538,7 +2538,7 @@ jobs:
 
 Les tests d'intégration ne tournent pas en CI au plan 1 : ils exigent un service Postgres et ralentissent la boucle. Le canari, lui, est du calcul pur — il tourne en moins d'une seconde, et c'est lui qui protège le solde. Les invariants SQL se vérifient localement via `pnpm --filter @homebudget/db test:integration`. On les branchera en CI au plan 2, quand un service Postgres sera de toute façon nécessaire pour les tests E2E.
 
-- [ ] **Step 2 : Écrire le skill `/seed`**
+- [x] **Step 2 : Écrire le skill `/seed`**
 
 `.claude/skills/seed/SKILL.md` :
 ```markdown
@@ -2583,7 +2583,7 @@ qu'un invariant a été violé. Cherche dans cet ordre :
 4. Un recalcul de part à la lecture (interdit : les parts sont figées).
 ```
 
-- [ ] **Step 3 : Écrire le skill `/verify`**
+- [x] **Step 3 : Écrire le skill `/verify`**
 
 `.claude/skills/verify/SKILL.md` :
 ```markdown
@@ -2642,7 +2642,7 @@ Montre la sortie réelle des commandes. Ne dis pas « les tests passent » sans
 l'avoir vu.
 ```
 
-- [ ] **Step 4 : Vérifier la CI en local**
+- [x] **Step 4 : Vérifier la CI en local**
 
 ```bash
 pnpm install --frozen-lockfile
@@ -2650,7 +2650,7 @@ pnpm lint && pnpm typecheck && pnpm test
 ```
 Attendu : les trois passent, dont le canari.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add .github .claude

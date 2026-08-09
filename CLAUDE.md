@@ -345,6 +345,18 @@ plutôt que `pnpm` directement :
   `task test:e2e:frais` fait le `db:reset` d'abord. La destruction est nommée, jamais
   implicite — ce n'est pas à une commande de test d'effacer des données sans le dire.
 
+## Les plans
+
+`docs/superpowers/plans/` garde les plans d'implémentation. **Cocher leurs cases fait
+partie de la clôture de la PR**, au même titre que fermer l'issue : un plan livré dont
+aucune case n'est cochée dit à qui le lit que rien n'a été fait.
+
+`apps/web/test/plans.test.ts` le tient, parce que onze plans ont dérivé avant lui —
+dont quatre écrits *après* l'ouverture de l'issue qui signalait la dérive. Un plan
+encore en cours d'exécution déclare `**État :** en cours` sous son titre et sort du
+contrôle ; le retirer est le geste de clôture. Ce que le test refuse, ce n'est pas un
+plan inachevé, c'est un plan **silencieux**.
+
 ## Le canari
 
 `packages/db/test/import-sheet.test.ts` rejoue les 33 lignes réelles du Sheet et

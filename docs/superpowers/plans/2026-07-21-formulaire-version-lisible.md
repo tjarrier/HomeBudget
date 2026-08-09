@@ -58,7 +58,7 @@
   ): ApercuCloture
   ```
 
-- [ ] **Step 1 : Écrire le fichier de test qui échoue**
+- [x] **Step 1 : Écrire le fichier de test qui échoue**
 
 Créer `apps/web/test/apercu-cloture.test.ts` :
 
@@ -163,12 +163,12 @@ describe('apercuCloture', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer le test, vérifier qu'il échoue**
+- [x] **Step 2 : Lancer le test, vérifier qu'il échoue**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/apercu-cloture.test.ts`
 Expected : FAIL — `Cannot find module '@/lib/apercu-cloture'` (le fichier n'existe pas encore).
 
-- [ ] **Step 3 : Écrire le helper**
+- [x] **Step 3 : Écrire le helper**
 
 Créer `apps/web/lib/apercu-cloture.ts` :
 
@@ -320,17 +320,17 @@ export function apercuCloture(
 }
 ```
 
-- [ ] **Step 4 : Lancer les tests, vérifier qu'ils passent**
+- [x] **Step 4 : Lancer les tests, vérifier qu'ils passent**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/apercu-cloture.test.ts`
 Expected : PASS (7 tests).
 
-- [ ] **Step 5 : Lint + typecheck**
+- [x] **Step 5 : Lint + typecheck**
 
 Run: `task lint && task typecheck`
 Expected : aucune erreur.
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 
 ```bash
 git add apps/web/lib/apercu-cloture.ts apps/web/test/apercu-cloture.test.ts
@@ -350,7 +350,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Consumes : `apercuCloture`, types `ApercuCloture`, `LigneCloture` de `@/lib/apercu-cloture` (Task 1) ; `Montant` de `@/components/montant` ; `formaterDate` de `@/lib/format`.
 - Produces : le bloc d'aperçu porte `data-testid="apercu-cloture"` (consommé par la Task 3).
 
-- [ ] **Step 1 : Remplacer le fichier**
+- [x] **Step 1 : Remplacer le fichier**
 
 Remplacer **tout** le contenu de `apps/web/app/(app)/config/formulaire-version.tsx` par :
 
@@ -618,17 +618,17 @@ function ValeurCloture({ ligne, bord }: { ligne: LigneCloture; bord: 'avant' | '
 }
 ```
 
-- [ ] **Step 2 : Typecheck + lint**
+- [x] **Step 2 : Typecheck + lint**
 
 Run: `task typecheck && task lint`
 Expected : aucune erreur. (Vérifie notamment que `value` contrôlé + `onChange` typent correctement, et que les tokens sémantiques passent `theme.test.ts`.)
 
-- [ ] **Step 3 : Lancer les tests unitaires web (verrous statiques)**
+- [x] **Step 3 : Lancer les tests unitaires web (verrous statiques)**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/theme.test.ts test/architecture.test.ts`
 Expected : PASS — aucune couleur en dur, aucun import hors façade.
 
-- [ ] **Step 4 : Commit**
+- [x] **Step 4 : Commit**
 
 ```bash
 git add "apps/web/app/(app)/config/formulaire-version.tsx"
@@ -650,7 +650,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes : `data-testid="apercu-cloture"` (Task 2), le champ `input[name="dateDebut"]` déjà rempli à `2026-09-01`, salaires `4000,00` / `1000,00`.
 
-- [ ] **Step 1 : Ajouter les assertions AVANT le clic**
+- [x] **Step 1 : Ajouter les assertions AVANT le clic**
 
 Dans `apps/web/e2e/parcours.spec.ts`, dans le test `creer une version ne change aucune depense passee`, entre le remplissage des champs et le clic sur « Créer la version », insérer :
 
@@ -678,12 +678,12 @@ Le bloc existant à modifier (le clic reste inchangé, juste précédé des asse
     await page.getByRole('button', { name: 'Créer la version' }).click()
 ```
 
-- [ ] **Step 2 : Lancer l'e2e sur base fraîche**
+- [x] **Step 2 : Lancer l'e2e sur base fraîche**
 
 Run: `task test:e2e:frais`
 Expected : PASS — les trois parcours passent, dont « creer une version » avec les nouvelles assertions ; le canari du solde reste vérifié (`31/08/2026` dans la timeline, invariance du solde).
 
-- [ ] **Step 3 : Commit**
+- [x] **Step 3 : Commit**
 
 ```bash
 git add apps/web/e2e/parcours.spec.ts
@@ -698,12 +698,12 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **Files:** aucun (porte de sortie).
 
-- [ ] **Step 1 : Rejouer la porte avant commit**
+- [x] **Step 1 : Rejouer la porte avant commit**
 
 Run: `task verif`
 Expected : lint + typecheck + tous les tests unitaires au vert (dont `apercu-cloture.test.ts`, `theme.test.ts`, `architecture.test.ts`).
 
-- [ ] **Step 2 : Vérifier visuellement (optionnel mais recommandé)**
+- [x] **Step 2 : Vérifier visuellement (optionnel mais recommandé)**
 
 Run: `task db:reset && task dev` puis ouvrir `http://localhost:3000/config`.
 Vérifier à la main : sans date → invite ; date `2026-09-01` + salaires modifiés → « Clôture de « Révision loyer » au 31/08/2026 » + lignes de diff ; date `2026-01-01` (avant le début courant) → message « doit être postérieure ».

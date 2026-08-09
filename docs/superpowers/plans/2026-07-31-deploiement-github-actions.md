@@ -47,7 +47,7 @@
 - Consumes: rien.
 - Produces: `apps/web/test/deploiement.test.ts` avec les helpers `RACINE_DEPOT` (chemin absolu de la racine du dépôt) et `lire(cheminRelatif: string): string`. Les tâches 2, 3 et 4 ajoutent leurs `describe` dans ce fichier et réutilisent ces deux helpers.
 
-- [ ] **Step 1 : écrire le test qui échoue**
+- [x] **Step 1 : écrire le test qui échoue**
 
 Créer `apps/web/test/deploiement.test.ts` :
 
@@ -90,12 +90,12 @@ describe('vercel.json', () => {
 })
 ```
 
-- [ ] **Step 2 : lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2 : lancer le test pour vérifier qu'il échoue**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : FAIL — `ENOENT: no such file or directory ... apps/web/vercel.json`, et le second test échoue sur `expect(false).toBe(true)`.
 
-- [ ] **Step 3 : créer `apps/web/vercel.json`**
+- [x] **Step 3 : créer `apps/web/vercel.json`**
 
 ```json
 {
@@ -104,17 +104,17 @@ Expected : FAIL — `ENOENT: no such file or directory ... apps/web/vercel.json`
 }
 ```
 
-- [ ] **Step 4 : lancer le test pour vérifier qu'il passe**
+- [x] **Step 4 : lancer le test pour vérifier qu'il passe**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : PASS, 2 tests.
 
-- [ ] **Step 5 : vérifier que rien d'autre n'a bougé**
+- [x] **Step 5 : vérifier que rien d'autre n'a bougé**
 
 Run : `task verif`
 Expected : lint, typecheck et tests unitaires verts.
 
-- [ ] **Step 6 : commit**
+- [x] **Step 6 : commit**
 
 ```bash
 git add apps/web/vercel.json apps/web/test/deploiement.test.ts
@@ -133,7 +133,7 @@ git commit -m "feat(ci): couper les deploiements de l'integration Git Vercel"
 - Consumes: `RACINE_DEPOT` et `lire()` de la tâche 1.
 - Produces: le workflow réutilisable `./.github/workflows/ci.yml`, appelable sans aucun paramètre ni secret. Son unique job s'appelle `qualite` ; vu depuis un appelant, son check s'affiche `<nom-du-job-appelant> / qualite`.
 
-- [ ] **Step 1 : écrire le test qui échoue**
+- [x] **Step 1 : écrire le test qui échoue**
 
 Ajouter dans `apps/web/test/deploiement.test.ts`, après le `describe('vercel.json')` :
 
@@ -156,12 +156,12 @@ describe('ci.yml', () => {
 })
 ```
 
-- [ ] **Step 2 : lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2 : lancer le test pour vérifier qu'il échoue**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : FAIL — les deux nouveaux tests échouent (`workflow_call:` absent, `push:` présent).
 
-- [ ] **Step 3 : modifier le déclencheur de `ci.yml`**
+- [x] **Step 3 : modifier le déclencheur de `ci.yml`**
 
 Remplacer les lignes 3 à 6 :
 
@@ -183,19 +183,19 @@ on:
   workflow_call:
 ```
 
-- [ ] **Step 4 : lancer le test pour vérifier qu'il passe**
+- [x] **Step 4 : lancer le test pour vérifier qu'il passe**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : PASS, 4 tests.
 
-- [ ] **Step 5 : commit**
+- [x] **Step 5 : commit**
 
 ```bash
 git add .github/workflows/ci.yml apps/web/test/deploiement.test.ts
 git commit -m "refactor(ci): rendre ci.yml appelable et ne le jouer qu'une fois par commit"
 ```
 
-- [ ] **Step 6 : signaler l'effet de bord à Thomas**
+- [x] **Step 6 : signaler l'effet de bord à Thomas**
 
 Le nom du check change dans les runs appelés : `qualite` devient `verif / qualite`. Si une règle de protection de branche exige le check `qualite`, elle doit être mise à jour, sinon les PR restent bloquées sur un check qui n'arrivera jamais. Le vérifier avec :
 
@@ -217,7 +217,7 @@ Une réponse `404` signifie qu'aucune protection n'est configurée : il n'y a ri
 - Consumes: `lire()` de la tâche 1 ; le workflow réutilisable `./.github/workflows/ci.yml` de la tâche 2.
 - Produces: le nom de job `verif` (l'appel de la CI) et `deploy`, réutilisés tels quels par la tâche 4. Le pattern d'assertions partagées `WORKFLOWS_DE_DEPLOIEMENT` défini au Step 1 sera étendu par la tâche 4 avec l'entrée `deploy-production.yml`.
 
-- [ ] **Step 1 : écrire le test qui échoue**
+- [x] **Step 1 : écrire le test qui échoue**
 
 Ajouter dans `apps/web/test/deploiement.test.ts` :
 
@@ -281,12 +281,12 @@ describe('deploy-preview.yml', () => {
 })
 ```
 
-- [ ] **Step 2 : lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2 : lancer le test pour vérifier qu'il échoue**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : FAIL — `ENOENT ... .github/workflows/deploy-preview.yml` (l'erreur survient au chargement du fichier de test, avant l'exécution des cas).
 
-- [ ] **Step 3 : créer `.github/workflows/deploy-preview.yml`**
+- [x] **Step 3 : créer `.github/workflows/deploy-preview.yml`**
 
 ```yaml
 name: Deploiement preview
@@ -411,12 +411,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 ```
 
-- [ ] **Step 4 : lancer le test pour vérifier qu'il passe**
+- [x] **Step 4 : lancer le test pour vérifier qu'il passe**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : PASS, 12 tests.
 
-- [ ] **Step 5 : vérifier la syntaxe du workflow avant de committer**
+- [x] **Step 5 : vérifier la syntaxe du workflow avant de committer**
 
 Run : `gh workflow list --repo tjarrier/HomeBudget` ne sert à rien ici (le workflow n'est pas encore poussé). Se contenter d'une relecture ciblée :
 
@@ -426,7 +426,7 @@ grep -n 'working-directory\|db:migrate\|vercel deploy' .github/workflows/deploy-
 
 Expected : la ligne `db:migrate` apparaît avant la ligne `vercel deploy`, et chaque commande `vercel` est précédée d'un `working-directory: apps/web` (sauf `npm install --global`, qui n'en a pas besoin).
 
-- [ ] **Step 6 : commit**
+- [x] **Step 6 : commit**
 
 ```bash
 git add .github/workflows/deploy-preview.yml apps/web/test/deploiement.test.ts
@@ -445,7 +445,7 @@ git commit -m "feat(ci): publier une preview au merge dans main"
 - Consumes: `lire()` et `WORKFLOWS_DE_DEPLOIEMENT` des tâches 1 et 3 ; le workflow réutilisable de la tâche 2.
 - Produces: rien que d'autres tâches consomment.
 
-- [ ] **Step 1 : écrire le test qui échoue**
+- [x] **Step 1 : écrire le test qui échoue**
 
 Dans `apps/web/test/deploiement.test.ts`, remplacer la définition de `WORKFLOWS_DE_DEPLOIEMENT` par :
 
@@ -489,12 +489,12 @@ describe('deploy-production.yml', () => {
 })
 ```
 
-- [ ] **Step 2 : lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2 : lancer le test pour vérifier qu'il échoue**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : FAIL — `ENOENT ... .github/workflows/deploy-production.yml`.
 
-- [ ] **Step 3 : créer `.github/workflows/deploy-production.yml`**
+- [x] **Step 3 : créer `.github/workflows/deploy-production.yml`**
 
 ```yaml
 name: Deploiement production
@@ -594,17 +594,17 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 ```
 
-- [ ] **Step 4 : lancer le test pour vérifier qu'il passe**
+- [x] **Step 4 : lancer le test pour vérifier qu'il passe**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/deploiement.test.ts`
 Expected : PASS, 21 tests (les 5 assertions partagées jouent désormais deux fois).
 
-- [ ] **Step 5 : lancer la porte complète**
+- [x] **Step 5 : lancer la porte complète**
 
 Run : `task verif`
 Expected : vert. `biome` ne lit pas les fichiers YAML, mais il lit le test : c'est lui qui doit rester propre.
 
-- [ ] **Step 6 : commit**
+- [x] **Step 6 : commit**
 
 ```bash
 git add .github/workflows/deploy-production.yml apps/web/test/deploiement.test.ts
@@ -624,7 +624,7 @@ git commit -m "feat(ci): promouvoir la production sur un tag de version"
 - Consumes: les trois workflows et `vercel.json` des tâches 1 à 4.
 - Produces: rien.
 
-- [ ] **Step 1 : corriger l'affirmation devenue fausse dans CLAUDE.md**
+- [x] **Step 1 : corriger l'affirmation devenue fausse dans CLAUDE.md**
 
 Remplacer les lignes 129 à 135 :
 
@@ -655,7 +655,7 @@ par :
   côte l'origine annoncée à Google et les hôtes réellement attribués.
 ```
 
-- [ ] **Step 2 : ajouter la section « Déploiement » à CLAUDE.md**
+- [x] **Step 2 : ajouter la section « Déploiement » à CLAUDE.md**
 
 L'insérer entre le paragraphe « L'aperçu des parts » (ligne 147) et le titre `## Commandes` :
 
@@ -691,7 +691,7 @@ autoriser une migration sur la base réelle. La revue se place après le vert de
 avant l'écriture.
 ```
 
-- [ ] **Step 3 : aligner les fixtures de `origine.test.ts`**
+- [x] **Step 3 : aligner les fixtures de `origine.test.ts`**
 
 Le test vérifie qu'on lit `BETTER_AUTH_URL` et qu'on ignore l'URL unique du déploiement ; son sens ne change pas. Seul l'hôte cité change, pour qu'il cesse de documenter une cible abandonnée. Remplacer partout dans `apps/web/test/origine.test.ts` :
 
@@ -707,12 +707,12 @@ home-budget-git-main-tjarriers-projects.vercel.app
 
 Il y a quatre occurrences (lignes 19, 25-26, 84-85 dans la version actuelle). Ne toucher à rien d'autre : ni `home-budget-a1b2c3-...` (l'URL unique, qui doit rester différente), ni les assertions.
 
-- [ ] **Step 4 : lancer les tests touchés**
+- [x] **Step 4 : lancer les tests touchés**
 
 Run : `pnpm --filter @homebudget/web exec vitest run test/origine.test.ts test/deploiement.test.ts`
 Expected : PASS.
 
-- [ ] **Step 5 : documenter la livraison dans le README**
+- [x] **Step 5 : documenter la livraison dans le README**
 
 Insérer après la section « Commandes » (juste avant `## Le canari`) :
 
@@ -739,7 +739,7 @@ propre initiative.
 Une CI rouge bloque les deux.
 ```
 
-- [ ] **Step 6 : porte complète et commit**
+- [x] **Step 6 : porte complète et commit**
 
 Run : `task verif`
 Expected : vert.
@@ -761,7 +761,7 @@ Cette tâche n'écrit pas de code. Elle est dans le plan parce que la définitio
 - Consumes: les workflows des tâches 3 et 4, une fois la branche mergée dans `main`.
 - Produces: la confirmation que l'hôte `-git-main-` sert bien la base de preview.
 
-- [ ] **Step 1 : poser les secrets de dépôt** *(Thomas — nécessite un token Vercel)*
+- [x] **Step 1 : poser les secrets de dépôt** *(Thomas — nécessite un token Vercel)*
 
 Créer un token dans les réglages Vercel, puis :
 
@@ -773,7 +773,7 @@ gh secret set VERCEL_PROJECT_ID --repo tjarrier/HomeBudget
 
 `VERCEL_ORG_ID` et `VERCEL_PROJECT_ID` se lisent dans les réglages du projet Vercel, ou dans `.vercel/project.json` après un `vercel link` local.
 
-- [ ] **Step 2 : poser les secrets d'environment** *(Thomas)*
+- [x] **Step 2 : poser les secrets d'environment** *(Thomas)*
 
 ```bash
 gh secret set DATABASE_URL --repo tjarrier/HomeBudget --env Preview
@@ -782,7 +782,7 @@ gh secret set DATABASE_URL --repo tjarrier/HomeBudget --env Production
 
 Le premier prend l'URL de la base de preview — **distincte de la production**. Le second celle de Supabase.
 
-- [ ] **Step 3 : créer la règle de protection sur l'environment `Production`, et la vérifier** *(Thomas)*
+- [x] **Step 3 : créer la règle de protection sur l'environment `Production`, et la vérifier** *(Thomas)*
 
 Déjà vérifié : les environments `Preview` et `Production` existent sous ces noms exacts dans le dépôt, et leurs `protection_rules` sont actuellement **vides**. Sans règle, GitHub exécute le job `deploy` sans aucune approbation : le premier tag `vX.Y.Z` migrerait la base de production et promouvrait tout seul.
 
@@ -794,7 +794,7 @@ gh api repos/tjarrier/HomeBudget/environments/Production --jq '.protection_rules
 
 Expected : une règle de type `required_reviewers`. **Aucun tag `vX.Y.Z` ne doit être poussé tant que cette commande ne la renvoie pas** — c'est la seule chose qui rend la revue humaine du contrat (`CLAUDE.md`, section Déploiement) réelle plutôt qu'un vœu documenté.
 
-- [ ] **Step 4 : compléter les variables d'environnement Preview du projet Vercel** *(Thomas)*
+- [x] **Step 4 : compléter les variables d'environnement Preview du projet Vercel** *(Thomas)*
 
 Dans les réglages Vercel, scope **Preview** :
 
@@ -810,13 +810,13 @@ ALLOWLIST_LIZ=<adresse>
 
 Sans `BETTER_AUTH_URL`, l'étape « Lire l'origine annoncee a Google » du workflow échoue avec un message explicite : c'est le comportement voulu, pas un bug.
 
-- [ ] **Step 5 : vérifier que les deux `DATABASE_URL` d'un même environment désignent la même base** *(Thomas)*
+- [x] **Step 5 : vérifier que les deux `DATABASE_URL` d'un même environment désignent la même base** *(Thomas)*
 
 Il y a désormais deux sources pour une seule base, à l'intérieur de chaque environment : le secret d'environment GitHub posé au Step 2, que la migration utilise, et la variable du projet Vercel posée au Step 4, que `vercel build` embarque dans l'application. Si elles divergent, la migration s'applique sur une base et le code neuf parle à une autre. Les workflows font maintenant ce contrôle eux-mêmes et font échouer le run si les empreintes (hôte et nom de base, sans les identifiants) diffèrent — ce n'est plus seulement une chose à vérifier une fois, c'est verrouillé à chaque déploiement. Poser les deux valeurs pour qu'elles désignent la même base (ou une paire pooler/connexion directe légitime sur la même base) rend ce contrôle silencieux.
 
 Une limite à garder en tête : l'empreinte laisse tomber les identifiants, et une URL de pooler Supabase porte la référence du projet dans son utilisateur (`postgres.<ref>@aws-0-<région>.pooler.supabase.com:6543/postgres`), pas dans son hôte. Deux URLs de pooler appartenant à deux projets Supabase différents produisent donc la même empreinte, et le contrôle passe alors que la migration et l'application visent deux projets distincts. La vérification humaine reste donc nécessaire : coller une URL de pooler de production dans la variable Preview est exactement l'erreur que ce contrôle ne sait pas attraper.
 
-- [ ] **Step 6 : merger, puis déclencher le premier passage à la main**
+- [x] **Step 6 : merger, puis déclencher le premier passage à la main**
 
 Une fois la PR mergée dans `main`, le push déclenche `deploy-preview.yml` tout seul. Sinon :
 
@@ -825,13 +825,13 @@ gh workflow run deploy-preview.yml --repo tjarrier/HomeBudget --ref main
 gh run watch --repo tjarrier/HomeBudget
 ```
 
-- [ ] **Step 7 : lire le résumé du run — c'est la vérification que l'issue exige**
+- [x] **Step 7 : lire le résumé du run — c'est la vérification que l'issue exige**
 
 Dans le résumé, `Origine annoncee a Google` et `Hotes attribues par Vercel` doivent coïncider sur `home-budget-git-main-tjarriers-projects.vercel.app`.
 
 **Si l'hôte n'apparaît pas dans les hôtes attribués**, Vercel n'assigne pas l'alias de branche à un déploiement `--prebuilt` fait par la CLI. On ne peut pas le poser à la main. Le repli, à décider avec Thomas et non à improviser : faire porter au déploiement une autre ref — le workflow force la branche `preview` sur le commit de `main` et déploie depuis ce checkout, pour obtenir `-git-preview-`. Ne pas l'écrire d'avance.
 
-- [ ] **Step 8 : vérifier que cette URL sert la base de PREVIEW, et pas la production**
+- [x] **Step 8 : vérifier que cette URL sert la base de PREVIEW, et pas la production**
 
 Ouvrir `https://home-budget-git-main-tjarriers-projects.vercel.app`. La connexion échouera encore (le redirect URI n'est pas enregistré), mais l'écran de connexion doit s'afficher. Pour trancher sur la base, comparer le solde affiché après le Step 9, ou interroger les deux bases :
 
@@ -842,7 +842,7 @@ psql "<DATABASE_URL de production>" -c 'select count(*) from depense'
 
 Deux comptes différents, et l'écran doit montrer celui de la preview.
 
-- [ ] **Step 9 : enregistrer le redirect URI chez Google** *(Thomas)*
+- [x] **Step 9 : enregistrer le redirect URI chez Google** *(Thomas)*
 
 Console Google Cloud, client OAuth du projet, *Authorized redirect URIs*, ajouter :
 
@@ -852,13 +852,13 @@ https://home-budget-git-main-tjarriers-projects.vercel.app/api/auth/callback/goo
 
 Puis se connecter sur l'URL de preview et vérifier qu'une adresse hors allowlist est bien rejetée.
 
-- [ ] **Step 10 : vérifier que les checks requis sur les pull requests restent atteignables**
+- [x] **Step 10 : vérifier que les checks requis sur les pull requests restent atteignables**
 
 Deux choses ont changé la liste des checks qu'une PR reçoit : le check de la CI s'appelle maintenant `verif / qualite` quand il tourne à l'intérieur d'un workflow de déploiement (au lieu de `qualite`, voir Task 2 Step 6), et le check du bot Vercel n'arrivera plus jamais sur une PR, puisque l'intégration Git est coupée. Si l'un des deux est exigé par une règle de protection de branche, chaque PR resterait bloquée sur un check qui n'arrive jamais.
 
 Déjà vérifié : à ce jour, `gh api repos/tjarrier/HomeBudget/branches/main/protection` renvoie `404` — aucune protection de branche n'est configurée, donc rien à corriger maintenant. Mais si une protection est activée un jour, revérifier avec la même commande, et adapter les checks requis aux noms ci-dessus.
 
-- [ ] **Step 11 : vérifier que l'intégration Git de Vercel ne publie plus rien**
+- [x] **Step 11 : vérifier que l'intégration Git de Vercel ne publie plus rien**
 
 ```bash
 gh api "repos/tjarrier/HomeBudget/deployments?per_page=10" \
@@ -867,7 +867,7 @@ gh api "repos/tjarrier/HomeBudget/deployments?per_page=10" \
 
 Expected : plus aucun déploiement créé par `vercel[bot]` après le merge. Ouvrir une PR de test le confirme : elle ne doit plus recevoir de preview automatique.
 
-- [ ] **Step 12 : la production, sur un tag**
+- [x] **Step 12 : la production, sur un tag**
 
 ```bash
 git tag v0.1.0
@@ -877,7 +877,7 @@ gh run watch --repo tjarrier/HomeBudget
 
 Expected : la garde passe, la CI est verte, le job `deploy` attend une approbation. Après approbation : la migration s'exécute, **puis** la promotion. Vérifier aussi le refus : un tag posé sur un commit hors `main` doit échouer sur le job `garde` en moins d'une minute.
 
-- [ ] **Step 13 : clôturer l'issue**
+- [x] **Step 13 : clôturer l'issue**
 
 ```bash
 gh issue close 47 --repo tjarrier/HomeBudget \

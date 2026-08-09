@@ -75,7 +75,7 @@ Le seul garde-fou comportemental de ce changement. On l'écrit **avant** de touc
 - Consumes : le composant rendu à `/depenses`. Après cette tâche, il expose (Task 2) : un `input[name="date"]` masqué par défaut, un texte `Aujourd'hui · payé par …` visible, un `button` nommé `Modifier`.
 - Produces : rien pour d'autres tâches (test terminal).
 
-- [ ] **Step 1 : Insérer les assertions B3 + l'ouverture des détails en tête du pas**
+- [x] **Step 1 : Insérer les assertions B3 + l'ouverture des détails en tête du pas**
 
 Dans `apps/web/e2e/parcours.spec.ts`, remplacer le début du test `ajouter une depense fait bouger le solde` (les lignes de `page.goto('/depenses')` jusqu'au premier `selectOption` inclus) par :
 
@@ -97,14 +97,14 @@ Dans `apps/web/e2e/parcours.spec.ts`, remplacer le début du test `ajouter une d
 
 Ne pas toucher au reste du test (aperçu, clic « Ajouter la dépense », canari `1 120,80 €`) : ces lignes restent identiques.
 
-- [ ] **Step 2 : Vérifier que le test échoue (RED) — ou signaler l'absence de Docker**
+- [x] **Step 2 : Vérifier que le test échoue (RED) — ou signaler l'absence de Docker**
 
 Run : `task test:e2e:frais`
 Expected : le pas `ajouter une depense fait bouger le solde` **échoue** — `getByLabel('Date')` est visible (le formulaire n'est pas encore replié), donc `toBeHidden()` casse, ou le bouton `Modifier` est introuvable.
 
 > **Si Docker n'est pas disponible dans ce worktree**, l'e2e ne peut pas tourner. Ne pas le présenter comme vert ni comme rouge : **le signaler explicitement** (« e2e non exécuté : Docker absent ») et poursuivre. La correction sera validée par relecture du diff + `task verif`.
 
-- [ ] **Step 3 : Commit**
+- [x] **Step 3 : Commit**
 
 ```bash
 git add apps/web/e2e/parcours.spec.ts
@@ -126,7 +126,7 @@ Implémente la structure repliée. Un seul fichier. Après cette tâche, le pas 
 - Consumes : `Button` (variante `discret`) depuis `@/components/ui/button` ; `formaterDate` depuis `@/lib/format` ; `AUJOURDHUI` (déjà défini dans le fichier) ; les états `date`, `payePar`, `type`, `mode` (déjà présents).
 - Produces : au rendu, un `input[name="date"]` masqué par `hidden` quand replié ; un texte `Aujourd'hui · payé par …` visible quand replié ; un `button` nommé `Modifier` (replié) / `Replier` (ouvert) portant `aria-expanded`.
 
-- [ ] **Step 1 : Ajouter l'état `detailsOuverts` et les tables de libellés**
+- [x] **Step 1 : Ajouter l'état `detailsOuverts` et les tables de libellés**
 
 Dans `formulaire-depense.tsx`, juste après la ligne `const [partLiz, setPartLiz] = useState('')` (actuellement L41), ajouter :
 
@@ -155,7 +155,7 @@ const LIBELLE_MODE: Record<string, string> = {
 }
 ```
 
-- [ ] **Step 2 : Ajouter la fonction `construireResume()`**
+- [x] **Step 2 : Ajouter la fonction `construireResume()`**
 
 Dans le corps du composant, juste après la fonction `changerType` (actuellement L46-49), ajouter :
 
@@ -175,7 +175,7 @@ Dans le corps du composant, juste après la fonction `changerType` (actuellement
   }
 ```
 
-- [ ] **Step 3 : Réordonner — montant en premier avec `autoFocus`, description ensuite**
+- [x] **Step 3 : Réordonner — montant en premier avec `autoFocus`, description ensuite**
 
 Remplacer le bloc de rendu qui va de l'ouverture `<form …>` (actuellement L108) jusqu'à la fin du bloc `Montant` (actuellement L158) par la nouvelle tête de formulaire : montant d'abord (`autoFocus`), puis description. La date et le payeur **quittent** cette position (ils descendront dans la zone détails à l'étape suivante).
 
@@ -212,7 +212,7 @@ Remplacer le bloc de rendu qui va de l'ouverture `<form …>` (actuellement L108
 
 > Note : si Biome ne signale pas `autoFocus`, retirer la ligne `// biome-ignore …`. Vérifié à l'étape 6 par `task lint`.
 
-- [ ] **Step 4 : Insérer la ligne de résumé + le bouton, puis la zone détails masquable**
+- [x] **Step 4 : Insérer la ligne de résumé + le bouton, puis la zone détails masquable**
 
 Juste après le bloc Description (fin de l'étape 3), insérer la ligne de résumé (visible seulement quand replié) et la zone détails. La zone détails contient, **dans cet ordre** : date, payeur, type, répartition (+ parts perso), commentaire — c'est-à-dire les blocs qui existaient déjà, déplacés ici tels quels.
 
@@ -345,24 +345,24 @@ Juste après le bloc Description (fin de l'étape 3), insérer la ligne de résu
 
 Ce bloc **remplace** les anciens blocs Type (L160-172), Répartition (L174-197), parts personnalisées (L199-222) et Commentaire (L224-227) à leur ancienne position : après ce déplacement, ces blocs ne doivent plus exister ailleurs dans le fichier. L'aperçu des parts, les messages d'erreur et le bouton d'envoi restent **après** cette zone, inchangés.
 
-- [ ] **Step 5 : Relire le fichier entier pour vérifier l'ordre et l'unicité**
+- [x] **Step 5 : Relire le fichier entier pour vérifier l'ordre et l'unicité**
 
 Run : `git diff apps/web/app/(app)/depenses/formulaire-depense.tsx`
 Expected : montant → description → (résumé | zone détails masquable) → aperçu → erreurs → bouton d'envoi. Aucun bloc dupliqué (chaque `name="date"`, `name="payePar"`, `name="type"`, `name="mode"`, `name="commentaire"` apparaît **une seule fois**). Le champ caché `<input type="hidden" name="mode" value="transfert" />` est toujours là. Le bouton d'envoi `Ajouter la dépense` est inchangé.
 
-- [ ] **Step 6 : `task verif` — lint + typecheck + tests unitaires**
+- [x] **Step 6 : `task verif` — lint + typecheck + tests unitaires**
 
 Run : `task verif`
 Expected : PASS. En particulier `theme.test.ts` (aucune couleur de palette en dur), `architecture.test.ts` (aucun import hors façade — inchangé ici), `saisie` et `format` restent verts. Si `task lint` se plaint de l'`autoFocus`, garder le commentaire `biome-ignore` de l'étape 3 ; s'il se plaint qu'il est inutile, le retirer.
 
-- [ ] **Step 7 : e2e si Docker disponible — sinon signaler**
+- [x] **Step 7 : e2e si Docker disponible — sinon signaler**
 
 Run : `task test:e2e:frais`
 Expected : les trois parcours passent, **canari inclus** (`1 120,80 €` puis `1 145,80 €`). Le pas de Task 1 passe désormais : Date masquée par défaut, résumé visible, clic « Modifier » ouvre la zone.
 
 > **Si Docker est absent de ce worktree**, l'e2e et les tests d'intégration SQL ne tournent pas ici. Le signaler explicitement (« e2e / intégration non exécutés : Docker absent ») plutôt que de les présenter comme verts. La correction repose alors sur `task verif` + la relecture de l'étape 5.
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 
 ```bash
 git add apps/web/app/(app)/depenses/formulaire-depense.tsx

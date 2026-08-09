@@ -56,7 +56,7 @@ Trois tâches, dans cet ordre : le domaine ne dépend de rien, la façade dépen
   - `dateMaxDepense(aujourdhui: string): string` — le dernier jour acceptable, un an après `aujourdhui`, en ISO.
   - `verifierDatePlausible(date: string, aujourdhui: string): void` — jette si `date > dateMaxDepense(aujourdhui)`. Les tâches 2 et 3 consomment ces deux noms depuis `@homebudget/domain`.
 
-- [ ] **Step 1 : Écrire le test qui échoue**
+- [x] **Step 1 : Écrire le test qui échoue**
 
 Créer `packages/domain/test/horizon-saisie.test.ts` :
 
@@ -130,7 +130,7 @@ describe('verifierDatePlausible', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2 : Lancer le test pour vérifier qu'il échoue**
 
 ```bash
 pnpm --filter @homebudget/domain test
@@ -138,7 +138,7 @@ pnpm --filter @homebudget/domain test
 
 Attendu : ÉCHEC — `Failed to resolve import "../src/horizon-saisie.js"`.
 
-- [ ] **Step 3 : Exporter `assertDateIsoValide`**
+- [x] **Step 3 : Exporter `assertDateIsoValide`**
 
 Dans `packages/domain/src/config-version.ts` ligne 174, remplacer :
 
@@ -156,7 +156,7 @@ Le docstring au-dessus (lignes 168-173) reste inchangé. Aucun autre changement 
 
 > Pourquoi exporter plutôt que recopier : une seconde implémentation de la validation ISO divergerait tôt ou tard de celle-ci — et c'est précisément celle qui attrape le débordement silencieux de `Date.UTC` (mois 13, 30 février). `index.ts` fait `export *`, donc le nom devient public : c'est voulu, c'est une brique légitime du domaine.
 
-- [ ] **Step 4 : Écrire l'implémentation minimale**
+- [x] **Step 4 : Écrire l'implémentation minimale**
 
 Créer `packages/domain/src/horizon-saisie.ts` :
 
@@ -235,7 +235,7 @@ export * from './types.js'
 export * from './solde.js'
 ```
 
-- [ ] **Step 5 : Lancer les tests du domaine et vérifier qu'ils passent**
+- [x] **Step 5 : Lancer les tests du domaine et vérifier qu'ils passent**
 
 ```bash
 pnpm --filter @homebudget/domain test
@@ -243,7 +243,7 @@ pnpm --filter @homebudget/domain test
 
 Attendu : tous verts, y compris les tests préexistants de `config-version.test.ts`, `money.test.ts`, `repartition.test.ts`, `solde.test.ts`.
 
-- [ ] **Step 6 : Annoter le test qui décrit le trou**
+- [x] **Step 6 : Annoter le test qui décrit le trou**
 
 `packages/domain/test/config-version.test.ts` lignes 102-104 contiennent aujourd'hui :
 
@@ -271,7 +271,7 @@ Aucun changement d'assertion : c'est un commentaire.
 
 > Les deux tests de borne basse existent déjà (`config-version.test.ts:106` en unitaire, `facade.integration.test.ts:132` en intégration). On n'en écrit pas de troisième.
 
-- [ ] **Step 7 : Lint, typecheck, tests**
+- [x] **Step 7 : Lint, typecheck, tests**
 
 ```bash
 task verif
@@ -279,7 +279,7 @@ task verif
 
 Attendu : lint, typecheck et l'ensemble des tests unitaires au vert. Si Biome se plaint du formatage, lancer `task format` puis relancer.
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 
 ```bash
 git add packages/domain/src/horizon-saisie.ts \
@@ -312,7 +312,7 @@ Refs #29"
 - Consomme : `verifierDatePlausible(date: string, aujourdhui: string): void` de `@homebudget/domain` (tâche 1).
 - Produit : `calculerPartsPourSaisie(saisie: SaisieDepense, versions: VersionConfig[], aujourdhui?: string): PartsCalculees`. Le **troisième paramètre est optionnel** ; il vaut par défaut la date du jour côté serveur. Aucun appelant existant n'est à modifier, et **aucun nom nouveau n'entre dans la façade** : `aujourdhuiIso` reste privé au module (`index.ts` fait `export * from './ecriture.js'`, donc l'exporter le ferait fuiter dans la liste blanche de `apps/web/test/architecture.test.ts`).
 
-- [ ] **Step 1 : Écrire le test d'intégration qui échoue**
+- [x] **Step 1 : Écrire le test d'intégration qui échoue**
 
 Dans `packages/db/test/facade.integration.test.ts`, juste après le test « refuse une depense a une date qu aucune version ne couvre », insérer :
 
@@ -370,7 +370,7 @@ Dans `packages/db/test/facade.integration.test.ts`, juste après le test « refu
 
 `listerDepenses` est déjà importé en tête du fichier (ligne 7).
 
-- [ ] **Step 2 : Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2 : Lancer le test pour vérifier qu'il échoue**
 
 Postgres doit tourner (`task db:up` d'abord si besoin).
 
@@ -380,7 +380,7 @@ task test:integration
 
 Attendu : ÉCHEC sur « refuse une depense datee a plus d un an » — la promesse est résolue au lieu d'être rejetée. Le second test (« laisse passer ») doit, lui, déjà passer.
 
-- [ ] **Step 3 : Écrire l'implémentation minimale**
+- [x] **Step 3 : Écrire l'implémentation minimale**
 
 Dans `packages/db/src/ecriture.ts`, ajouter `verifierDatePlausible` à l'import de `@homebudget/domain` (lignes 1-13, ordre alphabétique parmi les valeurs importées) :
 
@@ -451,7 +451,7 @@ export function calculerPartsPourSaisie(
 
 Le docstring existant de `calculerPartsPourSaisie` (lignes 39-46) reste tel quel au-dessus.
 
-- [ ] **Step 4 : Lancer les tests d'intégration et vérifier qu'ils passent**
+- [x] **Step 4 : Lancer les tests d'intégration et vérifier qu'ils passent**
 
 ```bash
 task test:integration
@@ -459,7 +459,7 @@ task test:integration
 
 Attendu : tout au vert, **y compris le canari du solde à 114 580 centimes** dans ce même fichier. Si le canari tombe, ne pas ajuster le test : une dépense légitime du seed a été refusée, donc la borne est mal calculée.
 
-- [ ] **Step 5 : Vérifier que rien d'autre n'a bougé**
+- [x] **Step 5 : Vérifier que rien d'autre n'a bougé**
 
 ```bash
 task verif
@@ -467,7 +467,7 @@ task verif
 
 Attendu : lint, typecheck et tous les tests unitaires au vert — en particulier `packages/db/test/import-sheet.test.ts` (l'import passe par `versionEnVigueurLe` directement, pas par `calculerPartsPourSaisie` : il n'est pas touché) et `apps/web/test/architecture.test.ts` (aucun nom ajouté à la façade).
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 
 ```bash
 git add packages/db/src/ecriture.ts packages/db/test/facade.integration.test.ts
@@ -493,7 +493,7 @@ Refs #29"
 - Consomme : `dateMaxDepense(aujourdhui: string): string` de `@homebudget/domain` (tâche 1), et la fonction locale `AUJOURDHUI()` déjà présente dans le fichier (ligne 21), qui date en heure **locale** — délibérément, un `toISOString()` proposerait demain quand on saisit à 23 h à Paris.
 - Produit : rien que d'autres tâches consomment.
 
-- [ ] **Step 1 : Écrire le test statique qui échoue**
+- [x] **Step 1 : Écrire le test statique qui échoue**
 
 Créer `apps/web/test/borne-date-saisie.test.ts` :
 
@@ -546,7 +546,7 @@ describe('le champ date du formulaire de depense porte la borne haute', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer le test pour vérifier qu'il échoue**
+- [x] **Step 2 : Lancer le test pour vérifier qu'il échoue**
 
 ```bash
 pnpm --filter @homebudget/web test borne-date-saisie
@@ -554,7 +554,7 @@ pnpm --filter @homebudget/web test borne-date-saisie
 
 Attendu : ÉCHEC sur les deux cas — `dateMaxDepense` n'est ni importé ni utilisé.
 
-- [ ] **Step 3 : Écrire l'implémentation minimale**
+- [x] **Step 3 : Écrire l'implémentation minimale**
 
 Dans `apps/web/app/(app)/depenses/formulaire-depense.tsx`, ligne 16, ajouter `dateMaxDepense` à l'import du domaine :
 
@@ -588,7 +588,7 @@ Puis, lignes 196-204, le champ date devient :
 
 > `AUJOURDHUI()` est appelé à chaque rendu, ce qui est correct et voulu : sans quoi un onglet laissé ouvert à cheval sur minuit garderait la borne de la veille.
 
-- [ ] **Step 4 : Lancer le test et vérifier qu'il passe**
+- [x] **Step 4 : Lancer le test et vérifier qu'il passe**
 
 ```bash
 pnpm --filter @homebudget/web test
@@ -596,7 +596,7 @@ pnpm --filter @homebudget/web test
 
 Attendu : tous les tests de `apps/web` au vert, dont `architecture.test.ts` (`@homebudget/domain` n'est pas soumis à la liste blanche, qui ne concerne que `@homebudget/db`).
 
-- [ ] **Step 5 : Vérifier le parcours réel dans le navigateur**
+- [x] **Step 5 : Vérifier le parcours réel dans le navigateur**
 
 ```bash
 task db:up && task dev
@@ -608,7 +608,7 @@ Sur `http://localhost:3000/depenses` : ouvrir « Modifier », puis le sélecteur
 
 Arrêter avec `Ctrl-C`.
 
-- [ ] **Step 6 : Porte complète**
+- [x] **Step 6 : Porte complète**
 
 ```bash
 task verif
@@ -616,7 +616,7 @@ task verif
 
 Attendu : lint, typecheck et tous les tests unitaires au vert.
 
-- [ ] **Step 7 : Commit**
+- [x] **Step 7 : Commit**
 
 ```bash
 git add apps/web/app/\(app\)/depenses/formulaire-depense.tsx apps/web/test/borne-date-saisie.test.ts
@@ -633,7 +633,7 @@ Refs #29"
 
 ## Vérification finale
 
-- [ ] **La séquence complète de la CI**
+- [x] **La séquence complète de la CI**
 
 ```bash
 task ci
@@ -641,7 +641,7 @@ task ci
 
 **DESTRUCTIF** — réinitialise la base locale. Attendu : tout au vert, canari du solde à 114 580 centimes inclus, dans les trois lieux (unitaire, intégration, e2e).
 
-- [ ] **Le « Fini quand » de l'issue**
+- [x] **Le « Fini quand » de l'issue**
 
 Relire l'issue #29 et confirmer, avec les sorties de commandes en main : une date aberrante produit un avertissement compréhensible avant d'atteindre la base. Les preuves sont le test d'intégration de la tâche 2 (`rejects.toThrow` + table vide) et la vérification navigateur de la tâche 3.
 
