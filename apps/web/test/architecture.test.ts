@@ -130,6 +130,7 @@ const FACADE_DB = [
   'listerVersions',
   'listerDepenses',
   'ajouterDepense',
+  'supprimerDepense',
   'creerVersion',
   'calculerPartsPourSaisie',
   'genererChargeFixeDuMois',

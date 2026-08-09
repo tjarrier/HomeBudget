@@ -7,6 +7,7 @@ import {
   calculerPartsPourSaisie,
   genererChargeFixeDuMois,
   listerVersions,
+  supprimerDepense,
 } from '@homebudget/db'
 import { type Cents, type Parts, totalChargesCommunes } from '@homebudget/domain'
 import { revalidatePath } from 'next/cache'
@@ -114,6 +115,29 @@ export async function genererChargeFixeAction(
         montant: depense.montant,
       },
     }
+  } catch (e) {
+    return enEchec(e)
+  }
+}
+
+/**
+ * Supprime une depense (issue #40).
+ *
+ * Un identifiant suffit : il n'y a pas de formulaire a valider, donc ni
+ * `FormData` ni etat precedent a chainer — la signature `useActionState` des
+ * deux autres actions de ce fichier serait du ceremonial pour rien.
+ *
+ * `exigerSession()` en PREMIERE ligne : une Server Action est un endpoint HTTP,
+ * joignable sans jamais charger la page.
+ */
+export async function supprimerDepenseAction(id: string): Promise<Resultat<null>> {
+  await exigerSession()
+  try {
+    await supprimerDepense(id)
+    // Le solde affiche doit suivre l'effacement, sur les deux ecrans.
+    revalidatePath('/')
+    revalidatePath('/depenses')
+    return { ok: true, valeur: null }
   } catch (e) {
     return enEchec(e)
   }
