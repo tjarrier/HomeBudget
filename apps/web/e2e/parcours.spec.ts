@@ -381,7 +381,9 @@ test.describe('parcours authentifies', () => {
     test.use(TELEPHONE)
 
     test('un choix dans un selecteur suffit, sans bouton a valider', async ({ page }) => {
-      await page.goto('/depenses')
+      // `?n=40` : le premier palier qui couvre tout le seed. Ce test parle du
+      // FILTRE, pas de la borne — la borne a son propre parcours plus bas.
+      await page.goto('/depenses?n=40')
       const lignes = page.getByTestId('liste-depenses').getByRole('listitem')
       const total = await lignes.count()
       expect(total).toBeGreaterThan(1)
@@ -389,7 +391,11 @@ test.describe('parcours authentifies', () => {
       // Le seul geste est le choix : aucun clic sur « Appliquer » entre les deux
       // assertions. C'est le critere de l'issue.
       await page.selectOption('#filtrePayePar', 'liz')
-      await expect(page).toHaveURL('/depenses?payePar=liz')
+      // `n` survit au changement de filtre : `appliquer()` repart de
+      // `new URLSearchParams(params)`, et il arrive en tete puisqu'il y etait
+      // deja. Replier la liste au changement de filtre serait le mauvais
+      // comportement.
+      await expect(page).toHaveURL('/depenses?n=40&payePar=liz')
       // Assertion qui REESSAIE : la navigation est douce, la liste revient du
       // serveur. Une ligne restante hors filtre la ferait echouer.
       await expect(lignes.filter({ hasNotText: 'payé par Liz' })).toHaveCount(0)
@@ -397,7 +403,7 @@ test.describe('parcours authentifies', () => {
 
       // Le mois S'AJOUTE au payeur, il ne le remplace pas.
       await page.selectOption('#filtreMois', '2026-07')
-      await expect(page).toHaveURL('/depenses?payePar=liz&mois=2026-07')
+      await expect(page).toHaveURL('/depenses?n=40&payePar=liz&mois=2026-07')
       await expect(lignes.filter({ hasNotText: 'payé par Liz' })).toHaveCount(0)
       await expect(lignes.filter({ hasNotText: '/07/2026' })).toHaveCount(0)
       expect(await lignes.count()).toBeGreaterThan(0)
@@ -533,6 +539,65 @@ test.describe('parcours authentifies', () => {
       // croyant redondante avec celle du dessus.
       await page.goto('/')
       await expect(page).toHaveURL(/\/login/)
+    })
+  })
+
+  /**
+   * Issue #41 — la liste est bornee, la suite reste atteignable, et le formulaire
+   * est joignable sans traverser l'historique.
+   *
+   * Sur le telephone de reference : c'est l'ecran qui a motive l'issue.
+   *
+   * Place EN DERNIER : il n'ecrit rien, mais il lit des comptes que les
+   * ecritures precedentes deplacent.
+   */
+  test.describe('borner l historique, sur un telephone', () => {
+    test.use(TELEPHONE)
+
+    test('la liste s arrete a 20, et « Voir plus » la prolonge', async ({ page }) => {
+      await page.goto('/depenses')
+      const lignes = page.getByTestId('liste-depenses').getByRole('listitem')
+
+      await expect(lignes).toHaveCount(20)
+
+      const voirPlus = page.getByTestId('voir-plus')
+      await expect(voirPlus).toBeVisible()
+      await voirPlus.click()
+
+      await expect(page).toHaveURL('/depenses?n=40')
+      // Strictement plus qu'avant. Pas d'assertion sur la DISPARITION du bouton
+      // ici : les parcours qui precedent ont ajoute des lignes, et 34 + leurs
+      // saisies peut depasser 40. C'est le test du palier plus bas qui la verifie,
+      // sur une borne assez large pour tout couvrir a coup sur.
+      expect(await lignes.count()).toBeGreaterThan(20)
+    })
+
+    test('le formulaire de saisie precede l historique', async ({ page }) => {
+      await page.goto('/depenses')
+
+      // La POSITION a l'ecran, pas l'ordre du DOM : c'est ce que le pouce
+      // rencontre. Le formulaire doit etre AU-DESSUS de l'historique.
+      const formulaire = await page.locator('input[name="description"]').boundingBox()
+      const historique = await page.getByTestId('liste-depenses').boundingBox()
+
+      expect(formulaire?.y ?? 0).toBeLessThan(historique?.y ?? 0)
+      // Et joignable sans defiler : le champ tient dans le premier ecran de 740px.
+      expect(formulaire?.y ?? 0).toBeLessThan(740)
+    })
+
+    test('la borne se laisse pousser, mais pas deborner', async ({ page }) => {
+      // 100 est un multiple du palier, donc une borne legitime, et il couvre tout
+      // le seed : tout s'affiche, et il ne reste rien a voir.
+      await page.goto('/depenses?n=100')
+      await expect(page.getByTestId('voir-plus')).toHaveCount(0)
+      expect(
+        await page.getByTestId('liste-depenses').getByRole('listitem').count(),
+      ).toBeGreaterThan(20)
+
+      // `?n=999999` n'est aucune des valeurs auxquelles « Voir plus » a pu mener :
+      // ce n'est pas une borne, c'est une URL bricolee. L'ecran retombe au palier.
+      await page.goto('/depenses?n=999999')
+      await expect(page.getByTestId('liste-depenses').getByRole('listitem')).toHaveCount(20)
     })
   })
 })
