@@ -1,241 +1,155 @@
 # HomeBudget — manuel visuel
 
 Ce fichier est la source de vérité du système visuel de `apps/web`. Il documente
-ce que le code fait **aujourd'hui**, pas ce qu'une spec projetait.
+ce que le code fait **aujourd'hui**.
 
-**Design system :** projet Claude Design « HomeBudget Design System »
-(`af475afc-2e2d-4ac6-9010-1c73823dbe91`), maquette `ui_kits/homebudget/`.
+**Spec :** `docs/superpowers/specs/2026-09-13-refonte-prune-abricot-design.md`
+**Maquette :** « Refonte HomeBudget », page « Direction A » (issue #68)
 **Implémentation :** `apps/web/app/globals.css` — les tokens ; `apps/web/components/` — les composants.
-**Verrou :** `apps/web/test/theme.test.ts`.
+**Verrous :** `apps/web/test/theme.test.ts`, `apps/web/test/cibles-tactiles.test.ts`, `apps/web/e2e/`.
 
-> **La spec `docs/superpowers/specs/2026-07-19-direction-visuelle-design.md` est
-> dépassée sur trois points** — elle prévoyait Instrument Serif en titrage, un blanc
-> dominant sans cartes, et la suppression de `card.tsx`. L'intégration du design
-> system a tranché autrement (une seule fonte, des cartes partout). Elle reste utile
-> pour les *raisonnements* qu'elle porte — surtout sur `Montant` —, pas pour ses valeurs.
+> `docs/superpowers/specs/2026-07-19-direction-visuelle-design.md` est dépassée : elle
+> décrivait une app achromatique. Elle reste utile pour les raisonnements qu'elle porte
+> sur `Montant`.
 
 ## Les règles qui ne se négocient pas
 
-1. **Le système est achromatique.** Une échelle slate, et **deux accents seulement** :
-   emerald pour la réassurance, rouge pour l'erreur de formulaire. Aucune autre teinte
-   n'existe. Il n'y a pas de couleur de marque : le « primaire » est l'encre.
+1. **Deux couleurs d'identité, et aucune ne code un sens.** Le **prune** porte la marque
+   (bandeau du solde, liens, icônes), l'**abricot** porte l'action principale. Un solde
+   est une **direction** : `+1 145,80` pour Thomas et `−1 145,80` pour Liz sont le même
+   fait vu des deux bouts. Le bandeau est prune quel que soit le sens de la dette ; les
+   deux soldes ont la même encre.
 
-2. **Aucune couleur ne code un sens.** Un solde n'est pas un positif/négatif, c'est une
-   **direction** : qui doit à qui. `+1 145,80` pour Thomas et `−1 145,80` pour Liz sont
-   *le même fait vu des deux bouts* — les teinter dirait que l'un a raison et l'autre
-   tort d'une seule et même dette. Le signe et le libellé portent la direction. Là où
-   l'emerald apparaît (badge « Transfert »), le libellé dit déjà tout en toutes lettres :
-   la couleur double l'information, elle ne la remplace jamais.
+2. **Aucune couleur par personne.** Les pastilles de Thomas et de Liz sont identiques ;
+   le nom porte l'identité.
 
-3. **Une seule famille de caractères.** Inter, auto-hébergée par `next/font`. La
-   hiérarchie vient du poids, de la taille et du contraste de surface — jamais d'un
-   changement de fonte. Un `--font-heading` qui réapparaîtrait ferait échouer un test.
+3. **Deux familles de caractères.** Manrope pour le texte, Bricolage Grotesque pour le
+   solde et les titres. Bricolage ne touche jamais un montant en liste : ses chiffres
+   ne s'alignent pas. `theme.test.ts` refuse une troisième famille.
 
-4. **Le markup n'écrit jamais une couleur.** Il écrit un token sémantique
-   (`bg-surface`, `text-faint`, `border-subtle`). `theme.test.ts` interdit par regex
-   toute classe de palette Tailwind en dur (`bg-slate-100`, `text-red-700`, `bg-white`…)
-   dans `app/` et `components/`. C'est ce qui rend vrai « changer un token se répercute
-   partout ».
+4. **Le markup n'écrit jamais une couleur.** Il écrit un token (`bg-emphasis`,
+   `text-marque`, `border-subtle`). `theme.test.ts` interdit les classes de palette
+   Tailwind en dur, `bg-white`, et les tokens retirés (`text-faint`, `*-positive`).
 
-5. **Clair uniquement.** Il n'y a pas de bloc `.dark`, et le test vérifie qu'il ne
-   revient pas. Le mode sombre pourra être ajouté un jour ; il ne se réintroduit pas
-   par accident.
+5. **Clair uniquement.** Pas de bloc `.dark`.
 
 ## Tokens
 
-### L'échelle et ses alias
-
-`globals.css` déclare une échelle `--slate-50` → `--slate-900`, puis des **alias
-sémantiques** par-dessus. Le markup n'utilise que les alias.
-
-| Utilitaire | Token | Valeur | Rôle |
+| Utilitaire | Valeur | Rôle | Contraste |
 |---|---|---|---|
-| `bg-app` | `--app-bg` | slate-50 | le fond de page |
-| `bg-surface` | `--surface-card` | `#ffffff` | toute carte, tout champ |
-| `bg-emphasis` / `text-on-emphasis` | `--surface-emphasis` | slate-900 | le bandeau du solde, l'avatar sombre, le logo. **Le seul aplat sombre.** |
-| `text-strong` | `--text-strong` | slate-900 | titres, montants |
-| `text-body` | `--text-body` | slate-700 | corps, libellés de champ |
-| `text-muted-foreground` | `--text-muted` | slate-500 | méta : dates, payeur |
-| `text-faint` | `--text-faint` | slate-400 | placeholders, mentions latérales |
-| `border-subtle` | `--border-subtle` | slate-200 | **filet** entre deux surfaces |
-| `border-input` | `--input` | slate-500 | **limite** d'un contrôle de formulaire |
-| `bg-primary` | `--primary` | slate-900 | bouton plein |
-| `ring-ring` | `--ring` | slate-900 | anneau de focus |
-| `bg-muted` | `--muted` | slate-100 | fond atténué, état actif de nav |
-| `backdrop:bg-overlay` | `--overlay` | slate-900 à 45 % | le voile du `<dialog>` de compte. **Le seul voile du produit.** |
-| `bg-positive-surface` / `text-positive` | emerald-50 / emerald-900 | | réassurance : transfert, version en cours |
-| `text-destructive` | `--destructive` | red-700 | **erreurs de formulaire et d'action échouée** |
+| `bg-app` | `#f7f4ef` | fond de page | |
+| `bg-surface` | `#ffffff` | cartes, feuilles | |
+| `bg-emphasis` / `text-on-emphasis` | `#3d2344` / blanc | **prune** : le bandeau du solde | 13,79:1 ; blanc 72 % 7,87:1 ; 60 % 5,95:1 |
+| `text-marque` / `bg-marque` | `#5b3563` | liens, icônes, barres, focus | 9,84:1 sur blanc |
+| `bg-marque-surface` | `#f3ecf3` | pastilles d'icône, état actif, réassurance | |
+| `bg-primary` / `text-primary-foreground` | `#f2a45e` / `#1f1a24` | **abricot** : l'action principale | texte 8,32:1 ; abricot sur blanc 2,05:1 |
+| `text-strong` | `#1f1a24` | encre : titres, montants, choix sélectionné | 17,05:1 |
+| `text-muted-foreground` | `#6e6673` | **le seul gris de texte** | 5,51:1 blanc, 5,02:1 fond, 4,90:1 champ |
+| `bg-muted` | `#f5f1ec` | fond de champ et de choix | |
+| `border-input` | `#8a828e` | **limite** : filet inférieur d'un champ | 3,30:1 sur `bg-muted` |
+| `border-subtle` | `#efeae4` | **filet** entre deux lignes | |
+| `ring-ring` | `#5b3563` | focus visible | 9,84:1 |
+| `text-destructive` | `#b91c1c` | erreurs de formulaire et d'action échouée | 6,47:1 |
+| `backdrop:bg-overlay` | encre à 55 % | le voile des `<dialog>` | |
 
-**Filet ≠ limite, et l'écart est un arbitrage d'accessibilité.** Un filet entre deux
-surfaces doit rester léger (slate-200). La limite d'un contrôle doit atteindre 3:1 sur
-son fond (WCAG 1.4.11) : slate-300 ne donne que ~1,5:1, d'où slate-500 (4,6:1). Ne pas
-les fusionner « pour simplifier ».
+**L'abricot ne porte jamais de texte** et ne sert jamais de filet ni d'icône seule sur
+fond clair : 2,05:1 sur blanc. Un bouton abricot est identifié par son libellé.
 
-### Rayons et élévation
+**Filet ≠ limite.** `border-subtle` sépare deux lignes et reste léger. `border-input`
+délimite un champ et tient 3:1. Le fond d'un champ seul ne donne que 1,12:1 sur blanc :
+sans son filet inférieur, un champ vide est invisible.
 
-`--radius: 10px`. Puis `sm` 6px, `md` 8px, `lg` 10px (champs, boutons, selects),
-`xl` 14px (cartes, bandeaux). Deux ombres seulement, `shadow-xs` et `shadow-sm` —
-la carte porte `shadow-xs`, à peine perceptible.
+Rayons : 14 px champs, choix et boutons ; 20 px cartes ; 24 px bandeau ; 28 px feuilles.
+Une ombre `shadow-xs` sur les cartes, `shadow-action` sur le « + » et lui seul.
 
-### Typographie
+Le chevron du `<select>` est un hex littéral dans `globals.css` (`url()` ne lit pas une
+variable) : `#6e6673`, à resynchroniser si `--text-muted` change.
 
-Inter partout. `--font-mono` existe pour la saisie des charges et les `<code>`, rien
-d'autre.
+## Typographie
 
 ```
-titre d'écran   1.5rem   600   tracking −0.02em     (EntetePage → <h1>)
-titre de carte  0.9375rem 600                        (Carte → <h2>)
-section         0.75rem  500   majuscules  tracking 0.08em  atténué
-corps           0.875rem 400
-méta            0.75rem  400   atténué
+solde (heros)     Bricolage 600   clamp(2.25rem, 12vw, 3.125rem)
+titre d'écran     Bricolage 600   1.3125rem
+titre de section  Bricolage 600   1.1875rem
+montant saisi     Bricolage 600   3.625rem
+corps             Manrope 600     0.9375rem
+libellé, méta     Manrope 600/400 0.8125rem   atténué
 ```
 
-**Tous les montants sont en `tabular-nums`**, sans exception : une colonne de soldes
-signés reste alignée au caractère près.
+**Tous les montants en liste sont en `tabular-nums`.**
 
 ## Composants
 
 ### Les contrôles — `components/ui/`
 
-Quatre primitives, retouchées depuis shadcn. `card.tsx` et `table.tsx` ont été
-supprimés ; le conteneur est `Carte`, et les listes sont des `<ul>`.
-
-- **`Button`** — deux variantes, pas plus : `primaire` (aplat encre) et `discret`
-  (bordé sur blanc). `min-h-11` = **44px dans les deux cas** : la cible tactile est
-  réglée ici, à la source, pas écran par écran. La maquette dessine 42px ; on ne
-  descend pas sous le plancher pour 2px.
-- **`Input`** — bordé, fond blanc, rayon 10px, `h-11` = **44px**, le même plancher que
-  `Button` (issue C1). Le focus épaissit un anneau de 3px et fonce la limite.
-  `aria-invalid` bascule en `--destructive`.
-- **`Textarea`** — les quatre lignes d'état d'`Input` à l'identique (placeholder, focus,
-  `disabled`, `aria-invalid`) ; seule la première diffère, comme doit le faire une zone
-  multiligne : `resize-y`, `py-2`, et `min-h-11` là où `Input` fixe `h-11`. Il existe
-  précisément parce que les champs de charges recopiaient ce style à la main et avaient
-  déjà divergé (ni `disabled:`, ni `aria-invalid:`). Sa hauteur vient de `rows` ; le
-  `min-h-11` n'est jamais atteint aux `rows={4}` d'aujourd'hui et existe pour le jour où
-  un `rows={1}` le ferait passer sous le plancher.
-- **`Select`** — `h-11` lui aussi : un `<select>` se touche exactement comme un champ.
-  C'est un `<select>` **natif**, volontairement : il porte gratuitement le
-  clavier, l'ARIA, `disabled`, et ouvre le sélecteur du système sur mobile. Le popup JS
-  de Base UI ne fait rien de tout ça. La flèche native est retirée par `appearance-none`
-  et remplacée par un chevron SVG posé dans `globals.css` — **sa couleur est un hex
-  littéral** (`#64748b`) parce que `url()` ne peut pas lire une variable CSS : à
-  resynchroniser à la main si `--text-muted` change.
-- **`Label`** — `text-body`, 500, toujours lié par `htmlFor`.
+- **`Button`** — deux variantes : `primaire` (abricot, texte encre) et `discret` (texte
+  prune, sans contour). `min-h-11` dans les deux cas.
+- **`Input`**, **`Select`**, **`Textarea`** — fond `bg-muted`, arrondis en haut, filet
+  inférieur `border-input` qui passe à 2 px prune au focus. `h-11` / `min-h-11`.
+  `text-base` : sous 16 px, Safari iOS zoome au focus. `Select` reste un `<select>`
+  natif.
+- **`Choix`** — des boutons radio natifs en segments (`<fieldset>`, `<legend>`). L'input
+  couvre tout le segment en `opacity-0` : un radio `sr-only` de 1 px tomberait sous le
+  plancher mesuré par `e2e/cibles-tactiles.spec.ts`.
+- **`Label`** — atténué, 600, toujours lié par `htmlFor`.
 
 ### Les composants produit — `components/`
 
-- **`Carte`** — la surface de base : blanc, filet, rayon 14px, `shadow-xs`. Elle entoure
-  chaque bloc de contenu, à la seule exception du bandeau du solde. `titre` rend un
-  `<h2>` : les cartes sont le second niveau de titre de chaque écran.
-- **`EntetePage`** — le `<h1>` unique du document, plus un sous-titre atténué.
+- **`FeuilleSaisie`** — la saisie, un `<dialog>` natif monté une fois dans le layout.
+  Son état ouvert vit dans l'URL : `?saisie=1`, `?saisie=regler` (`lib/url-saisie.ts`).
+  Le formulaire n'est monté que feuille ouverte, et la feuille se ferme après une
+  écriture : c'est ce qui désarme un second clic.
+- **`FormulaireDepense`** — montant, description et payeur visibles ; date, type,
+  répartition et commentaire repliés, **montés et masqués par `hidden`**, jamais
+  `disabled`. L'aperçu est `previsualiserPartsAction`, qui appelle `calculerPartsPourSaisie`
+  — la même fonction que l'écriture (`ajouterDepense`) : l'aperçu ne peut pas diverger de
+  ce qui sera réellement figé.
+- **`NavPrincipale`** — trois cases sous 768 px (Accueil, « + », Dépenses), rail
+  au-dessus. Le « + » est un lien qui ajoute `saisie=1` à l'URL courante.
+- **`MenuCompte`** — rendu deux fois, dans l'en-tête sous 768 px et en pied de rail
+  au-dessus. Il porte « Configuration », « Se déconnecter » et « Annuler ».
+- **`Carte`** — blanc, sans bordure, 20 px, `shadow-xs`. `titre` rend un `<h2>`.
+- **`EntetePage`** — le `<h1>` d'un écran, avec une flèche de retour optionnelle.
+- **`LigneDepense`** — icône du type (nom accessible : le type), description,
+  « date · payé par », **parts affichées**, montant.
 - **`Montant`** — voir ci-dessous.
-- **`LigneDepense`** — une entrée d'historique. Elle **affiche les parts**, ce que la
-  maquette ne montrait pas : c'est la seule chose que cet écran prouve à l'œil — les
-  parts ne bougent plus après la saisie. Le parcours Playwright compare ce texte avant
-  et après création d'une version de config ; le retirer viderait ce test de son sens.
-- **`Avatar`** — la pastille d'initiale. La couleur ne distingue pas les deux personnes
-  (le système est achromatique), donc le nom complet est porté par `aria-label` et
-  l'initiale masquée. `decoratif` sort la pastille de l'arbre d'accessibilité là où le
-  nom suit déjà en clair, plutôt que de faire annoncer « Thomas Thomas ».
-- **`BadgeType` / `BadgeVersion`** — étiquettes. Seul `transfert` et « En cours »
-  portent l'emerald.
-- **`Marque`** — le monogramme et le nom du produit. Rendue **deux fois** dans la coque
-  (entête sous 768px, tête de rail au-dessus), jamais deux fois à l'écran : c'est du
-  balisage statique, il n'y a rien à désynchroniser.
-- **`NavPrincipale`** — cliente pour une seule raison : `usePathname()`. L'état actif est
-  porté par le fond **et** par `aria-current`. Chaque entrée a un `libelleCourt`
-  (`Accueil`, `Dépenses`, `Config`) affiché sous l'icône dans la barre basse : trois
-  icônes muettes seraient une devinette. Les deux libellés se masquent par `hidden` /
-  `md:hidden`, jamais par `sr-only` — `sr-only` les laisserait tous les deux dans l'arbre
-  d'accessibilité, et le lien s'appellerait « Tableau de bord Accueil ».
-- **`MenuCompte`** — qui est connecté, et par où sortir. **Un** déclencheur et **une**
-  feuille, deux habillages : quatrième cellule de la barre basse sous 768px, pied de rail
-  au-dessus. Le dédoubler dédoublerait le chemin de déconnexion — c'est précisément ce qui
-  avait échoué avant l'issue #13 : le bouton « Quitter » existait, dans un conteneur
-  `max-md:sr-only` que personne ne pouvait toucher. La feuille est un `<dialog>` **natif**
-  ouvert par `showModal()`, pour la même raison que le `<select>` est natif : piège de
-  focus, `Escape`, inertisation de l'arrière-plan et `::backdrop`, sans une ligne de JS.
 
 ## Le traitement des montants
 
 `Montant` est **l'unique frontière entre les centimes et l'écran**. Quatre niveaux, un
-booléen `signe`. Rien d'autre — pas de `couleur`, pas de `variante`, pas de `devise`.
+booléen `signe`.
 
 | Niveau | Rendu | Usage |
 |---|---|---|
-| `heros` | 1.875rem / 600 | le solde du bandeau sombre, et lui seul |
-| `notable` | 1.375rem / 600 | les quatre chiffres clés du tableau de bord |
-| `courant` | 0.875rem / 600 | le montant d'une ligne de liste ou de bilan |
-| `discret` | 0.75rem / 500, atténué | méta, détail des parts |
+| `heros` | Bricolage 600, proportionnel | le solde, sur l'accueil et le tableau de bord |
+| `notable` | Manrope 700, 1.1875rem | les quatre chiffres du tableau de bord |
+| `courant` | Manrope 700, 0.9375rem | une ligne de liste, de bilan, l'aperçu |
+| `discret` | Manrope 500, 0.75rem, atténué | détail des parts |
 
-**Ce que le composant n'a pas le droit de faire.** Il reçoit des `Cents` et les affiche.
-Il ne nie jamais une valeur, ne l'inverse jamais selon la personne regardée, ne dérive
-jamais un signe d'un contexte. C'est la garde contre le piège du mode transfert
-documenté dans `CLAUDE.md` : si un écran affiche un jour le mauvais sens, le bug est
-dans le domaine et se corrige là — jamais par un `-` posé dans le JSX.
+**Ce que le composant n'a pas le droit de faire.** Il ne nie jamais une valeur, ne
+l'inverse jamais selon la personne regardée, ne dérive jamais un signe d'un contexte.
+Si un écran affiche un jour le mauvais sens, le bug est dans le domaine — jamais un `-`
+dans le JSX. Le moins est un vrai `−` (U+2212), et le rendu est un `<data value={cents}>`.
 
-Le formatage vit dans `lib/format.ts` :
+## Accessibilité — les planchers
 
-- le moins est un vrai moins typographique `−` (U+2212), de chasse identique au `+` ;
-- `avecSignePositif` ne commande **que** le plus explicite — un négatif porte toujours
-  son moins, sans quoi un drapeau oublié afficherait `1 145,80 €` pour une valeur de
-  `−114580` ;
-- le rendu est un `<data value={cents}>` : la valeur exacte en centimes reste lisible
-  par une machine, jamais l'euro arrondi.
-
-`enEuros()` dans `config/formulaire-version.tsx` reste où elle est : elle produit une
-valeur **éditable** de champ de saisie, pas de l'affichage.
-
-## Accessibilité — les planchers tenus à la source
-
-- **44px** de côté minimum sur **tout** ce qui se touche (issue C1), et le plancher est
-  tenu **à la source** : `min-h-11` sur `Button` et `Textarea`, `h-11` sur `Input` et
-  `Select`, `max-md:min-h-11` sur les quatre cellules de la barre basse. Un écran n'a
-  donc rien à régler. La seule exception est le lien « Voir tout → » du tableau de bord,
-  qui n'est ni un bouton ni un champ : sa cible se lisait dans sa taille de texte
-  (63 × 15px). Elle est étendue par `min-h-11` **et** des marges négatives — la zone
-  touchable grandit, la mise en page ne bouge pas.
-- **12px au moins entre deux actions adjacentes.** Une seule paire existe dans le
-  produit — « Se déconnecter » / « Annuler » dans la feuille de compte —, et c'est la
-  seule où un appui de travers change de sens.
-- Ces deux faits sont mesurés sur le **rendu**, pas grepés dans le markup :
-  `e2e/cibles-tactiles.spec.ts` parcourt chaque écran en 360 × 740 et refuse tout
-  `a, button, input, select, textarea` visible sous 44px — un contrôle ajouté demain y
-  entre sans qu'on ait à l'inscrire nulle part. `test/cibles-tactiles.test.ts` ne
-  verrouille que les quatre primitives, mais sans Docker ni navigateur, dans
-  `task verif`.
-- **3:1** pour la limite d'un contrôle (`--input`) et pour l'anneau de focus (`--ring`),
-  d'où l'encre pleine plutôt qu'un gris clair.
-- Le focus visible n'est **jamais** supprimé : `focus-visible:ring-[3px]` avec décalage.
-- Aucune information portée par la couleur seule : `aria-current` sur la nav,
-  `aria-label` sur les avatars, libellé en clair sur chaque badge.
-- **360px** est la largeur plancher testée (issue C2), et c'est la seule taille de
-  téléphone de la suite e2e : `e2e/telephone.ts` la définit une fois, les trois specs
-  l'importent. Un bloc calé sur 390px rendrait invisible le débordement que C2 corrige.
-  Le canari du solde et le parcours de saisie s'y rejouent à l'identique (issue C3) :
-  l'usage réel est mobile, une preuve qui ne vaudrait qu'en 1280px n'en est pas une.
-- **La navigation est sous le pouce.** Sous 768px, l'`<aside>` devient une barre
-  `fixed bottom-0` de quatre cellules d'au moins 44px, `main` réserve la hauteur
-  correspondante, et `app/layout.tsx` déclare `viewport-fit=cover` pour que
-  `env(safe-area-inset-bottom)` cesse de valoir `0` sur iOS. L'`<aside>` reste **avant**
-  `<main>` dans le DOM : l'ordre de lecture prime sur l'ordre visuel.
-  `e2e/parcours.spec.ts` mesure les deux faits en viewport 360 × 740 — le bas de la
-  barre atteint le bas du viewport, et on peut s'y déconnecter.
-- **`viewport-fit=cover` étend le document sous les quatre bords, pas seulement le bas.**
-  Sa contrepartie se paie donc partout : `inset-top` sur l'entête mobile, `inset-left` sur
-  le rail, `inset-right` sur la colonne de contenu, `inset-bottom` sur la barre basse et
-  sur `main`. Toujours en `calc(base + env(…))` — un `pt-[env(…)]` nu écrase l'espacement
-  de base au lieu de s'y ajouter.
+- **44 px** sur tout ce qui se touche, tenu à la source dans chaque primitive et mesuré
+  sur le rendu par `e2e/cibles-tactiles.spec.ts`, écran par écran, feuilles ouvertes.
+- **12 px** entre « Se déconnecter » et « Annuler ».
+- **3:1** pour la limite d'un champ et l'anneau de focus ; **4,5:1** pour tout texte.
+- **360 px** de largeur testée (`e2e/telephone.ts`) ; `e2e/debordement.spec.ts` lit les
+  routes sur le disque.
+- La saisie tient **sans défiler**, feuille repliée : `e2e/parcours.spec.ts` le mesure.
+- Aucune information portée par la couleur seule : `aria-current` sur la navigation,
+  `aria-label` sur les icônes de type et les avatars.
+- `viewport-fit=cover` : chaque bord a sa contrepartie en `calc(base + env(…))`.
 
 ## Hors périmètre
 
-Le mode sombre. Les icônes de bibliothèque — `lucide-react` est installé et n'est
-importé nulle part ; les trois icônes de nav sont des `<path>` inline. Les animations
-(`tw-animate-css`, idem). Toute couleur d'identité au-delà des deux accents.
+Le mode sombre. Les icônes de bibliothèque (`lucide-react` n'est importé nulle part) et
+les animations au-delà du `<dialog>` natif.
 
 ## Quand on touche au visuel
 
-`task verif` avant de committer. `theme.test.ts` échoue si une couleur en dur, une
-seconde fonte, un bloc `.dark` ou une valeur du thème shadcn d'origine réapparaît — ne
-l'assouplis pas, c'est lui qui rend les règles ci-dessus vraies plutôt que déclaratives.
+`task verif` avant de committer, `task test:e2e:frais` avant de pousser. Ne pas
+assouplir `theme.test.ts` : c'est lui qui rend les règles ci-dessus vraies.
