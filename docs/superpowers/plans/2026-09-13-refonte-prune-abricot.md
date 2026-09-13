@@ -1,7 +1,5 @@
 # Refonte « Prune et abricot » — plan d'implémentation
 
-**État :** en cours
-
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Appliquer la direction « Prune et abricot » à `apps/web` : nouvelle palette et deux polices, saisie en feuille ouverte depuis un « + » central, écran Tableau de bord, Config dans le menu du compte.
@@ -46,7 +44,7 @@
 - Consumes: rien.
 - Produces: les utilitaires `bg-marque`, `text-marque`, `bg-marque-surface`, `font-display`, `shadow-action`, `rounded-2xl` (24 px), `rounded-3xl` (28 px). Retire `text-faint`, `bg-positive-surface`, `text-positive`. Toutes les tâches suivantes les utilisent.
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 Dans `apps/web/test/theme.test.ts`, remplacer le test « ne charge qu une seule famille de caracteres » (et son commentaire) par :
 
@@ -97,12 +95,12 @@ describe('la refonte ne laisse aucun token retire', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/theme.test.ts`
 Expected: FAIL sur « charge exactement deux familles », « globals.css ne declare plus ni slate… » et « le markup n utilise plus aucun token retire ».
 
-- [ ] **Step 3 : Réécrire `globals.css`**
+- [x] **Step 3 : Réécrire `globals.css`**
 
 Remplacer tout le fichier `apps/web/app/globals.css` par :
 
@@ -235,7 +233,7 @@ Remplacer tout le fichier `apps/web/app/globals.css` par :
 }
 ```
 
-- [ ] **Step 4 : Charger les deux polices**
+- [x] **Step 4 : Charger les deux polices**
 
 Dans `apps/web/app/layout.tsx`, remplacer l'import et la constante `inter` :
 
@@ -263,7 +261,7 @@ et la balise `<html>` :
     <html lang="fr" className={`${manrope.variable} ${bricolage.variable}`}>
 ```
 
-- [ ] **Step 5 : Migrer les usages des tokens retirés**
+- [x] **Step 5 : Migrer les usages des tokens retirés**
 
 Run (depuis `apps/web`) :
 
@@ -274,7 +272,7 @@ grep -rlE 'text-faint|bg-positive-surface|text-positive' app components \
 
 Puis relire le diff : `git diff --stat` doit lister les dix fichiers de la section **Files** (hors `globals.css`, `layout.tsx`, `theme.test.ts`), et aucun autre.
 
-- [ ] **Step 6 : Lancer les tests, vérifier qu'ils passent**
+- [x] **Step 6 : Lancer les tests, vérifier qu'ils passent**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/theme.test.ts`
 Expected: PASS.
@@ -282,11 +280,11 @@ Expected: PASS.
 Run: `task verif`
 Expected: PASS (lint, typecheck, tous les tests unitaires).
 
-- [ ] **Step 7 : Vérifier le rendu**
+- [x] **Step 7 : Vérifier le rendu**
 
 Run: `task dev`, ouvrir http://localhost:3000 : le bandeau du solde est prune, les boutons pleins sont abricot, le texte est en Manrope. Vérifier dans l'inspecteur que `font-variant-numeric: tabular-nums` aligne bien les montants de la liste (spec, « Risques ») ; sinon, l'écrire dans la PR et s'arrêter pour en discuter.
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 
 ```bash
 git add apps/web/app apps/web/components apps/web/test/theme.test.ts
@@ -313,7 +311,7 @@ git commit -m "feat(web): palette prune et abricot, Manrope et Bricolage Grotesq
   - `interface OptionChoix { valeur: string; libelle: string }`
   - `buttonVariants` garde ses deux variantes `primaire` et `discret`.
 
-- [ ] **Step 1 : Écrire le test qui échoue**
+- [x] **Step 1 : Écrire le test qui échoue**
 
 Dans `apps/web/test/cibles-tactiles.test.ts`, remplacer la constante :
 
@@ -321,12 +319,12 @@ Dans `apps/web/test/cibles-tactiles.test.ts`, remplacer la constante :
 const PRIMITIVES = ['button', 'input', 'select', 'textarea', 'choix'] as const
 ```
 
-- [ ] **Step 2 : Lancer le test, vérifier qu'il échoue**
+- [x] **Step 2 : Lancer le test, vérifier qu'il échoue**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/cibles-tactiles.test.ts`
 Expected: FAIL — `ENOENT: no such file or directory ... components/ui/choix.tsx`.
 
-- [ ] **Step 3 : Créer `Choix`**
+- [x] **Step 3 : Créer `Choix`**
 
 `apps/web/components/ui/choix.tsx` :
 
@@ -407,7 +405,7 @@ export function Choix({
 }
 ```
 
-- [ ] **Step 4 : Retoucher `Button`**
+- [x] **Step 4 : Retoucher `Button`**
 
 Dans `apps/web/components/ui/button.tsx`, remplacer le commentaire et l'appel `cva` par :
 
@@ -434,7 +432,7 @@ const buttonVariants = cva(
 )
 ```
 
-- [ ] **Step 5 : Retoucher `Input`, `Select`, `Textarea`, `Label`**
+- [x] **Step 5 : Retoucher `Input`, `Select`, `Textarea`, `Label`**
 
 `apps/web/components/ui/input.tsx` — remplacer le commentaire et la fonction :
 
@@ -499,7 +497,7 @@ et, dans son commentaire, la phrase sur `pr-9` par : « `pr-10` laisse la place 
         'flex items-center gap-2 text-[0.8125rem] leading-none font-semibold text-muted-foreground select-none',
 ```
 
-- [ ] **Step 6 : Lancer les tests**
+- [x] **Step 6 : Lancer les tests**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/cibles-tactiles.test.ts test/theme.test.ts`
 Expected: PASS, dont « choix porte h-11 ou min-h-11 ».
@@ -507,12 +505,12 @@ Expected: PASS, dont « choix porte h-11 ou min-h-11 ».
 Run: `task verif`
 Expected: PASS.
 
-- [ ] **Step 7 : Vérifier que les parcours tiennent encore**
+- [x] **Step 7 : Vérifier que les parcours tiennent encore**
 
 Run: `task test:e2e:frais`
 Expected: PASS. Rien n'utilise encore `Choix` ; les primitives ont seulement changé d'habillage.
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 
 ```bash
 git add apps/web/components/ui apps/web/test/cibles-tactiles.test.ts
@@ -538,7 +536,7 @@ git commit -m "feat(web): primitives retouchees et choix en segments natifs (#68
   - `lienOuvrirSaisie(chemin: string, params: URLSearchParams, mode: ModeSaisie): string`
   - `lienFermerSaisie(chemin: string, params: URLSearchParams): string`
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 Dans `apps/web/test/format.test.ts`, ajouter `veille` à l'import depuis `'../lib/format.js'`, puis :
 
@@ -609,12 +607,12 @@ describe('lienFermerSaisie', () => {
 })
 ```
 
-- [ ] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les tests, vérifier qu'ils échouent**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/format.test.ts test/url-saisie.test.ts`
 Expected: FAIL — `veille` n'est pas exportée, `../lib/url-saisie.js` introuvable.
 
-- [ ] **Step 3 : Implémenter `veille`**
+- [x] **Step 3 : Implémenter `veille`**
 
 Dans `apps/web/lib/format.ts`, après `aujourdhuiLocal()` :
 
@@ -635,7 +633,7 @@ export function veille(iso: string): string {
 }
 ```
 
-- [ ] **Step 4 : Implémenter `url-saisie.ts`**
+- [x] **Step 4 : Implémenter `url-saisie.ts`**
 
 `apps/web/lib/url-saisie.ts` :
 
@@ -672,12 +670,12 @@ export function lienFermerSaisie(chemin: string, params: URLSearchParams): strin
 }
 ```
 
-- [ ] **Step 5 : Lancer les tests, vérifier qu'ils passent**
+- [x] **Step 5 : Lancer les tests, vérifier qu'ils passent**
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/format.test.ts test/url-saisie.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 
 ```bash
 git add apps/web/lib/format.ts apps/web/lib/url-saisie.ts apps/web/test/format.test.ts apps/web/test/url-saisie.test.ts
@@ -706,12 +704,12 @@ git commit -m "feat(web): veille() et l'URL de la feuille de saisie (#68)"
 
 Il n'y a pas de test unitaire de composant dans ce dépôt : ces changements sont d'habillage, vérifiés par `task verif` (types, lint) puis par les parcours e2e, qui lisent `phrase-synthese`, `liste-depenses`, les boutons « Supprimer » et les parts.
 
-- [ ] **Step 1 : Vérifier que `BadgeType` n'a qu'un usage**
+- [x] **Step 1 : Vérifier que `BadgeType` n'a qu'un usage**
 
 Run: `grep -rn "BadgeType" apps/web/app apps/web/components`
 Expected: deux lignes seulement — la définition dans `components/badge.tsx` et l'import dans `components/ligne-depense.tsx`. S'il y en a d'autres, s'arrêter : la spec ne les a pas prévus.
 
-- [ ] **Step 2 : `Montant`**
+- [x] **Step 2 : `Montant`**
 
 Dans `apps/web/components/montant.tsx`, remplacer `NIVEAUX` :
 
@@ -735,7 +733,7 @@ const NIVEAUX = {
 
 Et dans le commentaire du composant, remplacer « La maquette du design system tinte le positif en emerald et le negatif en rouge ; » par « Une maquette tinte volontiers le positif et le negatif ; ».
 
-- [ ] **Step 3 : `Carte`**
+- [x] **Step 3 : `Carte`**
 
 Dans `apps/web/components/carte.tsx`, remplacer le JSX retourné :
 
@@ -755,7 +753,7 @@ Dans `apps/web/components/carte.tsx`, remplacer le JSX retourné :
 
 et dans son commentaire, « blanc, un filet, un rayon de 14px, une ombre a peine perceptible » par « blanc, sans bordure, un rayon de 20px, une ombre a peine perceptible : sur le fond chaud, le blanc suffit a la detacher ».
 
-- [ ] **Step 4 : `EntetePage`**
+- [x] **Step 4 : `EntetePage`**
 
 Remplacer tout `apps/web/components/entete-page.tsx` par :
 
@@ -811,7 +809,7 @@ export function EntetePage({
 }
 ```
 
-- [ ] **Step 5 : `Avatar` et `BadgeVersion`**
+- [x] **Step 5 : `Avatar` et `BadgeVersion`**
 
 Dans `apps/web/components/avatar.tsx`, remplacer la ligne `sombre ? … : …` par :
 
@@ -823,7 +821,7 @@ et dans le commentaire, « (le systeme est achromatique) » par « (aucune coule
 
 Dans `apps/web/components/badge.tsx`, supprimer `LIBELLES`, le commentaire de `BadgeType` et la fonction `BadgeType`, ainsi que l'import `type TypeDepense` devenu inutile. Il reste l'import de `cn` et `BadgeVersion`, dont les classes sont déjà `bg-muted text-muted-foreground` / `bg-marque-surface text-marque` depuis la Task 1.
 
-- [ ] **Step 6 : `LigneDepense`**
+- [x] **Step 6 : `LigneDepense`**
 
 Remplacer tout `apps/web/components/ligne-depense.tsx` par :
 
@@ -942,7 +940,7 @@ export function LigneDepense({
 }
 ```
 
-- [ ] **Step 7 : Vérifier**
+- [x] **Step 7 : Vérifier**
 
 Run: `task verif`
 Expected: PASS.
@@ -950,7 +948,7 @@ Expected: PASS.
 Run: `task test:e2e:frais`
 Expected: PASS. Le filtre (#28) lit toujours « payé par Liz » et `/07/2026` ; la comparaison des parts avant/après une version lit un texte stable.
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 
 ```bash
 git add apps/web/components
@@ -971,7 +969,7 @@ git commit -m "feat(web): montant, carte, entete et ligne de depense a la nouvel
 - Consumes: `EntetePage({ retour })`, `Montant({ testId })`, `Carte` (Task 4).
 - Produces: la route `/tableau-de-bord`, et les `data-testid` `solde-tableau-de-bord`, `solde-thomas`, `solde-liz`.
 
-- [ ] **Step 1 : Écrire les tests e2e qui échouent**
+- [x] **Step 1 : Écrire les tests e2e qui échouent**
 
 Dans `apps/web/e2e/parcours.spec.ts`, dans le test « le solde de reference du seed est a l ecran », ajouter à la fin :
 
@@ -998,12 +996,12 @@ Dans `apps/web/e2e/cibles-tactiles.spec.ts`, renommer le test existant « le tab
   })
 ```
 
-- [ ] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
 
 Run: `task test:e2e:frais`
 Expected: FAIL — `/tableau-de-bord` rend une 404 : `solde-tableau-de-bord` et le titre sont introuvables.
 
-- [ ] **Step 3 : Créer la page**
+- [x] **Step 3 : Créer la page**
 
 `apps/web/app/(app)/tableau-de-bord/page.tsx` :
 
@@ -1170,7 +1168,7 @@ function BilanPersonne({
 }
 ```
 
-- [ ] **Step 4 : Rafraîchir le tableau de bord après une écriture**
+- [x] **Step 4 : Rafraîchir le tableau de bord après une écriture**
 
 Dans `apps/web/actions/depenses.ts`, dans **chacune** des trois actions `ajouterDepenseAction`, `genererChargeFixeAction` et `supprimerDepenseAction`, ajouter après `revalidatePath('/depenses')` :
 
@@ -1180,7 +1178,7 @@ Dans `apps/web/actions/depenses.ts`, dans **chacune** des trois actions `ajouter
 
 et remplacer les deux commentaires « sur les deux ecrans » par « sur les trois ecrans ».
 
-- [ ] **Step 5 : Lancer les tests, vérifier qu'ils passent**
+- [x] **Step 5 : Lancer les tests, vérifier qu'ils passent**
 
 Run: `task verif`
 Expected: PASS — `architecture.test.ts` trouve la nouvelle page et son `exigerSession()`.
@@ -1188,7 +1186,7 @@ Expected: PASS — `architecture.test.ts` trouve la nouvelle page et son `exiger
 Run: `task test:e2e:frais`
 Expected: PASS — y compris `/tableau-de-bord ne scrolle pas horizontalement a 360px`, que `debordement.spec.ts` ajoute seul en lisant le disque.
 
-- [ ] **Step 6 : Commit**
+- [x] **Step 6 : Commit**
 
 ```bash
 git add "apps/web/app/(app)/tableau-de-bord" apps/web/actions/depenses.ts apps/web/e2e
@@ -1216,7 +1214,7 @@ git commit -m "feat(web): ecran tableau de bord, meme agregat que l'accueil (#68
   - `FeuilleSaisie({ personne: Personne })`, un `<dialog aria-label="Nouvelle dépense">`
   - Les noms stables pour les tests : radios « Thomas », « Liz », « Aujourd'hui », « Hier », « Autre date », « Courante », « Charge fixe », « Transfert », « Moitié », « Au prorata », « Personnalisée » ; boutons « Modifier », « Replier », « Fermer », « Ajouter la dépense » ; champs `montant`, `description`, `date`, `partThomas`, `partLiz`, `commentaire`.
 
-- [ ] **Step 1 : Réécrire les parcours de saisie (ils doivent échouer)**
+- [x] **Step 1 : Réécrire les parcours de saisie (ils doivent échouer)**
 
 Dans `apps/web/e2e/parcours.spec.ts` :
 
@@ -1386,12 +1384,12 @@ test("l'apercu des parts ne deborde pas", async ({ page }) => {
 })
 ```
 
-- [ ] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
 
 Run: `task test:e2e:frais`
 Expected: FAIL — aucun `dialog` « Nouvelle dépense » sur `/?saisie=1`.
 
-- [ ] **Step 3 : `preparerReglementAction`**
+- [x] **Step 3 : `preparerReglementAction`**
 
 Dans `apps/web/actions/depenses.ts`, compléter les imports :
 
@@ -1443,7 +1441,7 @@ export async function preparerReglementAction(): Promise<
 }
 ```
 
-- [ ] **Step 4 : Déplacer et réécrire `FormulaireDepense`**
+- [x] **Step 4 : Déplacer et réécrire `FormulaireDepense`**
 
 Run: `git mv "apps/web/app/(app)/depenses/formulaire-depense.tsx" apps/web/components/formulaire-depense.tsx`
 
@@ -1856,7 +1854,7 @@ export function FormulaireDepense({
 }
 ```
 
-- [ ] **Step 5 : Créer `FeuilleSaisie`**
+- [x] **Step 5 : Créer `FeuilleSaisie`**
 
 `apps/web/components/feuille-saisie.tsx` :
 
@@ -2000,7 +1998,7 @@ export function FeuilleSaisie({ personne }: { personne: Personne }) {
 }
 ```
 
-- [ ] **Step 6 : Monter la feuille dans le layout**
+- [x] **Step 6 : Monter la feuille dans le layout**
 
 Dans `apps/web/app/(app)/layout.tsx`, ajouter les imports :
 
@@ -2021,7 +2019,7 @@ import { FeuilleSaisie } from '@/components/feuille-saisie'
       </Suspense>
 ```
 
-- [ ] **Step 7 : Retirer la saisie de `/depenses`**
+- [x] **Step 7 : Retirer la saisie de `/depenses`**
 
 Dans `apps/web/app/(app)/depenses/page.tsx` :
 
@@ -2041,11 +2039,11 @@ Dans `apps/web/app/(app)/depenses/page.tsx` :
         </div>
 ```
 
-- [ ] **Step 8 : Pointer « Régler les comptes » vers la feuille**
+- [x] **Step 8 : Pointer « Régler les comptes » vers la feuille**
 
 Dans `apps/web/app/(app)/page.tsx`, remplacer `href="/depenses?regler=1"` par `href="/?saisie=regler"`. L'accueil est réécrit en Task 7 ; ce changement d'une ligne garde le parcours de règlement vert entre-temps.
 
-- [ ] **Step 9 : Lancer les tests, vérifier qu'ils passent**
+- [x] **Step 9 : Lancer les tests, vérifier qu'ils passent**
 
 Run: `task verif`
 Expected: PASS — `architecture.test.ts` trouve `preparerReglementAction` et son `exigerSession()`.
@@ -2053,7 +2051,7 @@ Expected: PASS — `architecture.test.ts` trouve `preparerReglementAction` et so
 Run: `task test:e2e:frais`
 Expected: PASS, dont les canaris (114 580), « ajouter une depense fait bouger le solde » (−2 500) dans les deux tailles, la suppression (+2 000 puis retour), et les deux règlements.
 
-- [ ] **Step 10 : Commit**
+- [x] **Step 10 : Commit**
 
 ```bash
 git add apps/web
@@ -2072,7 +2070,7 @@ git commit -m "feat(web): la saisie devient une feuille ouverte par l'URL (#68)"
 - Consumes: `LigneDepense`, `Montant` (Task 4) ; `lienOuvrirSaisie` (Task 3) ; la route `/tableau-de-bord` (Task 5).
 - Produces: `<h1 data-testid="phrase-synthese">`, liens « Régler les comptes », « Voir le détail », « Voir tout », `data-testid="dernieres-depenses"`.
 
-- [ ] **Step 1 : Adapter les tests (ils doivent échouer)**
+- [x] **Step 1 : Adapter les tests (ils doivent échouer)**
 
 Dans `apps/web/e2e/parcours.spec.ts`, test « le solde de reference du seed est a l ecran » :
 
@@ -2098,12 +2096,12 @@ Dans « ajouter une depense fait bouger le solde », après `await expect(page).
         await expect(page.getByTestId('dernieres-depenses')).toContainText(description)
 ```
 
-- [ ] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
 
 Run: `task test:e2e:frais`
 Expected: FAIL — pas de lien « Voir le détail », pas de `dernieres-depenses`.
 
-- [ ] **Step 3 : Réécrire l'accueil**
+- [x] **Step 3 : Réécrire l'accueil**
 
 Remplacer tout `apps/web/app/(app)/page.tsx` par :
 
@@ -2221,7 +2219,7 @@ export default async function Accueil() {
 }
 ```
 
-- [ ] **Step 4 : Lancer les tests, vérifier qu'ils passent**
+- [x] **Step 4 : Lancer les tests, vérifier qu'ils passent**
 
 Run: `task verif`
 Expected: PASS.
@@ -2229,7 +2227,7 @@ Expected: PASS.
 Run: `task test:e2e:frais`
 Expected: PASS — y compris « Vous êtes à jour » en texte exact après le règlement, et « l'accueil ne pose aucune cible sous 44px » (« Voir tout »).
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add "apps/web/app/(app)/page.tsx" apps/web/e2e/parcours.spec.ts
@@ -2251,7 +2249,7 @@ git commit -m "feat(web): accueil, le solde en titre et les dernieres depenses (
 - Consumes: `lienOuvrirSaisie` (Task 3) ; `FeuilleSaisie` montée (Task 6) ; `buttonVariants` (Task 2).
 - Produces: `MenuCompte({ personne, nom, habillage: 'entete' | 'rail' })` ; le lien « Ajouter une dépense » ; le lien « Configuration » dans la feuille de compte.
 
-- [ ] **Step 1 : Écrire les tests qui échouent**
+- [x] **Step 1 : Écrire les tests qui échouent**
 
 Dans `apps/web/e2e/parcours.spec.ts`, dans le `describe('sur un telephone')` :
 
@@ -2306,12 +2304,12 @@ Puis ajouter, avant « un signOut qui echoue ne fait pas croire a la sortie » :
     })
 ```
 
-- [ ] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
+- [x] **Step 2 : Lancer les e2e, vérifier qu'ils échouent**
 
 Run: `task test:e2e:frais`
 Expected: FAIL — la barre compte trois liens et un bouton « Compte » (pas trois liens), aucun lien « Ajouter une dépense », aucun lien « Configuration ».
 
-- [ ] **Step 3 : Réécrire `NavPrincipale`**
+- [x] **Step 3 : Réécrire `NavPrincipale`**
 
 Remplacer tout `apps/web/components/nav-principale.tsx` par :
 
@@ -2451,7 +2449,7 @@ function Lien({
 }
 ```
 
-- [ ] **Step 4 : `MenuCompte` à deux habillages, et le lien Configuration**
+- [x] **Step 4 : `MenuCompte` à deux habillages, et le lien Configuration**
 
 Dans `apps/web/components/menu-compte.tsx` :
 
@@ -2564,7 +2562,7 @@ export function MenuCompte({
 
 - dans les classes du `<dialog>`, remplacer `max-md:rounded-t-xl` par `max-md:rounded-t-3xl` et `md:rounded-xl` par `md:rounded-3xl`.
 
-- [ ] **Step 5 : `Marque`**
+- [x] **Step 5 : `Marque`**
 
 Remplacer le JSX retourné par `Marque` dans `apps/web/components/marque.tsx` :
 
@@ -2574,7 +2572,7 @@ Remplacer le JSX retourné par `Marque` dans `apps/web/components/marque.tsx` :
 
 et, dans le commentaire, « le monogramme et le nom » par « le nom, en Bricolage Grotesque ».
 
-- [ ] **Step 6 : Le layout**
+- [x] **Step 6 : Le layout**
 
 Dans `apps/web/app/(app)/layout.tsx` :
 
@@ -2602,7 +2600,7 @@ Dans `apps/web/app/(app)/layout.tsx` :
 - dans les classes de `<main>`, remplacer `pb-[calc(5rem+env(safe-area-inset-bottom))]` par `pb-[calc(6.5rem+env(safe-area-inset-bottom))]`, et le commentaire au-dessus par : « 6.5rem = la barre basse (76px) plus une respiration : sans cette reserve, la derniere ligne se cache dessous. `env()` y ajoute l'indicateur d'accueil des iPhone — nul partout ailleurs. » ;
 - dans le commentaire du composant, remplacer « une barre `fixed bottom-0` a quatre cellules » par « une barre `fixed bottom-0` a trois cases, et le menu du compte monte dans l'entete ».
 
-- [ ] **Step 7 : Lancer les tests, vérifier qu'ils passent**
+- [x] **Step 7 : Lancer les tests, vérifier qu'ils passent**
 
 Run: `task verif`
 Expected: PASS.
@@ -2610,7 +2608,7 @@ Expected: PASS.
 Run: `task test:e2e:frais`
 Expected: PASS — dont « le + ouvre la saisie… sans defiler », « la configuration s ouvre depuis le menu du compte », les deux tests de déconnexion, et « la feuille de compte ne pose aucune cible sous 44px » (12 px entre « Se déconnecter » et « Annuler »).
 
-- [ ] **Step 8 : Commit**
+- [x] **Step 8 : Commit**
 
 ```bash
 git add apps/web
@@ -2629,7 +2627,7 @@ git commit -m "feat(web): barre a trois cases et menu du compte dans l'entete (#
 - Consumes: tout ce qui précède.
 - Produces: rien de nouveau dans le code.
 
-- [ ] **Step 1 : Réécrire `DESIGN.md`**
+- [x] **Step 1 : Réécrire `DESIGN.md`**
 
 Remplacer tout `DESIGN.md` par :
 
@@ -2789,12 +2787,12 @@ les animations au-delà du `<dialog>` natif.
 assouplir `theme.test.ts` : c'est lui qui rend les règles ci-dessus vraies.
 ````
 
-- [ ] **Step 2 : Toute la suite, depuis une base neuve**
+- [x] **Step 2 : Toute la suite, depuis une base neuve**
 
 Run: `task verif && task test:integration && task test:e2e:frais`
 Expected: PASS sur les trois.
 
-- [ ] **Step 3 : Vérifier sur un vrai téléphone**
+- [x] **Step 3 : Vérifier sur un vrai téléphone**
 
 Pousser la branche, puis déployer la preview depuis la branche :
 
@@ -2814,14 +2812,14 @@ Une fois le run vert, sur un téléphone, ouvrir `https://preview.homebudget.tho
 
 Rappel : cette preview écrit dans la base de recette, pas en production — et la preview de `main` n'est plus en ligne tant qu'on ne l'a pas redéployée.
 
-- [ ] **Step 4 : Clore le plan**
+- [x] **Step 4 : Clore le plan**
 
 Dans ce fichier, cocher toutes les cases et supprimer la ligne `**État :** en cours`.
 
 Run: `pnpm --filter @homebudget/web exec vitest run test/plans.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5 : Commit**
+- [x] **Step 5 : Commit**
 
 ```bash
 git add DESIGN.md docs/superpowers/plans/2026-09-13-refonte-prune-abricot.md
