@@ -42,8 +42,9 @@ export default async function Depenses({
     n?: string | string[]
   }>
 }) {
-  // La personne de la session pre-remplit « paye par » : c'est la raison d'etre
-  // de la colonne `user.personne`, posee par le hook d'allowlist.
+  // La personne de la session pre-remplit le payeur de la generation mensuelle :
+  // c'est la raison d'etre de la colonne `user.personne`, posee par le hook
+  // d'allowlist.
   const session = await exigerSession()
   const { mois, payePar, n } = await searchParams
 
@@ -67,9 +68,9 @@ export default async function Depenses({
   }
   const filtre = filtres.mois !== undefined || filtres.payePar !== undefined
 
-  // Le solde est calcule sur TOUT, jamais sur ce qui est affiche — ni le filtre
-  // ni la borne ne le touchent. Un solde calcule sur les lignes visibles serait
-  // un reglement PARTIEL presente comme le solde.
+  // Le compte de TOUTES les depenses, sans filtre : c'est le « sur N » de
+  // l'entete sous un filtre, et le compte lui-meme sans filtre. Cet ecran
+  // n'affiche plus aucun solde (le reglement est la feuille de saisie).
   const global = await resumerDepenses()
   // Le compte de ce qui CORRESPOND, qui n'est pas le compte de ce qui s'affiche :
   // c'est lui qui dit s'il reste quelque chose derriere la borne.

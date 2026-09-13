@@ -28,6 +28,17 @@ type Reglement = { montant: Cents; payePar: Personne }
  */
 export function FeuilleSaisie({ personne }: { personne: Personne }) {
   const feuille = useRef<HTMLDialogElement>(null)
+  const appuiSurVoile = useRef(false)
+
+  // Le voile n'est pas un element : un clic dessus a pour cible le <dialog>. Seule
+  // la position le distingue d'un clic dans la feuille (sa barre de defilement).
+  function horsDeLaFeuille(evenement: { target: EventTarget; clientX: number; clientY: number }) {
+    const dialogue = feuille.current
+    if (!dialogue || evenement.target !== dialogue) return false
+    const b = dialogue.getBoundingClientRect()
+    const { clientX: x, clientY: y } = evenement
+    return x < b.left || x > b.right || y < b.top || y > b.bottom
+  }
   const router = useRouter()
   const chemin = usePathname()
   const params = useSearchParams()
@@ -80,8 +91,16 @@ export function FeuilleSaisie({ personne }: { personne: Personne }) {
       onClose={() => {
         if (mode) fermer()
       }}
+      // Ferme sur le voile seulement si l'appui ET le relachement tombent hors
+      // de la boite : une selection de texte relachee sur le voile, ou un clic
+      // sur la barre de defilement de la feuille (cible : le <dialog> lui-meme),
+      // ne doivent pas jeter la saisie.
+      onPointerDown={(evenement) => {
+        appuiSurVoile.current = horsDeLaFeuille(evenement)
+      }}
       onClick={(evenement) => {
-        if (evenement.target === feuille.current) feuille.current?.close()
+        if (appuiSurVoile.current && horsDeLaFeuille(evenement)) feuille.current?.close()
+        appuiSurVoile.current = false
       }}
       className={[
         'w-full border-0 bg-surface p-0 text-strong backdrop:bg-overlay',

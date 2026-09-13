@@ -22,8 +22,9 @@ const PLANCHER = 44
 // plancher du projet (voir `components/nav-principale.tsx`).
 test.use(TELEPHONE)
 
-// `input[type=hidden]` n'est pas une cible : il compense un `<select disabled>`
-// (voir `formulaire-depense.tsx`). Tout le reste est touche au pouce.
+// `input[type=hidden]` n'est pas une cible : il porte le `mode` d'un transfert,
+// qui ne monte aucun radio de repartition (voir `components/formulaire-depense.tsx`).
+// Tout le reste est touche au pouce.
 const CONTROLES = 'a[href], button, input:not([type="hidden"]), select, textarea'
 
 /** De quoi retrouver le fautif dans le markup sans lire un dump de HTML. */

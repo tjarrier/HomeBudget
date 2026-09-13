@@ -122,6 +122,8 @@ test.describe('parcours authentifies', () => {
         await page.goto('/?saisie=1')
         const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
         await expect(feuille).toBeVisible()
+        // Le montant recoit le focus a l'ouverture, pas le bouton « Fermer ».
+        await expect(page.getByLabel('Montant (€)')).toBeFocused()
 
         // La promesse de B3 : les champs a defaut correct sont replies.
         await expect(page.locator('input[name="date"]')).toBeHidden()
