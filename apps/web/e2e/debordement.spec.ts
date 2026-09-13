@@ -147,22 +147,22 @@ for (const route of ROUTES) {
   })
 }
 
-test('le formulaire de depense ne deborde pas, details deplies', async ({ page }) => {
-  await page.goto('/depenses')
-  // Replies, la moitie des champs est `hidden` : elle ne serait pas mesuree. On
-  // deplie, et on choisit le mode qui monte les deux champs de parts cote a cote
-  // — la seule rangee a deux colonnes du formulaire.
-  await page.getByRole('button', { name: 'Modifier' }).click()
-  await page.selectOption('select[name="mode"]', 'personnalise')
+test('la feuille de saisie ne deborde pas, details deplies', async ({ page }) => {
+  await page.goto('/?saisie=1')
+  const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+  // Deplie, avec la rangee a trois segments la plus longue (« Personnalisée »)
+  // et les deux champs de parts cote a cote.
+  await feuille.getByRole('button', { name: 'Modifier' }).click()
+  await feuille.getByRole('radio', { name: 'Autre date' }).check()
+  await feuille.getByRole('radio', { name: 'Personnalisée' }).check()
   await expect(page.getByLabel('Part Thomas (€)')).toBeVisible()
   expect(await debordements(page)).toEqual([])
 })
 
 test("l'apercu des parts ne deborde pas", async ({ page }) => {
-  await page.goto('/depenses')
+  await page.goto('/?saisie=1')
   // L'apercu n'existe qu'une fois montant ET description saisis (250ms de
-  // debounce, puis un aller-retour serveur). C'est le bloc le plus dense de
-  // l'ecran : deux montants, un libelle de version et un total de charges.
+  // debounce, puis un aller-retour serveur).
   await page.getByLabel('Montant (€)').fill('1 110,58')
   await page.getByLabel('Description').fill('Loyer + charges juillet')
   await expect(page.getByTestId('apercu-parts')).toBeVisible()

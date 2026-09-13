@@ -95,15 +95,15 @@ test.describe('ecrans authentifies', () => {
     expect(await trouverCiblesTropPetites(page)).toEqual([])
   })
 
-  test('le formulaire de depense ne pose aucune cible sous 44px, details deplies', async ({
-    page,
-  }) => {
-    await page.goto('/depenses')
-    // Replies, les champs sont `hidden` : ils ne seraient pas mesures. On
-    // deplie, et on choisit le mode qui monte les deux champs de parts — sinon
-    // quatre champs du formulaire echappent au filet.
-    await page.getByRole('button', { name: 'Modifier' }).click()
-    await page.selectOption('select[name="mode"]', 'personnalise')
+  test('la feuille de saisie ne pose aucune cible sous 44px, details deplies', async ({ page }) => {
+    await page.goto('/?saisie=1')
+    const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+    // Replies, les details sont `hidden` : ils ne seraient pas mesures. On
+    // deplie, on montre le champ date et les deux champs de parts — sinon cinq
+    // controles de la feuille echappent au filet.
+    await feuille.getByRole('button', { name: 'Modifier' }).click()
+    await feuille.getByRole('radio', { name: 'Autre date' }).check()
+    await feuille.getByRole('radio', { name: 'Personnalisée' }).check()
     await expect(page.getByLabel('Part Thomas (€)')).toBeVisible()
     expect(await trouverCiblesTropPetites(page)).toEqual([])
   })

@@ -6,13 +6,12 @@ import {
   ajouterDepenseAction,
   previsualiserPartsAction,
 } from '@/actions/depenses'
-import { Carte } from '@/components/carte'
 import { Montant } from '@/components/montant'
 import { Button } from '@/components/ui/button'
+import { Choix } from '@/components/ui/choix'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select } from '@/components/ui/select'
-import { aujourdhuiLocal, formaterDate, montantPourSaisie } from '@/lib/format'
+import { aujourdhuiLocal, formaterDate, montantPourSaisie, veille } from '@/lib/format'
 import {
   type Cents,
   type Personne,
@@ -36,9 +35,35 @@ const LIBELLE_MODE: Record<string, string> = {
   transfert: 'transfert',
 }
 
+const PAYEURS = [
+  { valeur: 'thomas', libelle: 'Thomas' },
+  { valeur: 'liz', libelle: 'Liz' },
+] as const
+
+const TYPES = [
+  { valeur: 'courante', libelle: 'Courante' },
+  { valeur: 'charge_fixe', libelle: 'Charge fixe' },
+  { valeur: 'transfert', libelle: 'Transfert' },
+] as const
+
+// Le mode « transfert » n'est jamais propose : il va avec le type « transfert »,
+// et avec lui seul (`lib/saisie.ts` refuse les combinaisons croisees).
+const MODES = [
+  { valeur: 'prorata', libelle: 'Au prorata' },
+  { valeur: 'moitie', libelle: 'Moitié' },
+  { valeur: 'personnalise', libelle: 'Personnalisée' },
+] as const
+
+const RACCOURCIS_DATE = [
+  { valeur: 'aujourdhui', libelle: "Aujourd'hui" },
+  { valeur: 'hier', libelle: 'Hier' },
+  { valeur: 'autre', libelle: 'Autre date' },
+] as const
+
 export function FormulaireDepense({
   personne,
   reglement,
+  onEnregistree,
 }: {
   personne: Personne
   /**
@@ -47,84 +72,91 @@ export function FormulaireDepense({
    * refuse qu'on passe `undefined` a un prop simplement optionnel.
    */
   reglement?: { montant: Cents; payePar: Personne } | undefined
+  /** Appelee apres une ecriture reussie : la feuille se ferme. Doit etre stable. */
+  onEnregistree: () => void
 }) {
   const [etat, action, enCours] = useActionState(ajouterDepenseAction, null)
 
   // Un reglement est un TRANSFERT : `type` et `mode` valent tous deux
-  // `transfert`, et `normaliser()` refuse toute combinaison croisee. La
-  // constante evite de repeter le ternaire sur les deux etats.
+  // `transfert`, et `normaliser()` refuse toute combinaison croisee.
   const typeInitial: TypeDepense = reglement ? 'transfert' : 'courante'
 
   const [date, setDate] = useState(aujourdhuiLocal)
   const [description, setDescription] = useState(reglement ? 'Règlement des comptes' : '')
   const [montant, setMontant] = useState(reglement ? montantPourSaisie(reglement.montant) : '')
   // Pre-rempli avec la personne connectee : dans neuf cas sur dix, on saisit
-  // ce qu'on vient de payer soi-meme. Le champ reste modifiable. Un reglement
-  // impose le DEBITEUR : c'est lui qui verse, et l'inverser doublerait la
-  // dette au lieu de l'annuler (CLAUDE.md, « Le piege qui coute de l'argent »).
+  // ce qu'on vient de payer soi-meme. Un reglement impose le DEBITEUR : c'est
+  // lui qui verse, et l'inverser doublerait la dette au lieu de l'annuler
+  // (CLAUDE.md, « Le piege qui coute de l'argent »).
   const [payePar, setPayePar] = useState<string>(reglement?.payePar ?? personne)
   const [type, setType] = useState<TypeDepense>(typeInitial)
-  // Le mode est PRE-SELECTIONNE d'apres le type, et reste modifiable.
   const [mode, setMode] = useState<string>(modeParDefaut(typeInitial))
   const [partThomas, setPartThomas] = useState('')
   const [partLiz, setPartLiz] = useState('')
+  const [commentaire, setCommentaire] = useState('')
 
   // B3 : les champs a defaut correct sont replies par defaut. Ils restent
-  // MONTES (masques par `hidden`, pas demontes) : un <input>/<select> hidden
-  // mais non disabled est serialise normalement a la soumission. Les demonter
-  // enverrait la depense sans date ni payeur.
+  // MONTES (masques par `hidden`, pas demontes) : un champ hidden mais non
+  // disabled est serialise normalement a la soumission. Les demonter enverrait
+  // la depense sans date ni type.
   const [detailsOuverts, setDetailsOuverts] = useState(false)
+  // « Autre date » choisi explicitement : le champ reste visible meme si la date
+  // tapee retombe sur aujourd'hui ou hier.
+  const [autreDate, setAutreDate] = useState(false)
 
   const [apercu, setApercu] = useState<Apercu | null>(null)
   const [messageApercu, setMessageApercu] = useState<string | null>(null)
 
-  function changerType(nouveau: TypeDepense) {
-    setType(nouveau)
-    setMode(modeParDefaut(nouveau))
+  const aujourdhui = aujourdhuiLocal()
+  const raccourciDate = autreDate
+    ? 'autre'
+    : date === aujourdhui
+      ? 'aujourdhui'
+      : date === veille(aujourdhui)
+        ? 'hier'
+        : 'autre'
+
+  function choisirRaccourciDate(valeur: string) {
+    if (valeur === 'autre') {
+      setAutreDate(true)
+      return
+    }
+    setAutreDate(false)
+    setDate(valeur === 'hier' ? veille(aujourdhuiLocal()) : aujourdhuiLocal())
+  }
+
+  function changerType(nouveau: string) {
+    setType(nouveau as TypeDepense)
+    setMode(modeParDefaut(nouveau as TypeDepense))
   }
 
   // Un <input type="date"> vide renvoie '' : replier rafficherait alors un
   // resume qui appelle formaterDate('') (throw, cf. lib/format.ts) et laisserait
   // un champ `required` masque bloquer la soumission sans focus possible. On
-  // retablit le defaut avant de replier — c'est justement la valeur que le
-  // resume annonce (« Aujourd'hui »).
+  // retablit le defaut avant de replier.
   //
   // Meme famille de piege pour une date HORS BORNE (issue #29) : `hidden` ne
-  // rend pas un champ valide, seulement invisible et infocalisable. Une date
-  // saisie au clavier au-dela de l'horizon survivrait au repli, et le
-  // navigateur refuserait alors la soumission sans rien afficher — bouton
-  // "Ajouter la depense" apparemment inerte. On refuse donc de replier tant
-  // que la date depasse la borne, pour que l'erreur reste visible et focalisable.
+  // rend pas un champ valide, seulement invisible et infocalisable. On refuse
+  // donc de replier tant que la date depasse la borne, pour que l'erreur reste
+  // visible et focalisable.
   function replier() {
     if (!date) setDate(aujourdhuiLocal())
     if (date > dateMaxDepense(aujourdhuiLocal())) return
     setDetailsOuverts(false)
   }
 
-  // La ligne de resume DIT TOUJOURS LA VERITE sur ce qui sera enregistre :
-  // rien n'est derive d'un contexte fige, tout vient de l'etat courant.
+  // La ligne de resume DIT TOUJOURS LA VERITE sur ce qui sera enregistre. Le
+  // payeur n'y figure plus : il est visible sans deplier.
   function construireResume(): string {
     const dateTxt = date === aujourdhuiLocal() ? "Aujourd'hui" : formaterDate(date)
-    const payeurTxt = `payé par ${payePar === 'thomas' ? 'Thomas' : 'Liz'}`
     // Cas transfert : type et mode valent tous deux `transfert` — on n'affiche
     // qu'une fois `transfert`, jamais « transfert, transfert ».
     const typeMode =
       type === 'transfert' ? 'transfert' : `${LIBELLE_TYPE[type]}, ${LIBELLE_MODE[mode] ?? mode}`
-    return `${dateTxt} · ${payeurTxt} · ${typeMode}`
+    return `${dateTxt} · ${typeMode}`
   }
 
-  // `type` et `mode` ne sont PAS independants : le mode « transfert » va avec le
-  // type « transfert », et avec lui seul. Le serveur refuse desormais les
-  // combinaisons croisees (`lib/saisie.ts`) ; l'UI ne doit donc pas les proposer,
-  // sous peine de faire echouer un choix qu'elle offrait elle-meme.
   const estTransfert = type === 'transfert'
-  const modesProposes = estTransfert
-    ? ([['transfert', 'Transfert']] as const)
-    : ([
-        ['prorata', 'Au prorata des revenus'],
-        ['moitie', 'Moitié-moitié'],
-        ['personnalise', 'Parts personnalisées'],
-      ] as const)
 
   // Apercu en direct : chaque changement significatif redemande au SERVEUR de
   // rejouer le calcul. Rien de la config ne descend dans le navigateur.
@@ -162,28 +194,23 @@ export function FormulaireDepense({
     }
   }, [date, description, montant, payePar, type, mode, partThomas, partLiz])
 
-  // Un resultat de soumission ecrase l'erreur d'apercu : on ne veut jamais
-  // deux messages rouges empiles qui se contredisent.
+  // Un resultat de soumission ecrase l'erreur d'apercu : jamais deux messages
+  // rouges empiles qui se contredisent.
   useEffect(() => {
     if (etat) setMessageApercu(null)
   }, [etat])
 
-  // Le formulaire n'est jamais remonte apres un succes (meme position dans
-  // l'arbre, pas de `key`) : les champs CONTROLES survivent tels quels a la
-  // soumission, le vidage automatique de React 19 ne s'applique pas ici.
-  // Vider `montant` desarme un second clic — le champ est `required`, le
-  // navigateur refuse une soumission vide — et fait disparaitre l'apercu
-  // (effet ci-dessus, des que `montant` ou `description` est vide) : c'est
-  // le seul retour visuel de la reussite, pas un effet de bord. Sans ce
-  // vidage, un second clic redouble un reglement deja effectue : les parts
-  // sont figees pour toujours (snapshot on write) et rien ne permet de
-  // corriger ou d'annuler tant que l'issue #40 n'est pas livree.
+  // Apres une ecriture reussie, la feuille se ferme et ce formulaire est demonte :
+  // c'est ce qui desarme un second clic. Vider `montant` en plus couvre les
+  // quelques millisecondes entre la reponse et la navigation — le champ est
+  // `required`, le navigateur refuse une soumission vide.
   useEffect(() => {
     if (etat?.ok) {
       setMontant('')
       setDescription('')
+      onEnregistree()
     }
-  }, [etat])
+  }, [etat, onEnregistree])
 
   function soumettreDepense(form: FormData) {
     posthog.capture('expense_submission_started', {
@@ -194,9 +221,9 @@ export function FormulaireDepense({
   }
 
   return (
-    <Carte titre="Ajouter une dépense">
-      <form action={soumettreDepense} className="flex flex-col gap-3.5">
-        <div className="flex flex-col gap-1.5">
+    <form action={soumettreDepense} className="flex flex-col">
+      <div className="flex flex-col gap-4 px-5">
+        <div className="flex flex-col items-center gap-1">
           <Label htmlFor="montant">Montant (€)</Label>
           <Input
             id="montant"
@@ -204,9 +231,10 @@ export function FormulaireDepense({
             required
             autoFocus
             inputMode="decimal"
-            placeholder="1 110,58"
+            placeholder="0,00"
             value={montant}
             onChange={(e) => setMontant(e.target.value)}
+            className="h-auto bg-transparent py-1 text-center font-display text-[3.625rem] leading-[1.1] font-semibold tracking-[-0.035em]"
           />
         </div>
 
@@ -216,33 +244,46 @@ export function FormulaireDepense({
             id="description"
             name="description"
             required
-            placeholder="Loyer + charges juillet"
+            placeholder="Courses, loyer, restaurant…"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
+        <Choix
+          legende="Payé par"
+          name="payePar"
+          options={PAYEURS}
+          valeur={payePar}
+          onChange={setPayePar}
+        />
+
         {!detailsOuverts && (
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">{construireResume()}</p>
+            <p className="text-[0.84375rem] text-muted-foreground">{construireResume()}</p>
             <Button
               type="button"
               variant="discret"
               aria-expanded={false}
               onClick={() => setDetailsOuverts(true)}
+              className="-mr-3 px-3"
             >
               Modifier
             </Button>
           </div>
         )}
 
-        {/* Champs a defaut correct : MONTES en permanence, masques par `hidden`
-            quand replies. Voir CLAUDE.md — un select hidden reste soumis, un
-            select disabled ne l'est pas. */}
-        <div hidden={!detailsOuverts} className="flex flex-col gap-3.5">
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="date">Date</Label>
+        <div hidden={!detailsOuverts} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Choix
+              legende="Date"
+              name="raccourciDate"
+              options={RACCOURCIS_DATE}
+              valeur={raccourciDate}
+              onChange={choisirRaccourciDate}
+            />
+            <div hidden={raccourciDate !== 'autre'} className="flex flex-col gap-1.5">
+              <Label htmlFor="date">Date de la dépense</Label>
               <Input
                 id="date"
                 name="date"
@@ -251,76 +292,42 @@ export function FormulaireDepense({
                 // Le selecteur natif grise l'au-dela, et le navigateur refuse la
                 // soumission sans aller-retour serveur. Ce n'est qu'un confort :
                 // le serveur reste la seule autorite (`verifierDatePlausible`,
-                // appelee par `calculerPartsPourSaisie`). La regle n'est pas
-                // dupliquee — c'est la MEME fonction du domaine des deux cotes,
-                // seule la lecture de l'horloge differe : `aujourdhuiLocal()` ici en
-                // LOCAL, `aujourdhuiIso()` cote serveur en UTC. Entre 0 h et 2 h
-                // a Paris, la borne du navigateur peut donc valoir un jour de
-                // plus que celle du serveur, qui refusera alors une date que le
-                // selecteur avait laisse choisir. Connu et sans danger dans ce
-                // sens : rien de faux ne s'ecrit, l'apercu explique le refus.
+                // appelee par `calculerPartsPourSaisie`).
                 max={dateMaxDepense(aujourdhuiLocal())}
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  setAutreDate(true)
+                  setDate(e.target.value)
+                }}
               />
             </div>
-            <div className="flex flex-1 flex-col gap-1.5">
-              <Label htmlFor="payePar">Payé par</Label>
-              <Select
-                id="payePar"
-                name="payePar"
-                value={payePar}
-                onChange={(e) => setPayePar(e.target.value)}
-              >
-                <option value="thomas">Thomas</option>
-                <option value="liz">Liz</option>
-              </Select>
-            </div>
           </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="type">Type</Label>
-            <Select
-              id="type"
-              name="type"
-              value={type}
-              onChange={(e) => changerType(e.target.value as TypeDepense)}
-            >
-              <option value="courante">Dépense courante</option>
-              <option value="charge_fixe">Charge fixe</option>
-              <option value="transfert">Transfert / remboursement</option>
-            </Select>
-          </div>
+          <Choix legende="Type" name="type" options={TYPES} valeur={type} onChange={changerType} />
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="mode">Répartition</Label>
-            <Select
-              id="mode"
-              name="mode"
-              value={mode}
-              disabled={estTransfert}
-              onChange={(e) => setMode(e.target.value)}
-            >
-              {modesProposes.map(([valeur, libelle]) => (
-                <option key={valeur} value={valeur}>
-                  {libelle}
-                </option>
-              ))}
-            </Select>
-            {/* Un <select disabled> n'est pas soumis par le navigateur : sans ce
-                champ cache, `mode` arriverait vide au serveur. */}
-            {estTransfert && <input type="hidden" name="mode" value="transfert" />}
-            {estTransfert && (
-              <span className="text-xs text-muted-foreground">
+          {estTransfert ? (
+            <div className="flex flex-col gap-1.5">
+              {/* Aucun radio de mode n'est monte pour un transfert : ce champ
+                  cache est la seule source de `mode`. */}
+              <input type="hidden" name="mode" value="transfert" />
+              <p className="text-xs text-muted-foreground">
                 Un transfert ne se répartit pas : la totalité est portée au crédit de celui qui
                 verse.
-              </span>
-            )}
-          </div>
+              </p>
+            </div>
+          ) : (
+            <Choix
+              legende="Répartition"
+              name="mode"
+              options={MODES}
+              valeur={mode}
+              onChange={setMode}
+            />
+          )}
 
           {mode === 'personnalise' && (
-            <div className="flex gap-3">
-              <div className="flex flex-1 flex-col gap-1.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex min-w-0 flex-col gap-1.5">
                 <Label htmlFor="partThomas">Part Thomas (€)</Label>
                 <Input
                   id="partThomas"
@@ -330,7 +337,7 @@ export function FormulaireDepense({
                   onChange={(e) => setPartThomas(e.target.value)}
                 />
               </div>
-              <div className="flex flex-1 flex-col gap-1.5">
+              <div className="flex min-w-0 flex-col gap-1.5">
                 <Label htmlFor="partLiz">Part Liz (€)</Label>
                 <Input
                   id="partLiz"
@@ -345,35 +352,45 @@ export function FormulaireDepense({
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="commentaire">Commentaire (facultatif)</Label>
-            <Input id="commentaire" name="commentaire" />
+            <Input
+              id="commentaire"
+              name="commentaire"
+              value={commentaire}
+              onChange={(e) => setCommentaire(e.target.value)}
+            />
           </div>
 
           <div>
-            <Button type="button" variant="discret" aria-expanded={true} onClick={replier}>
+            <Button
+              type="button"
+              variant="discret"
+              aria-expanded={true}
+              onClick={replier}
+              className="-ml-3 px-3"
+            >
               Replier
             </Button>
           </div>
         </div>
+      </div>
 
+      {/* Le pied reste colle en bas de la feuille quand elle defile (details
+          deplies) : l'apercu et la validation ne sortent jamais de l'ecran. */}
+      <div className="sticky bottom-0 mt-4 flex flex-col gap-3 border-t border-subtle bg-surface px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
         {/* L'apercu est calcule par la MEME fonction que l'ecriture, cote
             serveur. Un apercu qui divergerait de ce qui sera enregistre serait
             un mensonge affiche a l'utilisateur. */}
         {apercu && (
-          <div
-            data-testid="apercu-parts"
-            className="rounded-lg border border-subtle bg-muted px-3.5 py-3"
-          >
-            <p className="text-sm font-semibold">Aperçu des parts</p>
-            <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
-              <span>
+          <div data-testid="apercu-parts" className="flex flex-col gap-0.5">
+            <p className="flex flex-wrap items-baseline justify-between gap-x-3 text-[0.8125rem]">
+              <span className="font-semibold text-muted-foreground">Aperçu des parts</span>
+              <span className="font-bold">
                 Thomas{' '}
-                <Montant cents={apercu.parts.thomas} niveau="courant" testId="apercu-thomas" />
-              </span>
-              <span>
+                <Montant cents={apercu.parts.thomas} niveau="courant" testId="apercu-thomas" /> ·
                 Liz <Montant cents={apercu.parts.liz} niveau="courant" testId="apercu-liz" />
               </span>
             </p>
-            <p className="mt-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
+            <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
               Config en vigueur au {formaterDate(apercu.versionDateDebut)} : {apercu.versionLibelle}{' '}
               — charges communes <Montant cents={apercu.totalChargesCommunes} niveau="discret" />
             </p>
@@ -391,10 +408,14 @@ export function FormulaireDepense({
           </p>
         )}
 
-        <Button type="submit" disabled={enCours} className="w-full">
+        <Button
+          type="submit"
+          disabled={enCours}
+          className="h-[3.375rem] w-full rounded-[1rem] text-base"
+        >
           {enCours ? 'Enregistrement…' : 'Ajouter la dépense'}
         </Button>
-      </form>
-    </Carte>
+      </div>
+    </form>
   )
 }

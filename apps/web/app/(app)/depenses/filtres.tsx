@@ -36,9 +36,8 @@ export function FiltresDepenses({
   const params = useSearchParams()
 
   const appliquer = (cle: string, valeur: string) => {
-    // On repart des parametres COURANTS : `?regler=1` (#26) survit a un
-    // changement de filtre, sinon filtrer viderait le formulaire de reglement
-    // deja pre-rempli.
+    // On repart des parametres COURANTS : `n` et `saisie` survivent a un
+    // changement de filtre.
     const suivants = new URLSearchParams(params)
     if (valeur) suivants.set(cle, valeur)
     else suivants.delete(cle)

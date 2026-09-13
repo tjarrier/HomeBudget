@@ -7,9 +7,16 @@ import {
   calculerPartsPourSaisie,
   genererChargeFixeDuMois,
   listerVersions,
+  resumerDepenses,
   supprimerDepense,
 } from '@homebudget/db'
-import { type Cents, type Parts, totalChargesCommunes } from '@homebudget/domain'
+import {
+  type Cents,
+  type Parts,
+  type Personne,
+  synthese,
+  totalChargesCommunes,
+} from '@homebudget/domain'
 import { revalidatePath } from 'next/cache'
 import { type Resultat, enEchec } from './resultat'
 
@@ -71,6 +78,32 @@ export async function ajouterDepenseAction(
     revalidatePath('/depenses')
     revalidatePath('/tableau-de-bord')
     return { ok: true, valeur: null }
+  } catch (e) {
+    return enEchec(e)
+  }
+}
+
+/**
+ * Ce que « Regler les comptes » pre-remplit : le solde EXACT et la personne qui
+ * le doit. `null` quand il n'y a rien a regler.
+ *
+ * Une action et non une lecture de page : la feuille de saisie est montee dans
+ * le layout, qui ne recoit pas `searchParams`. Le calcul n'est pas duplique —
+ * c'est le meme `synthese()` que l'accueil, sur le meme agregat, jamais un
+ * montant venu du navigateur.
+ *
+ * `exigerSession()` en PREMIERE ligne : elle expose le solde.
+ */
+export async function preparerReglementAction(): Promise<
+  Resultat<{ montant: Cents; payePar: Personne } | null>
+> {
+  await exigerSession()
+  try {
+    const s = synthese(await resumerDepenses())
+    return {
+      ok: true,
+      valeur: s.etat === 'dette' ? { montant: s.montant, payePar: s.debiteur } : null,
+    }
   } catch (e) {
     return enEchec(e)
   }

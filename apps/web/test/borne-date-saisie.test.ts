@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest'
  */
 function source(): string {
   const brut = readFileSync(
-    fileURLToPath(new URL('../app/(app)/depenses/formulaire-depense.tsx', import.meta.url)),
+    fileURLToPath(new URL('../components/formulaire-depense.tsx', import.meta.url)),
     'utf-8',
   )
   // Sans depouiller les commentaires, une note qui citerait `dateMaxDepense`

@@ -101,7 +101,7 @@ export default async function TableauDeBord() {
           transfert de zero. */}
       {s.etat === 'dette' && (
         <Link
-          href="/depenses?regler=1"
+          href="/?saisie=regler"
           className={buttonVariants({ variant: 'discret', className: 'mt-5' })}
         >
           Régler les comptes

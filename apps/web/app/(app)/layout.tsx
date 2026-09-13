@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, Suspense } from 'react'
 
+import { FeuilleSaisie } from '@/components/feuille-saisie'
 import { Marque } from '@/components/marque'
 import { MenuCompte } from '@/components/menu-compte'
 import { NavPrincipale } from '@/components/nav-principale'
@@ -64,6 +65,12 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
+      {/* `useSearchParams()` dans un composant client : la frontiere Suspense
+          est ce que Next exige pour ne pas basculer tout le layout en rendu
+          client. Le groupe (app) est dynamique de toute facon (cookies). */}
+      <Suspense fallback={null}>
+        <FeuilleSaisie personne={session.personne} />
+      </Suspense>
     </>
   )
 }
