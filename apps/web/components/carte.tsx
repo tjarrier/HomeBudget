@@ -3,8 +3,9 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * La surface de base du produit : blanc, un filet, un rayon de 14px, une ombre
- * a peine perceptible. C'est le conteneur que la maquette pose autour de
+ * La surface de base du produit : blanc, sans bordure, un rayon de 20px, une
+ * ombre a peine perceptible : sur le fond chaud, le blanc suffit a la
+ * detacher. C'est le conteneur que la maquette pose autour de
  * CHAQUE bloc de contenu — a la seule exception du bandeau du solde, qui est
  * la surface sombre (voir `BandeauSolde`).
  *
@@ -24,11 +25,13 @@ export function Carte({
   className?: string
 }) {
   return (
-    <section className={cn('rounded-xl border border-subtle bg-surface p-5 shadow-xs', className)}>
+    <section className={cn('rounded-xl bg-surface p-5 shadow-xs', className)}>
       {titre ? (
         <div className="mb-3 flex items-baseline justify-between gap-3">
-          <h2 className="text-[0.9375rem] font-semibold">{titre}</h2>
-          {aside ? <span className="text-xs text-muted-foreground">{aside}</span> : null}
+          <h2 className="font-display text-[1.1875rem] font-semibold tracking-[-0.01em]">
+            {titre}
+          </h2>
+          {aside ? <span className="text-[0.8125rem] text-muted-foreground">{aside}</span> : null}
         </div>
       ) : null}
       {children}
