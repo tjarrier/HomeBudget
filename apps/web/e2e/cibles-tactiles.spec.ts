@@ -22,8 +22,9 @@ const PLANCHER = 44
 // plancher du projet (voir `components/nav-principale.tsx`).
 test.use(TELEPHONE)
 
-// `input[type=hidden]` n'est pas une cible : il compense un `<select disabled>`
-// (voir `formulaire-depense.tsx`). Tout le reste est touche au pouce.
+// `input[type=hidden]` n'est pas une cible : il porte le `mode` d'un transfert,
+// qui ne monte aucun radio de repartition (voir `components/formulaire-depense.tsx`).
+// Tout le reste est touche au pouce.
 const CONTROLES = 'a[href], button, input:not([type="hidden"]), select, textarea'
 
 /** De quoi retrouver le fautif dans le markup sans lire un dump de HTML. */
@@ -77,24 +78,33 @@ test.describe('ecrans authentifies', () => {
     ])
   })
 
-  test('le tableau de bord ne pose aucune cible sous 44px', async ({ page }) => {
+  test("l'accueil ne pose aucune cible sous 44px", async ({ page }) => {
     await page.goto('/')
-    // Le lien « Voir tout → » de la carte des depenses recentes est le seul
-    // controle de l'app qui ne soit ni un bouton ni un champ : c'est celui que
-    // sa taille de texte (12px) rendait intouchable.
+    // Le lien « Voir tout » des dernieres depenses est un lien de texte, sans
+    // habillage de bouton : c'est celui que sa taille de texte (12px) rendait
+    // intouchable.
     await expect(page.getByRole('link', { name: /Voir tout/ })).toBeVisible()
     expect(await trouverCiblesTropPetites(page)).toEqual([])
   })
 
-  test('le formulaire de depense ne pose aucune cible sous 44px, details deplies', async ({
-    page,
-  }) => {
-    await page.goto('/depenses')
-    // Replies, les champs sont `hidden` : ils ne seraient pas mesures. On
-    // deplie, et on choisit le mode qui monte les deux champs de parts — sinon
-    // quatre champs du formulaire echappent au filet.
-    await page.getByRole('button', { name: 'Modifier' }).click()
-    await page.selectOption('select[name="mode"]', 'personnalise')
+  test('le tableau de bord ne pose aucune cible sous 44px', async ({ page }) => {
+    await page.goto('/tableau-de-bord')
+    await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible()
+    // La fleche de retour est le seul controle de l'ecran : une icone de 22px,
+    // dont la cible doit pourtant tenir 44px.
+    await expect(page.getByRole('link', { name: "Retour à l'accueil" })).toBeVisible()
+    expect(await trouverCiblesTropPetites(page)).toEqual([])
+  })
+
+  test('la feuille de saisie ne pose aucune cible sous 44px, details deplies', async ({ page }) => {
+    await page.goto('/?saisie=1')
+    const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+    // Replies, les details sont `hidden` : ils ne seraient pas mesures. On
+    // deplie, on montre le champ date et les deux champs de parts — sinon cinq
+    // controles de la feuille echappent au filet.
+    await feuille.getByRole('button', { name: 'Modifier' }).click()
+    await feuille.getByRole('radio', { name: 'Autre date' }).check()
+    await feuille.getByRole('radio', { name: 'Personnalisée' }).check()
     await expect(page.getByLabel('Part Thomas (€)')).toBeVisible()
     expect(await trouverCiblesTropPetites(page)).toEqual([])
   })

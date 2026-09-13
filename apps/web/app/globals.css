@@ -3,26 +3,30 @@
 @import "shadcn/tailwind.css";
 
 /* --------------------------------------------------------------------------
-   Direction visuelle : la maquette `HomeBudget.dc.html` du design system
-   (projet Claude Design « Intégration Claude Code »).
+   Direction visuelle « Prune et abricot » : spec
+   docs/superpowers/specs/2026-09-13-refonte-prune-abricot-design.md, maquette
+   « Refonte HomeBudget ».
 
-   L'app est ACHROMATIQUE : une echelle slate, et deux accents seulement —
-   emerald pour la reassurance, rouge pour l'erreur de formulaire. Aucune autre
-   teinte n'existe. Tout passe par un token semantique : `apps/web/test/
-   theme.test.ts` interdit toute classe de palette Tailwind ecrite en dur, de
-   sorte que changer une valeur ici se repercute partout, sans exception.
+   Deux couleurs d'identite. Le PRUNE porte la marque (bandeau du solde, liens,
+   icones), l'ABRICOT porte l'action principale. Aucune des deux ne code un
+   sens : le bandeau est prune quel que soit le sens de la dette. Tout passe
+   par un token semantique : `apps/web/test/theme.test.ts` interdit toute classe
+   de palette Tailwind ecrite en dur.
+
+   Chaque contraste cite ici a ete CALCULE (formule WCAG 2.x), pas estime.
    -------------------------------------------------------------------------- */
 
 @theme inline {
-  /* Le produit rend dans la pile systeme. Inter la porte, auto-hebergee par
-     next/font : meme dessin sur les trois OS, aucune requete au runtime. */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+  /* Manrope porte le texte, Bricolage Grotesque le solde et les titres. Les deux
+     sont auto-hebergees par next/font (app/layout.tsx). */
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   /* Mono : la zone de saisie des charges et les <code>, rien d'autre. */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Tokens semantiques -> utilitaires Tailwind (`bg-surface`, `text-faint`…).
-     Ce sont les SEULS noms de couleur que le markup a le droit d'ecrire. */
+  /* Tokens semantiques -> utilitaires Tailwind. Ce sont les SEULS noms de
+     couleur que le markup a le droit d'ecrire. */
   --color-app: var(--app-bg);
   --color-surface: var(--surface-card);
   --color-emphasis: var(--surface-emphasis);
@@ -30,10 +34,9 @@
   --color-strong: var(--text-strong);
   --color-body: var(--text-body);
   --color-muted-foreground: var(--text-muted);
-  --color-faint: var(--text-faint);
   --color-subtle: var(--border-subtle);
-  --color-positive: var(--positive-text);
-  --color-positive-surface: var(--positive-surface);
+  --color-marque: var(--marque);
+  --color-marque-surface: var(--marque-surface);
   --color-overlay: var(--overlay);
 
   --color-ring: var(--ring);
@@ -46,65 +49,58 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
 
-  --radius-sm: calc(var(--radius) * 0.6); /* 6px */
-  --radius-md: calc(var(--radius) * 0.8); /* 8px */
-  --radius-lg: var(--radius); /* 10px — champs, boutons, selects */
-  --radius-xl: calc(var(--radius) * 1.4); /* 14px — cartes et bandeaux */
+  --radius-sm: calc(var(--radius) * 0.6); /* ~8px */
+  --radius-md: calc(var(--radius) * 0.8); /* ~11px — pastilles d'icone */
+  --radius-lg: var(--radius); /* 14px — champs, choix, boutons */
+  --radius-xl: 1.25rem; /* 20px — cartes */
+  --radius-2xl: 1.5rem; /* 24px — bandeau du solde */
+  --radius-3xl: 1.75rem; /* 28px — feuille de saisie */
 
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-xs: 0 1px 2px 0 rgb(31 26 36 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(31 26 36 / 0.1), 0 1px 2px -1px rgb(31 26 36 / 0.1);
+  /* Le « + » de la barre basse, et lui seul : il deborde au-dessus de la barre. */
+  --shadow-action: 0 6px 16px rgb(31 26 36 / 0.18);
 }
 
 :root {
-  /* ---- Echelle slate : le neutre du produit ---- */
-  --slate-50: #f8fafc;
-  --slate-100: #f1f5f9;
-  --slate-200: #e2e8f0;
-  --slate-300: #cbd5e1;
-  --slate-400: #94a3b8;
-  --slate-500: #64748b;
-  --slate-600: #475569;
-  --slate-700: #334155;
-  --slate-800: #1e293b;
-  --slate-900: #0f172a;
-
-  /* ---- Aliases semantiques : ce que le markup utilise ---- */
-  --app-bg: var(--slate-50);
+  --app-bg: #f7f4ef;
   --surface-card: #ffffff;
-  --surface-emphasis: var(--slate-900); /* le bandeau du solde, et lui seul */
+  /* PRUNE : le bandeau du solde, et lui seul. Blanc dessus : 13,79:1 ; blanc a
+     72 % : 7,87:1 ; blanc a 60 % : 5,95:1. */
+  --surface-emphasis: #3d2344;
   --on-emphasis: #ffffff;
-  --text-strong: var(--slate-900);
-  --text-body: var(--slate-700);
-  --text-muted: var(--slate-500);
-  --text-faint: var(--slate-400);
-  --border-subtle: var(--slate-200); /* FILET entre deux surfaces */
+  /* L'encre : titres, montants, choix selectionne. 17,05:1 sur blanc. */
+  --text-strong: #1f1a24;
+  --text-body: #1f1a24;
+  /* Le SEUL gris de texte : 5,51:1 sur blanc, 5,02:1 sur le fond, 4,90:1 sur un
+     champ. Il n'y a pas de troisieme gris : le gris clair retire par la refonte
+     ne tenait que 2,67:1, pour des parts figees que le parcours Playwright
+     compare. */
+  --text-muted: #6e6673;
+  --border-subtle: #efeae4; /* FILET entre deux lignes */
+  /* Le prune clair : liens, icones, anneau de focus. 9,84:1 sur blanc. */
+  --marque: #5b3563;
+  --marque-surface: #f3ecf3;
 
   --background: var(--surface-card);
   --foreground: var(--text-strong);
-  --muted: var(--slate-100);
-  /* Le voile du <dialog> de deconnexion. L'encre du systeme a 45% : il n'y a
-     pas de noir dans le produit, pas meme derriere une feuille modale. */
-  --overlay: color-mix(in oklab, var(--slate-900) 45%, transparent);
+  /* Fond de champ et de choix non selectionne. */
+  --muted: #f5f1ec;
+  --overlay: color-mix(in oklab, var(--text-strong) 55%, transparent);
   --border: var(--border-subtle);
-  /* LIMITE d'un controle de formulaire : elle doit atteindre 3:1 sur le fond
-     blanc (WCAG 1.4.11). --slate-300 (#cbd5e1) ne donne que ~1,5:1 : bien trop
-     bas pour porter seule le contour d'un champ. --slate-500 (#64748b) tient
-     4,6:1 tout en restant dans l'echelle achromatique du systeme. */
-  --input: var(--slate-500);
-  /* Le primaire est l'encre, pas une teinte de marque : le systeme n'en a pas.
-     Un bouton plein est slate-900 sur blanc — le seul aplat sombre avec le
-     bandeau du solde. */
-  --primary: var(--slate-900);
-  --primary-foreground: #ffffff;
-  /* Un indicateur de focus doit lui aussi tenir 3:1 (WCAG 2.4.11). L'encre
-     pleine le garantit sans introduire de couleur. */
-  --ring: var(--slate-900);
-  --radius: 0.625rem; /* 10px */
+  /* LIMITE d'un champ : son filet inferieur. 3,30:1 sur --muted (WCAG 1.4.11).
+     Le fond du champ seul ne donne que 1,12:1 sur blanc : sans ce filet, un
+     champ vide est invisible. Filet != limite : ne pas les fusionner. */
+  --input: #8a828e;
+  /* ABRICOT : l'action principale. 2,05:1 sur blanc — un bouton est identifie
+     par son libelle (8,32:1), pas par son contour. L'abricot ne porte donc
+     jamais de texte et ne sert jamais de filet. */
+  --primary: #f2a45e;
+  --primary-foreground: #1f1a24;
+  --ring: #5b3563;
+  --radius: 0.875rem; /* 14px */
 
-  /* ---- Les deux seuls accents chromatiques du systeme ---- */
-  --positive-surface: #ecfdf5; /* emerald-50  — encadre de reassurance */
-  --positive-text: #064e3b; /* emerald-900 — son texte */
-  --destructive: #b91c1c; /* red-700     — erreurs de formulaire SEULEMENT */
+  --destructive: #b91c1c; /* erreurs de formulaire SEULEMENT. 6,47:1 */
 }
 
 @layer base {
@@ -118,15 +114,14 @@
     @apply font-sans;
   }
 
-  /* `appearance-none` (composants/ui/select.tsx) retire la fleche native du
-     systeme sans rien y substituer : ce controle redevient un champ texte a
-     l'oeil. On la remplace par un chevron SVG encode en URI — `url()` ne peut
-     pas lire une variable CSS, donc la couleur est le hex litteral de
-     --text-muted (#64748b) : a garder synchronise si ce token change. */
+  /* `appearance-none` (components/ui/select.tsx) retire la fleche native du
+     systeme sans rien y substituer. On la remplace par un chevron SVG encode en
+     URI — `url()` ne peut pas lire une variable CSS, donc la couleur est le hex
+     litteral de --text-muted (#6e6673) : a garder synchronise si ce token change. */
   select[data-slot="select"] {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 8l4.5 4.5L14.5 8'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%236e6673' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5.5 8l4.5 4.5L14.5 8'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 0.75rem center;
+    background-position: right 0.875rem center;
     background-size: 0.85rem;
   }
 }

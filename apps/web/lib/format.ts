@@ -43,6 +43,21 @@ export function aujourdhuiLocal(): string {
 }
 
 /**
+ * La veille d'une date ISO : `2026-03-01` -> `2026-02-28`. Sert le raccourci
+ * « Hier » de la saisie.
+ *
+ * L'arithmetique passe par `Date.UTC` sur les composantes, et le resultat est
+ * relu en UTC : aucun fuseau n'intervient, contrairement a un `new Date(iso)`
+ * local dont minuit peut tomber la veille en UTC. Le `Date` ne sort jamais de
+ * cette fonction : elle recoit et rend une chaine.
+ */
+export function veille(iso: string): string {
+  const [annee, mois, jour] = iso.split('-').map(Number)
+  if (!annee || !mois || !jour) throw new Error(`Date ISO invalide : ${iso}`)
+  return new Date(Date.UTC(annee, mois - 1, jour - 1)).toISOString().slice(0, 10)
+}
+
+/**
  * `2026-07-05` -> `05/07/2026`. Decoupage de chaine, jamais `new Date()` :
  * un objet Date porte un fuseau et decalerait la date d'un jour.
  */

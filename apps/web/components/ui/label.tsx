@@ -16,7 +16,7 @@ function Label({ className, ...props }: React.ComponentProps<'label'>) {
     <label
       data-slot="label"
       className={cn(
-        'flex items-center gap-2 text-xs leading-none font-medium text-body select-none',
+        'flex items-center gap-2 text-[0.8125rem] leading-none font-semibold text-muted-foreground select-none',
         className,
       )}
       {...props}

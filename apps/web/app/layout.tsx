@@ -1,18 +1,23 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Bricolage_Grotesque, Manrope } from 'next/font/google'
 import type { ReactNode } from 'react'
 import './globals.css'
 import { PostHog } from '@/components/posthog'
 
-// Auto-hebergee par next/font : aucune requete vers Google au runtime, et
+// Auto-hebergees par next/font : aucune requete vers Google au runtime, et
 // aucun decalage de rendu au chargement.
 //
-// UNE SEULE famille. Le design system ne porte pas de serif : la hierarchie
-// vient du poids, de la taille et du contraste de surface, jamais d'un
-// changement de fonte.
-const inter = Inter({
+// DEUX familles (spec 2026-09-13, « La typographie ») : Manrope porte le
+// texte courant, Bricolage Grotesque le solde et les titres.
+const manrope = Manrope({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-manrope',
+  display: 'swap',
+})
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-bricolage',
   display: 'swap',
 })
 
@@ -31,7 +36,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr" className={inter.variable}>
+    <html lang="fr" className={`${manrope.variable} ${bricolage.variable}`}>
       {/* Les couleurs viennent des tokens. Toute classe `slate-*` ecrite ici
           court-circuiterait le theme : changer un token ne se verrait plus. */}
       <body className="min-h-screen bg-app text-strong antialiased">

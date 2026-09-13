@@ -9,6 +9,7 @@ import {
   formaterMontant,
   formaterMontantSigne,
   montantPourSaisie,
+  veille,
 } from '../lib/format.js'
 
 describe('formaterMois', () => {
@@ -133,5 +134,19 @@ describe('aujourdhuiLocal', () => {
     const n = new Date()
     const attendu = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
     expect(aujourdhuiLocal()).toBe(attendu)
+  })
+})
+
+describe('veille', () => {
+  it('recule d un jour, a travers les mois, les annees et les fevriers', () => {
+    expect(veille('2026-07-12')).toBe('2026-07-11')
+    expect(veille('2026-03-01')).toBe('2026-02-28')
+    expect(veille('2024-03-01')).toBe('2024-02-29')
+    expect(veille('2026-01-01')).toBe('2025-12-31')
+  })
+
+  it('jette plutot que de rendre une date inventee', () => {
+    expect(() => veille('2026-07')).toThrow(/invalide/)
+    expect(() => veille('')).toThrow(/invalide/)
   })
 })

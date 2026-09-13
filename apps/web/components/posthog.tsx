@@ -10,14 +10,6 @@ export function initializePostHog() {
   if (posthog.__loaded) return true
 
   if (!projectToken || !host) {
-    // Bruyant en dev, silencieux en production : mal configure, PostHog ne
-    // remonte AUCUN evenement et ne dit rien. C'est le genre de panne qu'on
-    // decouvre trois mois plus tard devant un tableau de bord vide.
-    if (process.env.NODE_ENV !== 'production') {
-      throw new Error(
-        'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN et NEXT_PUBLIC_POSTHOG_HOST sont requis : sans eux, les evenements sont perdus sans erreur. Voir apps/web/.env.example.',
-      )
-    }
     return false
   }
 

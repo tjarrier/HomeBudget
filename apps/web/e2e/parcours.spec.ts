@@ -89,16 +89,24 @@ test.describe('parcours authentifies', () => {
         // Si cette assertion echoue avec une URL /login, le cookie est mal forme :
         // verifier BETTER_AUTH_SECRET et la signature dans e2e/session.ts.
         await expect(page).toHaveURL('/')
-        // Le bandeau enchasse le montant AU MILIEU de la phrase (« Liz doit
-        // 1 145,80 € à Thomas ») : le sens se verifie donc par motif, la valeur
-        // reste epinglee au nœud <data>.
-        await expect(page.getByTestId('phrase-synthese')).toContainText(/Liz doit .+ à Thomas/)
+        // Le sens est le libelle (« Liz doit à Thomas ») ; le montant est un bloc
+        // a part, en dessous. La valeur reste epinglee au nœud <data>.
+        await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
         const solde = page.getByTestId('phrase-synthese').locator('data')
         await expect(solde).toHaveText('1 145,80 €')
         // Le texte dit l'euro, l'attribut dit les centimes. C'est en centimes que
         // le canari est ecrit partout ailleurs (114 580) : on le verifie ici sous
         // la meme forme, a l'abri des espaces insecables du formatage francais.
         await expect(solde).toHaveAttribute('value', '114580')
+
+        // Le tableau de bord lit le MEME agregat : il doit dire le meme solde, et
+        // les deux soldes signes doivent etre le meme fait vu des deux bouts —
+        // jamais deux valeurs positives, jamais un signe inverse.
+        await page.getByRole('link', { name: 'Voir le détail' }).click()
+        await expect(page).toHaveURL('/tableau-de-bord')
+        await expect(page.getByTestId('solde-tableau-de-bord')).toHaveAttribute('value', '114580')
+        await expect(page.getByTestId('solde-thomas')).toHaveAttribute('value', '114580')
+        await expect(page.getByTestId('solde-liz')).toHaveAttribute('value', '-114580')
       })
     })
   }
@@ -111,28 +119,41 @@ test.describe('parcours authentifies', () => {
         await page.goto('/')
         const soldeAvant = await soldeEnCentimes(page)
 
-        await page.goto('/depenses')
+        await page.goto('/?saisie=1')
+        const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+        await expect(feuille).toBeVisible()
+        // Le montant recoit le focus a l'ouverture, pas le bouton « Fermer ».
+        await expect(page.getByLabel('Montant (€)')).toBeFocused()
 
         // La promesse de B3 : les champs a defaut correct sont replies.
-        await expect(page.getByLabel('Date')).toBeHidden()
-        await expect(page.getByText(/Aujourd'hui · payé par/)).toBeVisible()
-        await page.getByRole('button', { name: 'Modifier' }).click()
+        await expect(page.locator('input[name="date"]')).toBeHidden()
+        await expect(feuille.getByText("Aujourd'hui · courante, moitié-moitié")).toBeVisible()
+        await feuille.getByRole('button', { name: 'Modifier' }).click()
 
         // La description porte la taille d'ecran : les deux passages ecrivent
         // dans la meme base, et une ligne anonyme ne dirait pas lequel des deux
         // a echoue.
         const description = `Courses du samedi (${nom})`
+        await feuille.getByRole('radio', { name: 'Autre date' }).check()
         await page.fill('input[name="date"]', '2026-07-10')
         await page.fill('input[name="description"]', description)
         await page.fill('input[name="montant"]', '50,00')
-        await page.selectOption('select[name="payePar"]', 'liz')
-        await page.selectOption('select[name="type"]', 'courante')
+        await feuille.getByRole('radio', { name: 'Liz' }).check()
+        await feuille.getByRole('radio', { name: 'Courante' }).check()
 
         // L'apercu en direct, avant validation : moitie-moitie sur 50 €.
         await expect(page.getByTestId('apercu-thomas')).toHaveText('25,00 €')
         await expect(page.getByTestId('apercu-liz')).toHaveText('25,00 €')
 
-        await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
+        await feuille.getByRole('button', { name: 'Ajouter la dépense' }).click()
+        // La feuille se ferme apres l'ecriture : c'est ce qui desarme un second
+        // clic, qui redoublerait une depense aux parts figees pour toujours.
+        await expect(feuille).toBeHidden()
+        await expect(page).toHaveURL('/')
+        // L'ecran sous la feuille suit l'ecriture, sans rechargement.
+        await expect(page.getByTestId('dernieres-depenses')).toContainText(description)
+
+        await page.goto('/depenses')
         await expect(page.getByTestId('liste-depenses')).toContainText(description)
 
         await page.goto('/')
@@ -199,15 +220,20 @@ test.describe('parcours authentifies', () => {
       await page.goto('/')
       const avant = await soldeEnCentimes(page)
 
-      await page.goto('/depenses')
-      await page.getByRole('button', { name: 'Modifier' }).click()
+      await page.goto('/?saisie=1')
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await feuille.getByRole('button', { name: 'Modifier' }).click()
       const description = 'Coquille a supprimer'
+      await feuille.getByRole('radio', { name: 'Autre date' }).check()
       await page.fill('input[name="date"]', '2026-07-11')
       await page.fill('input[name="description"]', description)
       await page.fill('input[name="montant"]', '40,00')
-      await page.selectOption('select[name="payePar"]', 'thomas')
-      await page.selectOption('select[name="type"]', 'courante')
-      await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
+      await feuille.getByRole('radio', { name: 'Thomas' }).check()
+      await feuille.getByRole('radio', { name: 'Courante' }).check()
+      await feuille.getByRole('button', { name: 'Ajouter la dépense' }).click()
+      await expect(feuille).toBeHidden()
+
+      await page.goto('/depenses')
       await expect(page.getByTestId('liste-depenses')).toContainText(description)
 
       // Thomas a paye 40 € dont 20 € pour Liz : la dette de Liz monte de 20 €.
@@ -241,8 +267,10 @@ test.describe('parcours authentifies', () => {
     test('le champ date porte un max a un an, et le serveur refuse une date au-dela', async ({
       page,
     }) => {
-      await page.goto('/depenses')
-      await page.getByRole('button', { name: 'Modifier' }).click()
+      await page.goto('/?saisie=1')
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await feuille.getByRole('button', { name: 'Modifier' }).click()
+      await feuille.getByRole('radio', { name: 'Autre date' }).check()
 
       const champDate = page.locator('input[name="date"]')
       const aujourdhui = new Date().toISOString().slice(0, 10)
@@ -266,8 +294,10 @@ test.describe('parcours authentifies', () => {
     })
 
     test('une date a +30 jours reste acceptee, aucune ecriture', async ({ page }) => {
-      await page.goto('/depenses')
-      await page.getByRole('button', { name: 'Modifier' }).click()
+      await page.goto('/?saisie=1')
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await feuille.getByRole('button', { name: 'Modifier' }).click()
+      await feuille.getByRole('radio', { name: 'Autre date' }).check()
 
       const dansUnMois = new Date()
       dansUnMois.setUTCDate(dansUnMois.getUTCDate() + 30)
@@ -285,16 +315,18 @@ test.describe('parcours authentifies', () => {
     test('replier() ne masque pas un champ date hors borne (sinon soumission bloquee sans message)', async ({
       page,
     }) => {
-      await page.goto('/depenses')
-      await page.getByRole('button', { name: 'Modifier' }).click()
+      await page.goto('/?saisie=1')
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await feuille.getByRole('button', { name: 'Modifier' }).click()
+      await feuille.getByRole('radio', { name: 'Autre date' }).check()
 
       await page.fill('input[name="date"]', '2029-09-29')
-      await page.getByRole('button', { name: 'Replier' }).click()
+      await feuille.getByRole('button', { name: 'Replier' }).click()
 
       // Un champ `hidden` mais invalide (rangeOverflow) rendrait le bouton
       // "Ajouter la depense" inerte : le navigateur refuse la soumission sans
       // rien afficher, faute de pouvoir focaliser un champ masque.
-      await expect(page.getByLabel('Date')).toBeVisible()
+      await expect(page.locator('input[name="date"]')).toBeVisible()
     })
   })
 
@@ -344,7 +376,8 @@ test.describe('parcours authentifies', () => {
     // Sans dette, il n'y a rien a pre-remplir et le test ne verifie rien.
     expect(solde).toBeGreaterThan(0)
 
-    await page.goto('/depenses?regler=1')
+    await page.goto('/?saisie=regler')
+    const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
 
     // Les centimes sont recomposes A LA MAIN plutot qu'en important
     // `parserEurosSaisis` : ce test doit pouvoir DETECTER une divergence de
@@ -357,9 +390,10 @@ test.describe('parcours authentifies', () => {
 
     // Le payeur est le DEBITEUR — le piege documente de CLAUDE.md. Le seed part
     // de « Liz doit 1 145,80 € a Thomas » et aucun parcours precedent n'inverse
-    // ce sens : Liz reste debitrice. La ligne de resume du formulaire replie dit
-    // le payeur et le type sans qu'on ait a deplier.
-    await expect(page.getByText(/payé par Liz · transfert/)).toBeVisible()
+    // ce sens : Liz reste debitrice. Le payeur est visible sans deplier ; la
+    // ligne de resume dit le type.
+    await expect(feuille.getByRole('radio', { name: 'Liz' })).toBeChecked()
+    await expect(feuille.getByText("Aujourd'hui · transfert")).toBeVisible()
 
     // La preuve du sens, avant toute ecriture, en CENTIMES : `<data value>` porte
     // la valeur exacte, jamais l'euro formate. La totalite va au credit de Thomas.
@@ -417,7 +451,7 @@ test.describe('parcours authentifies', () => {
       // Le solde se calcule sur TOUTES les depenses, jamais sur le sous-ensemble
       // affiche : un reglement partiel pre-rempli comme s'il soldait tout se
       // virerait sans que rien a l'ecran ne le dise.
-      await page.goto('/depenses?regler=1&mois=2026-08')
+      await page.goto('/depenses?mois=2026-08&saisie=regler')
       const saisi = await page.locator('input[name="montant"]').inputValue()
       const [euros, centimes] = saisi.replace(/\s/g, '').split(',')
       expect(Number(euros) * 100 + Number(centimes)).toBe(solde)
@@ -444,7 +478,7 @@ test.describe('parcours authentifies', () => {
     expect(solde).toBeGreaterThan(0)
 
     await page.getByRole('link', { name: 'Régler les comptes' }).click()
-    await expect(page).toHaveURL('/depenses?regler=1')
+    await expect(page).toHaveURL('/?saisie=regler')
 
     // Le sens du transfert, a l'ecran et en centimes, AVANT l'ecriture : la
     // totalite au credit de Thomas, rien pour Liz qui verse. C'est cet apercu
@@ -453,18 +487,18 @@ test.describe('parcours authentifies', () => {
     await expect(page.getByTestId('apercu-liz')).toHaveAttribute('value', '0')
     await expect(page.getByTestId('apercu-thomas')).toHaveAttribute('value', String(solde))
 
-    await page.getByRole('button', { name: 'Ajouter la dépense' }).click()
-    await expect(page.getByTestId('liste-depenses')).toContainText('Règlement des comptes')
+    const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+    await feuille.getByRole('button', { name: 'Ajouter la dépense' }).click()
 
-    // Les champs sont CONTROLES : sans le desarmement de formulaire-depense.tsx,
-    // ils survivraient tels quels a la soumission. Vider `montant` est ce qui
-    // empeche un second clic — le champ est `required`, le navigateur refuse une
-    // soumission vide — et la disparition de l'apercu est le SEUL retour visuel,
-    // a l'ecran, que l'ecriture a eu lieu. Un reglement redouble serait
-    // irreversible : les parts sont figees pour toujours (snapshot on write) et
-    // rien ne permet de corriger ou d'annuler tant que l'issue #40 n'est pas livree.
-    await expect(page.locator('input[name="montant"]')).toHaveValue('')
-    await expect(page.getByTestId('apercu-parts')).toHaveCount(0)
+    // La feuille se ferme apres l'ecriture, et le formulaire est demonte avec
+    // elle : c'est ce qui empeche un second clic. Un reglement redouble serait
+    // irreversible sans passer par la suppression (#40) — les parts sont figees
+    // pour toujours (snapshot on write).
+    await expect(feuille).toBeHidden()
+    await expect(page).toHaveURL('/')
+
+    await page.goto('/depenses')
+    await expect(page.getByTestId('liste-depenses')).toContainText('Règlement des comptes')
 
     await page.goto('/')
     // NE PAS utiliser soldeEnCentimes() ici : a zero, le bandeau n'a plus de
@@ -496,6 +530,81 @@ test.describe('parcours authentifies', () => {
       // ne doit pas laisser une constante perimee valider n'importe quoi.
       const bas = TELEPHONE.viewport.height
       expect((boite?.y ?? 0) + (boite?.height ?? 0)).toBeGreaterThan(bas - 8)
+
+      // Trois cases : Accueil, le « + », Depenses. Config est dans le menu du compte.
+      await expect(barre.getByRole('link')).toHaveCount(3)
+
+      // Le « + » deborde de 26px au-dessus de la barre (spec « La coque »). Un
+      // `items-center` sur la grille annulait sa marge negative sans rien casser
+      // d'autre : seule la geometrie le voit. 20px laisse la marge d'un arrondi.
+      const plus = await barre.getByRole('link', { name: 'Ajouter une dépense' }).boundingBox()
+      expect(plus).not.toBeNull()
+      expect((boite?.y ?? 0) - (plus?.y ?? 0)).toBeGreaterThanOrEqual(20)
+    })
+
+    test('fermer la feuille ouverte par le + rend l historique d avant', async ({ page }) => {
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await page.goto('/depenses')
+      await page.getByRole('link', { name: 'Accueil' }).click()
+      await expect(page).toHaveURL('/')
+
+      // Ouverte par le « + », fermee par « Fermer » : Retour quitte l'accueil
+      // pour la page d'avant, il ne rejoue pas une entree `/` en double.
+      await page.getByRole('link', { name: 'Ajouter une dépense' }).click()
+      await expect(feuille).toBeVisible()
+      await feuille.getByRole('button', { name: 'Fermer' }).click()
+      await expect(feuille).toBeHidden()
+      await expect(page).toHaveURL('/')
+      await page.goBack()
+      await expect(page).toHaveURL('/depenses')
+
+      // Ouverte par le « + », Retour la ferme et reste sur l'ecran.
+      await page.getByRole('link', { name: 'Ajouter une dépense' }).click()
+      await expect(page).toHaveURL('/depenses?saisie=1')
+      await expect(feuille).toBeVisible()
+      await page.goBack()
+      await expect(feuille).toBeHidden()
+      await expect(page).toHaveURL('/depenses')
+    })
+
+    test('le + ouvre la saisie par-dessus l ecran courant, sans defiler', async ({ page }) => {
+      await page.goto('/depenses?mois=2026-07')
+      await page.getByRole('link', { name: 'Ajouter une dépense' }).click()
+      // Les filtres survivent a l'ouverture : on saisit PAR-DESSUS l'ecran.
+      await expect(page).toHaveURL('/depenses?mois=2026-07&saisie=1')
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await expect(feuille).toBeVisible()
+
+      // Le critere de l'issue #68 : montant, description, payeur et validation
+      // tiennent dans le premier ecran du telephone, feuille repliee. Ce test ne
+      // voit pas le clavier virtuel : la verification sur un vrai telephone est
+      // la derniere tache du plan.
+      const bas = TELEPHONE.viewport.height
+      for (const cible of [
+        page.locator('input[name="montant"]'),
+        page.locator('input[name="description"]'),
+        feuille.getByRole('radio', { name: 'Liz' }),
+        feuille.getByRole('button', { name: 'Ajouter la dépense' }),
+      ]) {
+        const boite = await cible.boundingBox()
+        expect(boite).not.toBeNull()
+        expect((boite?.y ?? bas) + (boite?.height ?? 0)).toBeLessThanOrEqual(bas)
+      }
+
+      // Fermer rend l'ecran tel qu'il etait, filtres compris.
+      await feuille.getByRole('button', { name: 'Fermer' }).click()
+      await expect(feuille).toBeHidden()
+      await expect(page).toHaveURL('/depenses?mois=2026-07')
+    })
+
+    test('la configuration s ouvre depuis le menu du compte', async ({ page }) => {
+      await page.goto('/')
+      await page.getByRole('button', { name: 'Compte' }).click()
+      await page.getByRole('link', { name: 'Configuration' }).click()
+      await expect(page).toHaveURL('/config')
+      // La feuille de compte vit dans le layout, qui survit a la navigation :
+      // sans fermeture explicite, elle resterait ouverte sur /config.
+      await expect(page.getByRole('dialog', { name: 'Compte' })).toBeHidden()
     })
 
     test('un signOut qui echoue ne fait pas croire a la sortie', async ({ page }) => {
@@ -570,19 +679,6 @@ test.describe('parcours authentifies', () => {
       // saisies peut depasser 40. C'est le test du palier plus bas qui la verifie,
       // sur une borne assez large pour tout couvrir a coup sur.
       expect(await lignes.count()).toBeGreaterThan(20)
-    })
-
-    test('le formulaire de saisie precede l historique', async ({ page }) => {
-      await page.goto('/depenses')
-
-      // La POSITION a l'ecran, pas l'ordre du DOM : c'est ce que le pouce
-      // rencontre. Le formulaire doit etre AU-DESSUS de l'historique.
-      const formulaire = await page.locator('input[name="description"]').boundingBox()
-      const historique = await page.getByTestId('liste-depenses').boundingBox()
-
-      expect(formulaire?.y ?? 0).toBeLessThan(historique?.y ?? 0)
-      // Et joignable sans defiler : le champ tient dans le premier ecran de 740px.
-      expect(formulaire?.y ?? 0).toBeLessThan(740)
     })
 
     test('la borne se laisse pousser, mais pas deborner', async ({ page }) => {

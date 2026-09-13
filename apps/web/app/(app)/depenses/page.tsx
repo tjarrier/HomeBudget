@@ -6,9 +6,8 @@ import { LigneDepense } from '@/components/ligne-depense'
 import { buttonVariants } from '@/components/ui/button'
 import { exigerSession } from '@/lib/session'
 import { listerDepenses, listerMoisDepenses, resumerDepenses } from '@homebudget/db'
-import { type Personne, synthese } from '@homebudget/domain'
+import type { Personne } from '@homebudget/domain'
 import { FiltresDepenses } from './filtres'
-import { FormulaireDepense } from './formulaire-depense'
 import { FormulaireGeneration } from './formulaire-generation'
 
 export const dynamic = 'force-dynamic'
@@ -38,16 +37,16 @@ export default async function Depenses({
   searchParams,
 }: {
   searchParams: Promise<{
-    regler?: string | string[]
     mois?: string | string[]
     payePar?: string | string[]
     n?: string | string[]
   }>
 }) {
-  // La personne de la session pre-remplit « paye par » : c'est la raison d'etre
-  // de la colonne `user.personne`, posee par le hook d'allowlist.
+  // La personne de la session pre-remplit le payeur de la generation mensuelle :
+  // c'est la raison d'etre de la colonne `user.personne`, posee par le hook
+  // d'allowlist.
   const session = await exigerSession()
-  const { regler, mois, payePar, n } = await searchParams
+  const { mois, payePar, n } = await searchParams
 
   // Les mois OFFERTS sont ceux qui existent, demandes a la base et non deduits
   // des lignes affichees : sous une borne, la liste ne connait plus que ses 20
@@ -69,9 +68,9 @@ export default async function Depenses({
   }
   const filtre = filtres.mois !== undefined || filtres.payePar !== undefined
 
-  // Le solde est calcule sur TOUT, jamais sur ce qui est affiche — ni le filtre
-  // ni la borne ne le touchent. Un solde calcule sur les lignes visibles serait
-  // un reglement PARTIEL presente comme le solde.
+  // Le compte de TOUTES les depenses, sans filtre : c'est le « sur N » de
+  // l'entete sous un filtre, et le compte lui-meme sans filtre. Cet ecran
+  // n'affiche plus aucun solde (le reglement est la feuille de saisie).
   const global = await resumerDepenses()
   // Le compte de ce qui CORRESPOND, qui n'est pas le compte de ce qui s'affiche :
   // c'est lui qui dit s'il reste quelque chose derriere la borne.
@@ -80,16 +79,6 @@ export default async function Depenses({
   const limite = borne(n, correspondantes)
   const depenses = await listerDepenses({ ...filtres, limite })
   const reste = correspondantes - depenses.length
-
-  // `?regler=1` (issue #26) ne porte qu'un DRAPEAU, jamais le montant. Le
-  // chiffre ne quitte jamais le serveur. Un montant passe par l'URL serait fige
-  // au rendu de cet ecran — donc perime des la depense suivante — et serait une
-  // saisie utilisateur a valider.
-  const s = synthese(global)
-  // Solde nul : rien a regler. Une URL gardee en favori ne pre-remplit donc
-  // jamais rien de faux, elle rend le formulaire ordinaire.
-  const reglement =
-    regler && s.etat === 'dette' ? { montant: s.montant, payePar: s.debiteur } : undefined
 
   return (
     <>
@@ -143,19 +132,17 @@ export default async function Depenses({
             // Un <Link> et non un bouton : la borne est dans l'URL, donc elle
             // se partage et survit a un rechargement. Zero JavaScript de plus
             // sur un ecran qui n'en avait que pour les selecteurs.
-            // Les parametres COURANTS sont repris : le filtre pose et
-            // `?regler=1` (#26) survivent a un « Voir plus ».
+            // Les parametres COURANTS sont repris : le filtre pose survit a un
+            // « Voir plus ».
             <Link
               href={`?${new URLSearchParams({
                 ...(filtres.mois ? { mois: filtres.mois } : {}),
                 ...(filtres.payePar ? { payePar: filtres.payePar } : {}),
-                ...(regler ? { regler: '1' } : {}),
                 n: String(limite + PALIER),
               })}`}
               data-testid="voir-plus"
-              // `discret` : DESIGN.md dit deux variantes, pas plus (voir le
-              // commentaire de app/(app)/page.tsx:96). `w-full` seul s'ajoute,
-              // pour occuper toute la largeur de la carte.
+              // `discret` : DESIGN.md dit deux variantes, pas plus. `w-full`
+              // seul s'ajoute, pour occuper toute la largeur de la carte.
               className={buttonVariants({ variant: 'discret', className: 'mt-2 w-full' })}
             >
               {/* Le reste est DANS le libelle : « Voir plus » sans chiffre
@@ -165,17 +152,10 @@ export default async function Depenses({
           )}
         </Carte>
 
-        {/* `sticky` : la saisie reste a portee quand l'historique s'allonge.
-            Neutralise sous lg, ou les deux colonnes s'empilent.
-
-            `max-lg:order-first` : au telephone, ouvrir cet ecran c'est etre deja
-            DANS le formulaire — la ligne saisie apparait juste en dessous. Sans
-            lui, saisir une depense demandait de traverser tout l'historique
-            (issue #41). Au large, ou les deux colonnes coexistent, rien ne bouge. */}
-        <div className="flex flex-col gap-6 max-lg:order-first lg:sticky lg:top-5">
-          <FormulaireDepense personne={session.personne} reglement={reglement} />
-          {/* Sous la saisie, et non au-dessus : on ouvre cet ecran pour saisir
-              une depense, pas pour generer un loyer une fois par mois. */}
+        {/* Au large, a cote de l'historique ; au telephone, dessous : on ouvre
+            cet ecran pour relire l'historique, pas pour generer un loyer une
+            fois par mois. La saisie, elle, est la feuille du « + ». */}
+        <div className="lg:sticky lg:top-5">
           <FormulaireGeneration personne={session.personne} />
         </div>
       </div>

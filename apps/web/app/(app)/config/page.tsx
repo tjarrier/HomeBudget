@@ -36,7 +36,7 @@ export default async function Config() {
         <section>
           <div className="mb-3 flex items-baseline justify-between gap-3">
             <h2 className="text-[0.9375rem] font-semibold">Historique de la configuration</h2>
-            <span className="text-xs text-faint">
+            <span className="text-xs text-muted-foreground">
               {versions.length} {versions.length > 1 ? 'versions' : 'version'}
             </span>
           </div>
@@ -64,7 +64,7 @@ export default async function Config() {
                       <h3 className="text-sm font-semibold">{v.libelle}</h3>
                       <BadgeVersion close={close} />
                     </div>
-                    <p className="mt-1 text-xs text-faint">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {formaterDate(v.dateDebut)} →{' '}
                       {v.dateFin ? formaterDate(v.dateFin) : "aujourd'hui"}
                     </p>
@@ -86,7 +86,7 @@ export default async function Config() {
                     <Pastilles libelle="Perso Liz" charges={v.chargesPersoLiz} />
 
                     {close ? (
-                      <p className="mt-2.5 text-xs text-faint">
+                      <p className="mt-2.5 text-xs text-muted-foreground">
                         Version close : elle n'est plus modifiable. Créez-en une nouvelle pour
                         changer les règles.
                       </p>
@@ -102,7 +102,7 @@ export default async function Config() {
               charge, echoue, ou attend qu'il commence. La liste des depenses
               porte le meme filet de securite. */}
           {versions.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-subtle px-5 py-8 text-center text-sm text-faint">
+            <p className="rounded-xl border border-dashed border-subtle px-5 py-8 text-center text-sm text-muted-foreground">
               Aucune version pour le moment. Créez la première pour fixer les règles de répartition.
             </p>
           ) : null}
@@ -139,7 +139,9 @@ function Pastilles({ libelle, charges }: { libelle: string; charges: Charge[] })
   if (charges.length === 0) return null
   return (
     <div className="mt-3">
-      <h4 className="mb-1.5 text-[0.6875rem] tracking-[0.05em] text-faint uppercase">{libelle}</h4>
+      <h4 className="mb-1.5 text-[0.6875rem] tracking-[0.05em] text-muted-foreground uppercase">
+        {libelle}
+      </h4>
       <ul className="flex flex-wrap gap-1.5">
         {charges.map((c) => (
           <li

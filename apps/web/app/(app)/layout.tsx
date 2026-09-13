@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, Suspense } from 'react'
 
+import { FeuilleSaisie } from '@/components/feuille-saisie'
 import { Marque } from '@/components/marque'
 import { MenuCompte } from '@/components/menu-compte'
 import { NavPrincipale } from '@/components/nav-principale'
@@ -13,8 +14,9 @@ import { exigerSession } from '@/lib/session'
  * centree a 1080px.
  *
  * En dessous : la marque monte dans un entete, la navigation descend dans une
- * barre `fixed bottom-0` a quatre cellules — atteignable au pouce d'une main qui
- * tient l'appareil. Ce sont deux REGIONS distinctes de l'ecran, ce qu'un unique
+ * barre `fixed bottom-0` a trois cases, et le menu du compte monte dans
+ * l'entete : un geste rare, qui laisse la barre du pouce aux trois cases. Ce sont deux
+ * REGIONS distinctes de l'ecran, ce qu'un unique
  * <aside> pivotant par CSS ne savait plus couvrir : d'ou <Marque /> rendue deux
  * fois, chacune masquee a la taille de l'autre.
  *
@@ -35,8 +37,9 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
           calc() est obligatoire : un pt-[env(...)] nu ECRASERAIT le py-3, et
           l'entete se collerait au filet du haut sur tous les autres
           appareils. */}
-        <header className="flex items-center border-b border-subtle bg-surface px-5 py-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:hidden">
+        <header className="flex items-center justify-between bg-app px-5 py-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))] md:hidden">
           <Marque />
+          <MenuCompte personne={session.personne} nom={session.nom} habillage="entete" />
         </header>
 
         {/* md:pl et le md:pr plus bas sur la colonne de contenu sont la
@@ -44,26 +47,35 @@ export default async function LayoutApp({ children }: { children: ReactNode }) {
           document sous TOUTES les encoches, pas seulement le bas. En paysage
           sur un iPhone a encoche (844px de large, le point d'arret md:), le
           rail se retrouverait sinon partiellement sous l'encoche gauche. */}
-        <aside className="flex shrink-0 border-subtle bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40 max-md:items-stretch max-md:border-t max-md:px-2 max-md:pb-[env(safe-area-inset-bottom)] md:sticky md:top-0 md:h-screen md:w-62 md:flex-col md:border-r md:p-4 md:pl-[env(safe-area-inset-left)]">
+        <aside className="flex shrink-0 border-subtle bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40 max-md:h-[calc(4.75rem+env(safe-area-inset-bottom))] max-md:items-stretch max-md:border-t max-md:px-4 max-md:pb-[env(safe-area-inset-bottom)] md:sticky md:top-0 md:h-screen md:w-62 md:flex-col md:border-r md:p-4 md:pl-[env(safe-area-inset-left)]">
           <div className="max-md:hidden md:px-2 md:pt-1 md:pb-5">
             <Marque />
           </div>
 
-          <NavPrincipale />
-          <MenuCompte personne={session.personne} nom={session.nom} />
+          <Suspense fallback={null}>
+            <NavPrincipale />
+          </Suspense>
+          <div className="max-md:hidden md:mt-auto">
+            <MenuCompte personne={session.personne} nom={session.nom} habillage="rail" />
+          </div>
         </aside>
 
         {/* pr : meme contrepartie que le pl du rail, cote droit. */}
         <div className="min-w-0 flex-1 md:pr-[env(safe-area-inset-right)]">
-          {/* 5rem = la barre basse (60px, 59 de contenu + 1 de filet) plus une
-            respiration : sans cette reserve, la derniere ligne de depense se
-            cache dessous. `env()` y ajoute l'indicateur d'accueil des
-            iPhone — nul partout ailleurs. */}
-          <main className="mx-auto max-w-[1080px] px-5 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:px-10 md:pt-7 md:pb-14">
+          {/* 6.5rem = la barre basse (76px) plus une respiration : sans cette
+            reserve, la derniere ligne se cache dessous. `env()` y ajoute
+            l'indicateur d'accueil des iPhone — nul partout ailleurs. */}
+          <main className="mx-auto max-w-[1080px] px-5 pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:px-10 md:pt-7 md:pb-14">
             {children}
           </main>
         </div>
       </div>
+      {/* `useSearchParams()` dans un composant client : la frontiere Suspense
+          est ce que Next exige pour ne pas basculer tout le layout en rendu
+          client. Le groupe (app) est dynamique de toute facon (cookies). */}
+      <Suspense fallback={null}>
+        <FeuilleSaisie personne={session.personne} />
+      </Suspense>
     </>
   )
 }

@@ -110,6 +110,34 @@ async function debordements(page: Page): Promise<string[]> {
   })
 }
 
+/**
+ * Le pendant de `debordements()` pour la feuille de saisie. Un <dialog> modal vit
+ * dans la top layer, en position fixe : rien en lui n'elargit le document, et son
+ * `overflow-y-auto` coupe ses enfants — `debordements()` y serait vert par
+ * construction. On mesure donc la feuille elle-meme : elle ne defile pas de
+ * cote, et aucun descendant ne depasse son bord droit.
+ */
+async function debordementsFeuille(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const feuille = document.querySelector('dialog[open]')
+    if (!feuille) return ['aucune feuille ouverte']
+    const trouves: string[] = []
+    if (feuille.scrollWidth > feuille.clientWidth + 1) {
+      trouves.push(`feuille ${feuille.scrollWidth}px > ${feuille.clientWidth}px`)
+    }
+    const bord = feuille.getBoundingClientRect().right
+    for (const element of feuille.querySelectorAll('*')) {
+      const boite = element.getBoundingClientRect()
+      if (boite.width === 0 || boite.right <= bord + 1) continue
+      const classes = (element.getAttribute('class') ?? '').split(/\s+/).slice(0, 3).join('.')
+      trouves.push(
+        `${element.tagName.toLowerCase()}.${classes} depasse de ${Math.round(boite.right - bord)}px`,
+      )
+    }
+    return trouves
+  })
+}
+
 test.beforeEach(async ({ context }) => {
   // `/login` s'ouvre tres bien avec un cookie de session — il n'est pas garde et
   // ne redirige pas. Un seul beforeEach couvre donc les deux groupes.
@@ -147,26 +175,28 @@ for (const route of ROUTES) {
   })
 }
 
-test('le formulaire de depense ne deborde pas, details deplies', async ({ page }) => {
-  await page.goto('/depenses')
-  // Replies, la moitie des champs est `hidden` : elle ne serait pas mesuree. On
-  // deplie, et on choisit le mode qui monte les deux champs de parts cote a cote
-  // — la seule rangee a deux colonnes du formulaire.
-  await page.getByRole('button', { name: 'Modifier' }).click()
-  await page.selectOption('select[name="mode"]', 'personnalise')
+test('la feuille de saisie ne deborde pas, details deplies', async ({ page }) => {
+  await page.goto('/?saisie=1')
+  const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+  // Deplie, avec la rangee a trois segments la plus longue (« Personnalisée »)
+  // et les deux champs de parts cote a cote.
+  await feuille.getByRole('button', { name: 'Modifier' }).click()
+  await feuille.getByRole('radio', { name: 'Autre date' }).check()
+  await feuille.getByRole('radio', { name: 'Personnalisée' }).check()
   await expect(page.getByLabel('Part Thomas (€)')).toBeVisible()
   expect(await debordements(page)).toEqual([])
+  expect(await debordementsFeuille(page)).toEqual([])
 })
 
 test("l'apercu des parts ne deborde pas", async ({ page }) => {
-  await page.goto('/depenses')
+  await page.goto('/?saisie=1')
   // L'apercu n'existe qu'une fois montant ET description saisis (250ms de
-  // debounce, puis un aller-retour serveur). C'est le bloc le plus dense de
-  // l'ecran : deux montants, un libelle de version et un total de charges.
+  // debounce, puis un aller-retour serveur).
   await page.getByLabel('Montant (€)').fill('1 110,58')
   await page.getByLabel('Description').fill('Loyer + charges juillet')
   await expect(page.getByTestId('apercu-parts')).toBeVisible()
   expect(await debordements(page)).toEqual([])
+  expect(await debordementsFeuille(page)).toEqual([])
 })
 
 test("l'apercu de cloture ne deborde pas", async ({ page }) => {
