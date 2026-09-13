@@ -8,14 +8,31 @@ import { VERSIONS_INITIALES, importerDepenses } from './import-sheet.js'
 import { depenseDepuisLigne } from './mapper.js'
 import { depense } from './schema.js'
 
+/**
+ * L'export rejoue et le solde qu'il doit donner. Par defaut celui du canari ;
+ * `HOMEBUDGET_SEED_EXPORT=2026-09-14` remplit la recette avec l'historique a jour.
+ * Le solde attendu vit ici et non dans une variable : on ne le tape pas a la main.
+ */
+const SOLDES_ATTENDUS: Record<string, number> = {
+  '2026-07-12': 114580,
+  '2026-09-14': 100362,
+}
+
+const EXPORT = process.env.HOMEBUDGET_SEED_EXPORT ?? '2026-07-12'
+const SOLDE_ATTENDU: number = (() => {
+  const solde = SOLDES_ATTENDUS[EXPORT]
+  if (solde === undefined) {
+    throw new Error(
+      `Export inconnu : ${EXPORT}. Connus : ${Object.keys(SOLDES_ATTENDUS).join(', ')}.`,
+    )
+  }
+  return solde
+})()
+
 const CSV = readFileSync(
-  fileURLToPath(
-    new URL('../../../docs/data/sheet-export-2026-07-12/depenses.csv', import.meta.url),
-  ),
+  fileURLToPath(new URL(`../../../docs/data/sheet-export-${EXPORT}/depenses.csv`, import.meta.url)),
   'utf-8',
 )
-
-const SOLDE_ATTENDU = 114580
 
 const DEFAUT_LOCAL = 'postgresql://homebudget:homebudget@127.0.0.1:5433/homebudget'
 
