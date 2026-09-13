@@ -77,12 +77,21 @@ test.describe('ecrans authentifies', () => {
     ])
   })
 
-  test('le tableau de bord ne pose aucune cible sous 44px', async ({ page }) => {
+  test("l'accueil ne pose aucune cible sous 44px", async ({ page }) => {
     await page.goto('/')
     // Le lien « Voir tout → » de la carte des depenses recentes est le seul
     // controle de l'app qui ne soit ni un bouton ni un champ : c'est celui que
     // sa taille de texte (12px) rendait intouchable.
     await expect(page.getByRole('link', { name: /Voir tout/ })).toBeVisible()
+    expect(await trouverCiblesTropPetites(page)).toEqual([])
+  })
+
+  test('le tableau de bord ne pose aucune cible sous 44px', async ({ page }) => {
+    await page.goto('/tableau-de-bord')
+    await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible()
+    // La fleche de retour est le seul controle de l'ecran : une icone de 22px,
+    // dont la cible doit pourtant tenir 44px.
+    await expect(page.getByRole('link', { name: "Retour à l'accueil" })).toBeVisible()
     expect(await trouverCiblesTropPetites(page)).toEqual([])
   })
 

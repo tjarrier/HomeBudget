@@ -99,6 +99,14 @@ test.describe('parcours authentifies', () => {
         // le canari est ecrit partout ailleurs (114 580) : on le verifie ici sous
         // la meme forme, a l'abri des espaces insecables du formatage francais.
         await expect(solde).toHaveAttribute('value', '114580')
+
+        // Le tableau de bord lit le MEME agregat : il doit dire le meme solde, et
+        // les deux soldes signes doivent etre le meme fait vu des deux bouts —
+        // jamais deux valeurs positives, jamais un signe inverse.
+        await page.goto('/tableau-de-bord')
+        await expect(page.getByTestId('solde-tableau-de-bord')).toHaveAttribute('value', '114580')
+        await expect(page.getByTestId('solde-thomas')).toHaveAttribute('value', '114580')
+        await expect(page.getByTestId('solde-liz')).toHaveAttribute('value', '-114580')
       })
     })
   }

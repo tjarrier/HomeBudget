@@ -66,9 +66,10 @@ export async function ajouterDepenseAction(
       commentaire: String(form.get('commentaire') ?? ''),
     }
     await ajouterDepense(normaliser(brut))
-    // Le solde affiche doit suivre l'ecriture, sur les deux ecrans.
+    // Le solde affiche doit suivre l'ecriture, sur les trois ecrans.
     revalidatePath('/')
     revalidatePath('/depenses')
+    revalidatePath('/tableau-de-bord')
     return { ok: true, valeur: null }
   } catch (e) {
     return enEchec(e)
@@ -106,6 +107,7 @@ export async function genererChargeFixeAction(
     )
     revalidatePath('/')
     revalidatePath('/depenses')
+    revalidatePath('/tableau-de-bord')
     return {
       ok: true,
       valeur: {
@@ -134,9 +136,10 @@ export async function supprimerDepenseAction(id: string): Promise<Resultat<null>
   await exigerSession()
   try {
     await supprimerDepense(id)
-    // Le solde affiche doit suivre l'effacement, sur les deux ecrans.
+    // Le solde affiche doit suivre l'effacement, sur les trois ecrans.
     revalidatePath('/')
     revalidatePath('/depenses')
+    revalidatePath('/tableau-de-bord')
     return { ok: true, valeur: null }
   } catch (e) {
     return enEchec(e)
