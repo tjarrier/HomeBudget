@@ -130,3 +130,19 @@ describe('LE CANARI — non-regression du solde', () => {
     expect(phraseSynthese(r).replace(/[\xa0\u202f]/g, ' ')).toBe('Liz doit 1 145,80 € à Thomas')
   })
 })
+
+describe('export du Sheet du 2026-09-14 — la base de recette', () => {
+  it('importe 38 lignes et Liz doit exactement 1 003,62 EUR a Thomas', () => {
+    const csv = readFileSync(
+      fileURLToPath(
+        new URL('../../../docs/data/sheet-export-2026-09-14/depenses.csv', import.meta.url),
+      ),
+      'utf-8',
+    )
+    const depenses = importerDepenses(csv, VERSIONS_INITIALES)
+    expect(depenses).toHaveLength(38)
+    // Le canari (114 580) + 2 x 37 891 (part de Liz des loyers v2) - 90 000.
+    // Le Sheet affiche 1 003,62 EUR.
+    expect(resumer(depenses).soldeThomas).toBe(100362)
+  })
+})
