@@ -4,15 +4,13 @@ import type * as React from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * Un champ borde, sur fond blanc, rayon 10px — la forme que porte le design
- * system. Le focus epaissit un anneau de 3px et fonce la limite.
+ * Un champ sur fond `--muted`, sans contour, delimite par un FILET INFERIEUR en
+ * `--input` (3,30:1 sur ce fond, WCAG 1.4.11) qui passe a 2px prune au focus.
+ * Le fond seul ne donne que 1,12:1 sur blanc : sans le filet, un champ vide
+ * serait invisible. Arrondi en haut seulement, pour que le filet reste droit.
  *
- * `h-11` (44px) et non les 32px de la maquette : celle-ci mesure une vignette
- * de composant, pas une cible tactile. C'est le plancher tactile du projet
- * (issue C1), le meme que celui de `Button` — regle ICI, a la source, pour que
- * personne n'ait a y penser ecran par ecran. `border-input` (et non `border-subtle`)
- * parce qu'une LIMITE de controle doit tenir 3:1 sur le fond (WCAG 1.4.11),
- * la ou le filet entre deux surfaces doit rester leger.
+ * `h-11` (44px) : le plancher tactile du projet (issue C1), regle ICI.
+ * `text-base` (16px) : en dessous, Safari iOS zoome la page au focus.
  */
 function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   return (
@@ -20,11 +18,11 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
       type={type}
       data-slot="input"
       className={cn(
-        'h-11 w-full min-w-0 rounded-lg border border-input bg-surface px-3 text-sm transition-[color,box-shadow] outline-none',
+        'h-11 w-full min-w-0 rounded-t-lg border-0 border-b border-input bg-muted px-4 text-base transition-[color,border-color] outline-none',
         'placeholder:text-muted-foreground',
-        'focus-visible:border-strong focus-visible:ring-[3px] focus-visible:ring-ring/50',
+        'focus-visible:border-b-2 focus-visible:border-marque',
         'disabled:pointer-events-none disabled:opacity-50',
-        'aria-invalid:border-destructive aria-invalid:ring-destructive/30',
+        'aria-invalid:border-destructive',
         className,
       )}
       {...props}

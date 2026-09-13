@@ -22,15 +22,15 @@ import { cn } from '@/lib/utils'
  * `appearance-none` retire la fleche du systeme ; le chevron qui la remplace
  * est pose par une regle CSS ciblant `[data-slot="select"]` dans
  * `app/globals.css` (un `background-image` colore au token, pas un litteral).
- * `pr-9` laisse la place pour qu'un intitule long ne passe jamais dessous.
+ * `pr-10` laisse la place pour qu'un intitule long ne passe jamais dessous.
  */
 function Select({ className, ...props }: React.ComponentProps<'select'>) {
   return (
     <select
       data-slot="select"
       className={cn(
-        'h-11 w-full min-w-0 appearance-none rounded-lg border border-input bg-surface pr-9 pl-3 text-sm transition-[color,box-shadow] outline-none',
-        'focus-visible:border-strong focus-visible:ring-[3px] focus-visible:ring-ring/50',
+        'h-11 w-full min-w-0 appearance-none rounded-t-lg border-0 border-b border-input bg-muted pr-10 pl-4 text-base transition-[color,border-color] outline-none',
+        'focus-visible:border-b-2 focus-visible:border-marque',
         'disabled:pointer-events-none disabled:opacity-50',
         className,
       )}

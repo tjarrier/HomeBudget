@@ -20,7 +20,7 @@ const PLANCHER = /\b(?:min-)?h-11\b/
 // qui en porterait une repasserait sous le seuil sans que rien ne le dise.
 const TROP_BAS = /\b(?:min-)?h-(?:8|9|10)\b/
 
-const PRIMITIVES = ['button', 'input', 'select', 'textarea'] as const
+const PRIMITIVES = ['button', 'input', 'select', 'textarea', 'choix'] as const
 
 /**
  * Le source, prive de ses commentaires — seul le code applique une classe.
