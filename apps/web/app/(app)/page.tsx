@@ -185,7 +185,9 @@ export default async function TableauDeBord() {
 function Chiffre({ libelle, valeur, sous }: { libelle: string; valeur: number; sous: string }) {
   return (
     <div className="rounded-lg border border-subtle bg-surface px-4 py-3.5 shadow-xs">
-      <div className="text-[0.6875rem] tracking-[0.05em] text-faint uppercase">{libelle}</div>
+      <div className="text-[0.6875rem] tracking-[0.05em] text-muted-foreground uppercase">
+        {libelle}
+      </div>
       <div className="mt-1.5 whitespace-nowrap">
         <Montant cents={valeur} niveau="notable" />
       </div>
@@ -225,7 +227,7 @@ function BilanPersonne({
         <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-muted">
           <i className="block h-full rounded-full bg-body" style={{ width: `${pct}%` }} />
         </div>
-        <div className="mt-1 text-[0.6875rem] text-faint">{pct} % du total payé</div>
+        <div className="mt-1 text-[0.6875rem] text-muted-foreground">{pct} % du total payé</div>
       </div>
 
       <dl className="text-xs">

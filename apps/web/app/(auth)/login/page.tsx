@@ -46,7 +46,7 @@ export default async function Login({
           <BoutonGoogle />
         </div>
 
-        <p className="mt-5 inline-flex items-center gap-2 text-xs text-faint">
+        <p className="mt-5 inline-flex items-center gap-2 text-xs text-muted-foreground">
           <svg
             aria-hidden="true"
             viewBox="0 0 24 24"

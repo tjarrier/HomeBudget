@@ -28,7 +28,7 @@ export function Carte({
       {titre ? (
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 className="text-[0.9375rem] font-semibold">{titre}</h2>
-          {aside ? <span className="text-xs text-faint">{aside}</span> : null}
+          {aside ? <span className="text-xs text-muted-foreground">{aside}</span> : null}
         </div>
       ) : null}
       {children}

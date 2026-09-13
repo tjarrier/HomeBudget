@@ -56,7 +56,7 @@ export function FormulaireVersion({ courante }: { courante: VersionConfig | null
             doute. C'est l'un des deux seuls accents chromatiques du systeme.
             Le detail « quelle version, quelle date » a quitte ce bandeau statique
             pour vivre dans l'apercu de cloture, ou il devient precis et vivant. */}
-        <p className="rounded-md bg-positive-surface px-3.5 py-3 text-[0.8125rem] leading-relaxed text-positive">
+        <p className="rounded-md bg-marque-surface px-3.5 py-3 text-[0.8125rem] leading-relaxed text-marque">
           Créer une version ne touche <strong>aucune</strong> dépense passée : leurs parts ont été
           figées le jour de leur saisie.
         </p>
@@ -205,7 +205,7 @@ function ApercuClotureVue({
           </p>
           {apercu.lignes.length > 0 ? (
             <>
-              <h4 className="mt-2.5 mb-1.5 text-[0.6875rem] tracking-[0.05em] text-faint uppercase">
+              <h4 className="mt-2.5 mb-1.5 text-[0.6875rem] tracking-[0.05em] text-muted-foreground uppercase">
                 Ce qui change
               </h4>
               <ul className="flex flex-col gap-1">
@@ -215,7 +215,7 @@ function ApercuClotureVue({
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                       <span className="sr-only">avant : </span>
                       <ValeurCloture ligne={l} bord="avant" />
-                      <span aria-hidden="true" className="text-faint">
+                      <span aria-hidden="true" className="text-muted-foreground">
                         →
                       </span>
                       <span className="sr-only">après : </span>
@@ -226,18 +226,18 @@ function ApercuClotureVue({
               </ul>
             </>
           ) : (
-            <p className="mt-1.5 text-xs text-faint">
+            <p className="mt-1.5 text-xs text-muted-foreground">
               Aucun chiffre ne change — seule la période bascule.
             </p>
           )}
         </>
       ) : apercu.dateTropTot ? (
-        <p className="text-xs text-faint">
+        <p className="text-xs text-muted-foreground">
           La prise d'effet doit être postérieure au {formaterDate(courante.dateDebut)} de la version
           en cours.
         </p>
       ) : (
-        <p className="text-xs text-faint">
+        <p className="text-xs text-muted-foreground">
           Choisissez une prise d'effet pour voir ce que la clôture ferme.
         </p>
       )}

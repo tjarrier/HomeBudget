@@ -42,14 +42,17 @@ describe('globals.css ne garde rien du theme shadcn par defaut', () => {
   })
 
   /**
-   * UNE famille, pas deux. Le design system importe (`HomeBudget.dc.html`) ne
-   * porte pas de serif : la hierarchie vient du poids, de la taille et du
-   * contraste de surface. Ce test verrouille l'absence de seconde famille — un
-   * `--font-heading` qui reapparaitrait ferait diverger l'app de sa maquette.
+   * DEUX familles, et pas trois (spec 2026-09-13, « La typographie »). Manrope
+   * porte le texte, Bricolage Grotesque le solde et les titres. Une troisieme
+   * famille, ou le retour d'Inter, ferait diverger l'app de sa maquette.
    */
-  it('ne charge qu une seule famille de caracteres', () => {
-    expect(GLOBALS).toMatch(/--font-sans:\s*var\(--font-inter\)/)
-    expect(GLOBALS).not.toMatch(/--font-heading/)
+  it('charge exactement deux familles de caracteres', () => {
+    expect(GLOBALS).toMatch(/--font-sans:\s*var\(--font-manrope\)/)
+    expect(GLOBALS).toMatch(/--font-display:\s*var\(--font-bricolage\)/)
+    // `--font-mono` n'est pas une famille chargee : c'est la pile systeme.
+    const familles = GLOBALS.match(/^\s*--font-(?!mono\b)[a-z-]+:/gm) ?? []
+    expect(familles).toHaveLength(2)
+    expect(GLOBALS).not.toMatch(/--font-inter/)
   })
 })
 
@@ -101,6 +104,33 @@ describe('aucune couleur ne court-circuite les tokens', () => {
     for (const dossier of DOSSIERS) {
       for (const fichier of fichiersTsx(dossier)) {
         if (/\b(?:bg|text|border)-white\b/.test(readFileSync(fichier, 'utf-8'))) {
+          fautifs.push(fichier.replace(RACINE, ''))
+        }
+      }
+    }
+    expect(fautifs).toEqual([])
+  })
+})
+
+/**
+ * Les tokens retires par la refonte (spec 2026-09-13, « Les couleurs ») :
+ * `text-faint` ne tenait pas 4,5:1, l'emerald diluait le prune et l'abricot.
+ * Un usage oublie compilerait sans erreur — Tailwind ignore en silence une
+ * classe dont le token n'existe plus — et rendrait un texte a la couleur
+ * heritee, sans que rien ne le signale.
+ */
+const TOKENS_RETIRES = /\b(?:text-faint|bg-positive-surface|text-positive)\b/
+
+describe('la refonte ne laisse aucun token retire', () => {
+  it('globals.css ne declare plus ni slate, ni faint, ni positive', () => {
+    expect(GLOBALS).not.toMatch(/--slate-\d|--text-faint|--positive-/)
+  })
+
+  it('le markup n utilise plus aucun token retire', () => {
+    const fautifs: string[] = []
+    for (const dossier of DOSSIERS) {
+      for (const fichier of fichiersTsx(dossier)) {
+        if (TOKENS_RETIRES.test(readFileSync(fichier, 'utf-8'))) {
           fautifs.push(fichier.replace(RACINE, ''))
         }
       }

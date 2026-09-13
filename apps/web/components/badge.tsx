@@ -22,7 +22,7 @@ export function BadgeType({ type }: { type: TypeDepense }) {
     <span
       className={cn(
         'inline-flex items-center rounded-full border px-2 py-0.5 text-[0.6875rem] leading-5 font-medium',
-        type === 'transfert' && 'border-transparent bg-positive-surface text-positive',
+        type === 'transfert' && 'border-transparent bg-marque-surface text-marque',
         type === 'charge_fixe' && 'border-input bg-surface text-body',
         type === 'courante' && 'border-transparent bg-muted text-body',
       )}
@@ -38,7 +38,7 @@ export function BadgeVersion({ close }: { close: boolean }) {
     <span
       className={cn(
         'inline-flex items-center rounded-full px-2 py-0.5 text-[0.6875rem] leading-5 font-medium',
-        close ? 'bg-muted text-faint' : 'bg-positive-surface text-positive',
+        close ? 'bg-muted text-muted-foreground' : 'bg-marque-surface text-marque',
       )}
     >
       {close ? 'Close' : 'En cours'}

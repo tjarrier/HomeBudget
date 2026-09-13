@@ -117,7 +117,7 @@ export function MenuCompte({ personne, nom }: { personne: Personne; nom: string 
             <Avatar personne={personne} sombre decoratif />
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-strong">{nom}</div>
-              <div className="text-[0.6875rem] text-faint">Connecté</div>
+              <div className="text-[0.6875rem] text-muted-foreground">Connecté</div>
             </div>
           </div>
           {echec && (

@@ -19,7 +19,7 @@ export function Marque() {
       </span>
       <div>
         <div className="text-base font-semibold tracking-[-0.01em]">HomeBudget</div>
-        <div className="text-[0.6875rem] text-faint">Thomas &amp; Liz</div>
+        <div className="text-[0.6875rem] text-muted-foreground">Thomas &amp; Liz</div>
       </div>
     </div>
   )
