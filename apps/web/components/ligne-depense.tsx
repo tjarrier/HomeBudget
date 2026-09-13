@@ -52,9 +52,8 @@ const ICONES: Record<TypeDepense, ReactNode> = {
  */
 export function LigneDepense({
   depense,
-  avecPayeur = true,
   supprimable = false,
-}: { depense: Depense; avecPayeur?: boolean; supprimable?: boolean }) {
+}: { depense: Depense; supprimable?: boolean }) {
   return (
     <li className="flex items-center gap-2.5 border-t border-subtle py-3 first:border-t-0">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-marque-surface text-marque">
@@ -77,12 +76,8 @@ export function LigneDepense({
         <div className="truncate text-[0.9375rem] font-semibold">{depense.description}</div>
         <div className="mt-px flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] text-muted-foreground">
           <span className="tabular-nums">{formaterDate(depense.date)}</span>
-          {avecPayeur ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>payé par {nomPersonne(depense.payePar)}</span>
-            </>
-          ) : null}
+          <span aria-hidden="true">·</span>
+          <span>payé par {nomPersonne(depense.payePar)}</span>
           {/* La PROVENANCE : ce mot dit qui a ecrit la ligne (issue #24). */}
           {depense.genereAuto ? (
             <>

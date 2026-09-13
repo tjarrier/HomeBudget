@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
  * ombre a peine perceptible : sur le fond chaud, le blanc suffit a la
  * detacher. C'est le conteneur que la maquette pose autour de
  * CHAQUE bloc de contenu — a la seule exception du bandeau du solde, qui est
- * la surface sombre (voir `BandeauSolde`).
+ * la surface sombre (le bandeau de `app/(app)/page.tsx`).
  *
  * `titre` rend un <h2> : les cartes sont les sections de second niveau de
  * chaque ecran, sous le <h1> porte par `EntetePage`. `aside` est la mention

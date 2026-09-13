@@ -80,9 +80,9 @@ test.describe('ecrans authentifies', () => {
 
   test("l'accueil ne pose aucune cible sous 44px", async ({ page }) => {
     await page.goto('/')
-    // Le lien « Voir tout → » de la carte des depenses recentes est le seul
-    // controle de l'app qui ne soit ni un bouton ni un champ : c'est celui que
-    // sa taille de texte (12px) rendait intouchable.
+    // Le lien « Voir tout » des dernieres depenses est un lien de texte, sans
+    // habillage de bouton : c'est celui que sa taille de texte (12px) rendait
+    // intouchable.
     await expect(page.getByRole('link', { name: /Voir tout/ })).toBeVisible()
     expect(await trouverCiblesTropPetites(page)).toEqual([])
   })

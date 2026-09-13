@@ -533,6 +533,38 @@ test.describe('parcours authentifies', () => {
 
       // Trois cases : Accueil, le « + », Depenses. Config est dans le menu du compte.
       await expect(barre.getByRole('link')).toHaveCount(3)
+
+      // Le « + » deborde de 26px au-dessus de la barre (spec « La coque »). Un
+      // `items-center` sur la grille annulait sa marge negative sans rien casser
+      // d'autre : seule la geometrie le voit. 20px laisse la marge d'un arrondi.
+      const plus = await barre.getByRole('link', { name: 'Ajouter une dépense' }).boundingBox()
+      expect(plus).not.toBeNull()
+      expect((boite?.y ?? 0) - (plus?.y ?? 0)).toBeGreaterThanOrEqual(20)
+    })
+
+    test('fermer la feuille ouverte par le + rend l historique d avant', async ({ page }) => {
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await page.goto('/depenses')
+      await page.getByRole('link', { name: 'Accueil' }).click()
+      await expect(page).toHaveURL('/')
+
+      // Ouverte par le « + », fermee par « Fermer » : Retour quitte l'accueil
+      // pour la page d'avant, il ne rejoue pas une entree `/` en double.
+      await page.getByRole('link', { name: 'Ajouter une dépense' }).click()
+      await expect(feuille).toBeVisible()
+      await feuille.getByRole('button', { name: 'Fermer' }).click()
+      await expect(feuille).toBeHidden()
+      await expect(page).toHaveURL('/')
+      await page.goBack()
+      await expect(page).toHaveURL('/depenses')
+
+      // Ouverte par le « + », Retour la ferme et reste sur l'ecran.
+      await page.getByRole('link', { name: 'Ajouter une dépense' }).click()
+      await expect(page).toHaveURL('/depenses?saisie=1')
+      await expect(feuille).toBeVisible()
+      await page.goBack()
+      await expect(feuille).toBeHidden()
+      await expect(page).toHaveURL('/depenses')
     })
 
     test('le + ouvre la saisie par-dessus l ecran courant, sans defiler', async ({ page }) => {

@@ -35,7 +35,11 @@ const DEPENSES = {
  * Au centre de la barre, le « + » : l'action la plus frequente de l'app, a
  * portee de pouce depuis n'importe quel ecran. C'est un LIEN qui ajoute
  * `saisie=1` a l'URL courante en gardant ses autres parametres — la feuille
- * s'ouvre par-dessus l'ecran, filtres compris. Au rail, il passe en tete.
+ * s'ouvre par-dessus l'ecran, filtres compris. Au rail, il vient apres les deux
+ * liens (spec) : il est donc rendu deux fois, chaque exemplaire masque a la
+ * taille de l'autre — comme `Marque` —, pour que l'ordre du DOM, donc de
+ * tabulation, reste l'ordre visuel aux deux tailles. `display: none` sort
+ * l'exemplaire masque de l'arbre : un seul « Ajouter une dépense » atteignable.
  *
  * Config n'est plus ici : c'est un geste rare (une revision de loyer), il vit
  * dans le menu du compte.
@@ -53,35 +57,49 @@ export function NavPrincipale() {
       className="grid flex-1 grid-cols-3 items-center md:mt-1 md:flex md:flex-col md:items-stretch md:gap-0.5"
     >
       <Lien {...ACCUEIL} actif={chemin === ACCUEIL.href} />
-      <Link
+      <Ajouter
         href={lienOuvrirSaisie(chemin, new URLSearchParams(params), 'libre')}
-        scroll={false}
-        aria-label="Ajouter une dépense"
-        className={cn(
-          'flex items-center justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary/85',
-          'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none',
-          // Barre basse : un cercle de 58px qui deborde de 26px au-dessus.
-          'max-md:-mt-6.5 max-md:size-[3.625rem] max-md:justify-self-center max-md:rounded-full max-md:shadow-action',
-          // Rail : un bouton plein, en tete de la liste.
-          'md:order-first md:mb-3 md:min-h-11 md:gap-2 md:rounded-lg md:px-3 md:text-sm md:font-bold',
-        )}
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="size-[26px] shrink-0 md:size-[18px]"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        >
-          <path d="M12 5v14" />
-          <path d="M5 12h14" />
-        </svg>
-        <span className="hidden md:inline">Ajouter une dépense</span>
-      </Link>
+        // Barre basse : un cercle de 58px qui deborde de 26px au-dessus.
+        // `self-start` : centre par la grille, l'item serait aligne par sa boite
+        // de marge et la marge negative ne le monterait que de 4px.
+        className="-mt-6.5 size-[3.625rem] self-start justify-self-center rounded-full shadow-action md:hidden"
+      />
       <Lien {...DEPENSES} actif={chemin === DEPENSES.href} />
+      <Ajouter
+        href={lienOuvrirSaisie(chemin, new URLSearchParams(params), 'libre')}
+        // Rail : un bouton plein, apres les liens.
+        className="mt-3 min-h-11 gap-2 rounded-lg px-3 text-sm font-bold max-md:hidden"
+      />
     </nav>
+  )
+}
+
+function Ajouter({ href, className }: { href: string; className: string }) {
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      aria-label="Ajouter une dépense"
+      className={cn(
+        'flex items-center justify-center bg-primary text-primary-foreground transition-colors hover:bg-primary/85',
+        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none',
+        className,
+      )}
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="size-[26px] shrink-0 md:size-[18px]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      >
+        <path d="M12 5v14" />
+        <path d="M5 12h14" />
+      </svg>
+      <span className="hidden md:inline">Ajouter une dépense</span>
+    </Link>
   )
 }
 

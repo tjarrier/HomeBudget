@@ -48,8 +48,26 @@ export function FeuilleSaisie({ personne }: { personne: Personne }) {
   const [reglement, setReglement] = useState<Reglement | null | undefined>(undefined)
   const [erreur, setErreur] = useState<string | null>(null)
 
+  // Ouverte depuis l'app (le « + », « Régler les comptes » : un push), la
+  // feuille a SA propre entree d'historique : la fermer la depile, sinon Retour
+  // rejouerait l'ecran en double. Chargee directement par son URL, il n'y a rien
+  // a nous depiler — `back()` quitterait l'app : on remplace. Le drapeau se pose
+  // quand `mode` passe de null a une valeur apres le montage, jamais au montage.
+  const empilee = useRef(false)
+  const modePrecedent = useRef(mode)
+  useEffect(() => {
+    if (!mode) empilee.current = false
+    else if (!modePrecedent.current) empilee.current = true
+    modePrecedent.current = mode
+  }, [mode])
+
   const fermer = useCallback(() => {
-    router.replace(lienFermerSaisie(chemin, new URLSearchParams(params)), { scroll: false })
+    if (empilee.current) {
+      empilee.current = false
+      router.back()
+    } else {
+      router.replace(lienFermerSaisie(chemin, new URLSearchParams(params)), { scroll: false })
+    }
   }, [router, chemin, params])
 
   useEffect(() => {
@@ -66,11 +84,16 @@ export function FeuilleSaisie({ personne }: { personne: Personne }) {
     setErreur(null)
     if (mode !== 'regler') return
     let annule = false
-    preparerReglementAction().then((r) => {
-      if (annule) return
-      if (r.ok) setReglement(r.valeur)
-      else setErreur(r.message)
-    })
+    preparerReglementAction()
+      .then((r) => {
+        if (annule) return
+        if (r.ok) setReglement(r.valeur)
+        else setErreur(r.message)
+      })
+      // Un rejet (reseau coupe) laisserait sinon une feuille vide, sans un mot.
+      .catch(() => {
+        if (!annule) setErreur('Impossible de lire le solde. Vérifiez la connexion et réessayez.')
+      })
     return () => {
       annule = true
     }

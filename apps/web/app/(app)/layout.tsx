@@ -15,7 +15,7 @@ import { exigerSession } from '@/lib/session'
  *
  * En dessous : la marque monte dans un entete, la navigation descend dans une
  * barre `fixed bottom-0` a trois cases, et le menu du compte monte dans
- * l'entete — atteignable au pouce d'une main qui tient l'appareil. Ce sont deux
+ * l'entete : un geste rare, qui laisse la barre du pouce aux trois cases. Ce sont deux
  * REGIONS distinctes de l'ecran, ce qu'un unique
  * <aside> pivotant par CSS ne savait plus couvrir : d'ou <Marque /> rendue deux
  * fois, chacune masquee a la taille de l'autre.

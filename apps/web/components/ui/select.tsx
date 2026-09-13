@@ -21,7 +21,8 @@ import { cn } from '@/lib/utils'
  *
  * `appearance-none` retire la fleche du systeme ; le chevron qui la remplace
  * est pose par une regle CSS ciblant `[data-slot="select"]` dans
- * `app/globals.css` (un `background-image` colore au token, pas un litteral).
+ * `app/globals.css` (un `background-image` dont la couleur est le hex litteral
+ * de --text-muted : `url()` ne lit pas une variable CSS).
  * `pr-10` laisse la place pour qu'un intitule long ne passe jamais dessous.
  */
 function Select({ className, ...props }: React.ComponentProps<'select'>) {

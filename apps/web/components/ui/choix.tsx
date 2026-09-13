@@ -51,7 +51,7 @@ export function Choix({
           <label
             key={option.valeur}
             className={cn(
-              'relative flex h-12 min-h-11 items-center justify-center rounded-lg px-1 text-center text-[0.8125rem] leading-tight font-semibold transition-colors',
+              'group relative flex h-12 min-h-11 items-center justify-center rounded-lg px-1 text-center text-[0.8125rem] leading-tight font-semibold transition-colors',
               'bg-muted text-strong',
               'has-[:checked]:bg-strong has-[:checked]:text-on-emphasis',
               'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-surface',
@@ -65,6 +65,20 @@ export function Choix({
               onChange={() => onChange(option.valeur)}
               className="absolute inset-0 m-0 cursor-pointer appearance-none rounded-lg opacity-0"
             />
+            {/* La coche double l'etat hors couleur. Decorative : le radio natif
+                porte deja l'etat coche. */}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="mr-1 hidden size-3.5 shrink-0 group-has-[:checked]:block"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12.5 10 17 19 7.5" />
+            </svg>
             {option.libelle}
           </label>
         ))}

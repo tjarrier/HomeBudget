@@ -141,9 +141,8 @@ export default async function Depenses({
                 n: String(limite + PALIER),
               })}`}
               data-testid="voir-plus"
-              // `discret` : DESIGN.md dit deux variantes, pas plus (voir le
-              // commentaire de app/(app)/page.tsx:96). `w-full` seul s'ajoute,
-              // pour occuper toute la largeur de la carte.
+              // `discret` : DESIGN.md dit deux variantes, pas plus. `w-full`
+              // seul s'ajoute, pour occuper toute la largeur de la carte.
               className={buttonVariants({ variant: 'discret', className: 'mt-2 w-full' })}
             >
               {/* Le reste est DANS le libelle : « Voir plus » sans chiffre
