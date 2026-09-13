@@ -133,6 +133,10 @@ suffit à les détacher.
 
 - **En-tête** : la marque à gauche, l'avatar à droite. L'avatar est le déclencheur de
   `MenuCompte`, qui quitte la barre basse. Son nom accessible reste « Compte ».
+  `MenuCompte` est rendu deux fois, comme `Marque` : dans l'en-tête sous 768 px, en pied
+  de rail au-dessus, chaque exemplaire masqué à la taille de l'autre. Un exemplaire
+  masqué par `display: none` sort de l'arbre d'accessibilité : il n'y a jamais deux
+  boutons « Compte » atteignables.
 - **Barre basse à trois cases** : Accueil, **+**, Dépenses. Le « + » est un cercle
   abricot de 58 px qui déborde de 26 px au-dessus de la barre ; son nom accessible est
   « Ajouter une dépense ».
@@ -149,7 +153,9 @@ liens pour les deux tailles, comme aujourd'hui.
 1. Le **bandeau du solde**, prune : « Liz doit à Thomas », puis `<Montant niveau="heros">`,
    puis « Sur 33 dépenses ». Deux actions dessous : « Régler les comptes » (seulement en
    cas de dette, comme aujourd'hui) et « Voir le détail », qui mène au tableau de bord.
-   Le `data-testid="phrase-synthese"` reste sur le bloc libellé + montant.
+   Le `data-testid="phrase-synthese"` reste sur le bloc libellé + montant. Ce bloc est
+   le `<h1>` de l'écran : l'accueil n'a pas d'autre titre, et `debordement.spec.ts`
+   attend un `<h1>` visible sur chaque route.
 2. **Dernières dépenses** : un titre, le lien « Voir tout » (le libellé actuel est
    gardé, la maquette dit « Tout voir »), et les cinq dernières lignes
    (`listerDepenses({ limite: 5 })`, inchangé).
@@ -200,15 +206,18 @@ La feuille est montée une fois, dans `app/(app)/layout.tsx`. Un layout ne reço
   `autoFocus` ;
 - la **description** ;
 - **Payé par** : deux choix, la personne de la session sélectionnée par défaut ;
-- le résumé des valeurs par défaut (« Aujourd'hui · Courante · Au prorata ») et le
-  bouton « Modifier » ;
+- le résumé des valeurs par défaut (« Aujourd'hui · courante, moitié-moitié » : le mode
+  par défaut d'une dépense courante est `moitie`, `modeParDefaut()` ; la maquette écrivait
+  « Au prorata » à tort) et le bouton « Modifier » ;
 - en pied de feuille, séparé par un filet : l'aperçu des parts, puis « Ajouter la
   dépense » en abricot.
 
 **Contenu, déplié** (écran « Saisie, détails ouverts ») : Date (Aujourd'hui, Hier,
 Autre date), Type (Courante, Charge fixe, Transfert), Répartition (Au prorata, Moitié,
 Personnalisée, et les deux champs de parts quand elle est choisie), Commentaire, et
-« Replier ». Le montant et la description remontent en sous-titre de la feuille.
+« Replier ». Le montant et la description restent en place : la maquette les remonte en
+sous-titre, mais un champ masqué ne se corrige plus, et la feuille dépliée défile de
+toute façon.
 
 **Le clavier.** Pendant la frappe du montant et de la description, le clavier du
 téléphone occupe le bas de l'écran ; ces deux champs sont en haut de la feuille et
@@ -258,13 +267,18 @@ Les `<select>` de payeur, type et répartition disparaissent du formulaire de sa
 ### Dépenses — `app/(app)/depenses/page.tsx`
 
 L'écran de l'historique : filtres, liste bornée et « Voir plus » (G2), suppression
-(#40), génération de la charge du mois (`FormulaireGeneration`, qui passe au-dessus de
-l'historique). La colonne `FormulaireDepense` et le paramètre `?regler` disparaissent.
+(#40), génération de la charge du mois (`FormulaireGeneration`, à côté de l'historique
+au large et dessous au téléphone : on ouvre cet écran pour relire, pas pour générer un
+loyer une fois par mois). La colonne `FormulaireDepense` et le paramètre `?regler`
+disparaissent.
 
 `LigneDepense` suit la maquette : pastille d'icône du type (charge fixe, transfert,
-courante), description, « date · payeur » (« Liz → Thomas » pour un transfert), parts en
-toutes lettres (« Thomas 718,61 · Liz 391,97 »), montant à droite. Les parts restent
-**affichées**, pour la raison documentée dans le composant.
+courante), description, « date · payé par Liz », parts en toutes lettres
+(« Thomas 718,61 · Liz 391,97 »), montant à droite. La maquette écrit « Liz → Thomas »
+pour un transfert et « 5 juil. » pour la date ; « payé par » et `05/07/2026` sont gardés
+pour tous les types, parce que le parcours des filtres (#28) reconnaît une ligne de Liz
+à ce texte et un mois à `/07/2026`. Les parts restent **affichées**, pour la raison
+documentée dans le composant.
 
 ### Configuration et connexion
 
