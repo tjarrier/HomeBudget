@@ -89,10 +89,9 @@ test.describe('parcours authentifies', () => {
         // Si cette assertion echoue avec une URL /login, le cookie est mal forme :
         // verifier BETTER_AUTH_SECRET et la signature dans e2e/session.ts.
         await expect(page).toHaveURL('/')
-        // Le bandeau enchasse le montant AU MILIEU de la phrase (« Liz doit
-        // 1 145,80 € à Thomas ») : le sens se verifie donc par motif, la valeur
-        // reste epinglee au nœud <data>.
-        await expect(page.getByTestId('phrase-synthese')).toContainText(/Liz doit .+ à Thomas/)
+        // Le sens est le libelle (« Liz doit à Thomas ») ; le montant est un bloc
+        // a part, en dessous. La valeur reste epinglee au nœud <data>.
+        await expect(page.getByTestId('phrase-synthese')).toContainText('Liz doit à Thomas')
         const solde = page.getByTestId('phrase-synthese').locator('data')
         await expect(solde).toHaveText('1 145,80 €')
         // Le texte dit l'euro, l'attribut dit les centimes. C'est en centimes que
@@ -103,7 +102,8 @@ test.describe('parcours authentifies', () => {
         // Le tableau de bord lit le MEME agregat : il doit dire le meme solde, et
         // les deux soldes signes doivent etre le meme fait vu des deux bouts —
         // jamais deux valeurs positives, jamais un signe inverse.
-        await page.goto('/tableau-de-bord')
+        await page.getByRole('link', { name: 'Voir le détail' }).click()
+        await expect(page).toHaveURL('/tableau-de-bord')
         await expect(page.getByTestId('solde-tableau-de-bord')).toHaveAttribute('value', '114580')
         await expect(page.getByTestId('solde-thomas')).toHaveAttribute('value', '114580')
         await expect(page.getByTestId('solde-liz')).toHaveAttribute('value', '-114580')
@@ -150,6 +150,8 @@ test.describe('parcours authentifies', () => {
         // clic, qui redoublerait une depense aux parts figees pour toujours.
         await expect(feuille).toBeHidden()
         await expect(page).toHaveURL('/')
+        // L'ecran sous la feuille suit l'ecriture, sans rechargement.
+        await expect(page.getByTestId('dernieres-depenses')).toContainText(description)
 
         await page.goto('/depenses')
         await expect(page.getByTestId('liste-depenses')).toContainText(description)
