@@ -530,6 +530,49 @@ test.describe('parcours authentifies', () => {
       // ne doit pas laisser une constante perimee valider n'importe quoi.
       const bas = TELEPHONE.viewport.height
       expect((boite?.y ?? 0) + (boite?.height ?? 0)).toBeGreaterThan(bas - 8)
+
+      // Trois cases : Accueil, le « + », Depenses. Config est dans le menu du compte.
+      await expect(barre.getByRole('link')).toHaveCount(3)
+    })
+
+    test('le + ouvre la saisie par-dessus l ecran courant, sans defiler', async ({ page }) => {
+      await page.goto('/depenses?mois=2026-07')
+      await page.getByRole('link', { name: 'Ajouter une dépense' }).click()
+      // Les filtres survivent a l'ouverture : on saisit PAR-DESSUS l'ecran.
+      await expect(page).toHaveURL('/depenses?mois=2026-07&saisie=1')
+      const feuille = page.getByRole('dialog', { name: 'Nouvelle dépense' })
+      await expect(feuille).toBeVisible()
+
+      // Le critere de l'issue #68 : montant, description, payeur et validation
+      // tiennent dans le premier ecran du telephone, feuille repliee. Ce test ne
+      // voit pas le clavier virtuel : la verification sur un vrai telephone est
+      // la derniere tache du plan.
+      const bas = TELEPHONE.viewport.height
+      for (const cible of [
+        page.locator('input[name="montant"]'),
+        page.locator('input[name="description"]'),
+        feuille.getByRole('radio', { name: 'Liz' }),
+        feuille.getByRole('button', { name: 'Ajouter la dépense' }),
+      ]) {
+        const boite = await cible.boundingBox()
+        expect(boite).not.toBeNull()
+        expect((boite?.y ?? bas) + (boite?.height ?? 0)).toBeLessThanOrEqual(bas)
+      }
+
+      // Fermer rend l'ecran tel qu'il etait, filtres compris.
+      await feuille.getByRole('button', { name: 'Fermer' }).click()
+      await expect(feuille).toBeHidden()
+      await expect(page).toHaveURL('/depenses?mois=2026-07')
+    })
+
+    test('la configuration s ouvre depuis le menu du compte', async ({ page }) => {
+      await page.goto('/')
+      await page.getByRole('button', { name: 'Compte' }).click()
+      await page.getByRole('link', { name: 'Configuration' }).click()
+      await expect(page).toHaveURL('/config')
+      // La feuille de compte vit dans le layout, qui survit a la navigation :
+      // sans fermeture explicite, elle resterait ouverte sur /config.
+      await expect(page.getByRole('dialog', { name: 'Compte' })).toBeHidden()
     })
 
     test('un signOut qui echoue ne fait pas croire a la sortie', async ({ page }) => {
