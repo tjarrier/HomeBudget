@@ -44,6 +44,7 @@ ce que le code fait **aujourd'hui**.
 | `bg-marque-surface` | `#f3ecf3` | pastilles d'icône, état actif, réassurance | |
 | `bg-primary` / `text-primary-foreground` | `#f2a45e` / `#1f1a24` | **abricot** : l'action principale | texte 8,32:1 ; abricot sur blanc 2,05:1 |
 | `text-strong` | `#1f1a24` | encre : titres, montants, choix sélectionné | 17,05:1 |
+| `text-body` | `#1f1a24` | alias de l'encre : texte courant (connexion, config, menu du compte) | 17,05:1 |
 | `text-muted-foreground` | `#6e6673` | **le seul gris de texte** | 5,51:1 blanc, 5,02:1 fond, 4,90:1 champ |
 | `bg-muted` | `#f5f1ec` | fond de champ et de choix | |
 | `border-input` | `#8a828e` | **limite** : filet inférieur d'un champ | 3,30:1 sur `bg-muted` |
@@ -59,7 +60,8 @@ fond clair : 2,05:1 sur blanc. Un bouton abricot est identifié par son libellé
 délimite un champ et tient 3:1. Le fond d'un champ seul ne donne que 1,12:1 sur blanc :
 sans son filet inférieur, un champ vide est invisible.
 
-Rayons : 14 px champs, choix et boutons ; 20 px cartes ; 24 px bandeau ; 28 px feuilles.
+Rayons : 14 px champs, choix et boutons ; 16 px le bouton d'action de la feuille ; 20 px
+cartes ; 24 px bandeau ; 28 px feuilles.
 Une ombre `shadow-xs` sur les cartes, `shadow-action` sur le « + » et lui seul.
 
 Le chevron du `<select>` est un hex littéral dans `globals.css` (`url()` ne lit pas une
